@@ -54,7 +54,7 @@ App/（WinUI 3，P3 接入）     LumaKit + 视图（P5 接入）
 
 **已在本机验证**：Rust 1.90.0（GNU 目标）与 .NET SDK 11.0.100 下，`cargo test`
 通过 50 项，`cargo fmt --check` 与 `cargo clippy -D warnings` 无问题，
-`qa/NativeChecks` 完成 1044 次比较且无差异。
+`qa/NativeChecks` 完成 1176 次比较且无差异。
 
 **尚未验证**：Swift 应用（本机没有 Swift 与 Xcode）、WinUI 界面（本机没有
 Windows App SDK 构建环境），以及 `Build-Native.ps1` 的 MSVC 分支（本机只有
@@ -83,7 +83,7 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
 | P4 多厂商适配 | 未开始 | 能力提供器与参数规则表尚未实现 |
 | P5 macOS 应用 | 骨架完成 | 工作区布局与规则面板可用，媒体管线未接入 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
-| P7 校准与优化 | 未开始 | 预设候选、启动首帧、长任务 |
+| P7 校准与优化 | 未开始 | 预设候选、启动首帧、解包缓存与空间回收、长任务 |
 | P8 发布准备 | 未开始 | 四语文档、签名申请、打包 |
 | P9 合并发布 | 未开始 | 合并 main、标签、正式 Release |
 
@@ -92,11 +92,11 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
 1. **跨语言传输**：ABI 1 的全部规划调用走单个 `luma_call_json` 入口与 JSON 信封。
    方案 §3.3 要求进度事件带任务 ID 与顺序信息并可靠送达终态，这需要类型化结构体与
    回调注册；在 P2 完成前不会把进度事件塞进这个信封。头文件已注明该边界。
-2. **单 EXE 与原生库**：.NET 单文件默认只打包托管程序集；原生库要进入单文件必须设置
-   `IncludeNativeLibrariesForSelfExtract`，而该模式会在应用启动前把文件解压到
-   `%TEMP%/.net`，与方案 §8.4「首帧完整稳定、尽早可交互」和 §10.1 的启动测量目标直接冲突。
-   方案 §14.3 只写了「受控打包 / 提取流程」，未给出取舍。当前实现把 `lumacore.dll` 放在
-   EXE 同目录；是否改为单文件内的提取，需要按 §10.1 实测后决定。
+2. **单 EXE 与解包缓存**：补充后的方案 §10.4 已给出取舍——保留单 EXE，但要求把解包内容
+   最小化、按构建标识复用、只保留当前与近期回退构建、在首屏就绪后异步回收，并提供缓存
+   占用与清理入口；§11.3 还要求测试使用独立的解包缓存。当前实现仍把 `lumacore.dll` 放在
+   EXE 同目录，尚未启用 `IncludeNativeLibrariesForSelfExtract`，也没有缓存索引。这部分属于
+   P3（原生库接入）与 P7（缓存与空间回收），不能在 P3 之前用「解压到默认 %TEMP%」了事。
 3. **Xcode 工程**：macOS 侧用 Swift 包表达工程，可直接用 Xcode 打开 `app-macos/Package.swift`。
    方案 §11.2 要求的共享 Scheme、Archive 与 DMG 流程由脚本承担；若后续需要
    `.xcodeproj` 专有配置（entitlements 编辑器、归档设置），再补生成工程。
@@ -172,7 +172,7 @@ Implemented and reviewable in this repository:
 
 **Verified locally**: with Rust 1.90.0 (GNU target) and .NET SDK 11.0.100,
 `cargo test` passes 50 tests, `cargo fmt --check` and `cargo clippy -D warnings`
-are clean, and `qa/NativeChecks` reports 1044 comparisons with no mismatch.
+are clean, and `qa/NativeChecks` reports 1176 comparisons with no mismatch.
 
 **Not verified**: the Swift app (no Swift or Xcode here), the WinUI window (no
 Windows App SDK build environment), and the MSVC branch of `Build-Native.ps1`
@@ -202,7 +202,7 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
 | P4 Multi-vendor | Not started | Capability providers and parameter rule tables |
 | P5 macOS app | Shell only | Layout and rules panel work; media pipeline is not connected |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
-| P7 Calibration | Not started | Preset candidates, first-frame timing, long jobs |
+| P7 Calibration | Not started | Preset candidates, first-frame timing, extraction cache and space reclamation, long jobs |
 | P8 Release prep | Not started | Four-language docs, signing, packaging |
 | P9 Merge and release | Not started | Merge to `main`, tag, release |
 
@@ -213,14 +213,15 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
    guaranteed terminal delivery, which requires typed structs and callback
    registration; they will not be pushed into this envelope. The header states
    the boundary.
-2. **Single EXE and the native library**: .NET bundles only managed assemblies by
-   default. Putting a native library inside the single file requires
-   `IncludeNativeLibrariesForSelfExtract`, which extracts files to `%TEMP%/.net`
-   before the process starts — in direct tension with plan §8.4 ("stable first
-   frame, interactive as early as possible") and the §10.1 startup measurements.
-   Plan §14.3 only mentions a "controlled packaging/extraction flow" without
-   choosing between them. The current tree keeps `lumacore.dll` next to the EXE;
-   whether to embed it is a P3 decision backed by measurement.
+2. **Single EXE and the extraction cache**: the supplemented §10.4 decides this —
+   keep the single file, but minimise what is written, reuse an extraction result
+   per build identity, retain only the current and a few fallback builds, reclaim
+   asynchronously after the first screen, and expose cache size and cleanup in
+   settings; §11.3 also requires tests to use a separate extraction cache. The
+   current tree still keeps `lumacore.dll` next to the EXE, does not set
+   `IncludeNativeLibrariesForSelfExtract`, and has no cache index. That work
+   belongs to P3 (native library wiring) and P7 (cache and space reclamation);
+   extracting into the default `%TEMP%` is not an acceptable shortcut.
 3. **Xcode project**: the macOS side is a Swift package that Xcode opens
    directly. Shared schemes, Archive and DMG packaging are handled by the script;
    a generated `.xcodeproj` is only needed for settings SwiftPM cannot express.

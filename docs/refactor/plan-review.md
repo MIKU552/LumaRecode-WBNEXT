@@ -18,13 +18,13 @@
 | NVIDIA Video Codec SDK 13.1 | 支持 Windows ARM64 原生构建，明确不支持 ARM64EC；驱动 610 及以上、CUDA 13.1 及以上；示例针对 FFmpeg 7.1 编译 | ARM64 版 FFmpeg、原生依赖和 SDK 桩库必须全部是 ARM64 构建 |
 | AMF 在 FFmpeg 中的设置 | `rc` 默认 -1 属内部保留，必须显式指定；`qvbr_quality_level` 需配合 `rc=qvbr`；`bf` 只适用于 H.264；页面没有 10 位说明 | AMF 的 10 位与 HDR 预设不能只依据该页，需查 AMF SDK 文档并实测 |
 | SignPath 条款 | 要求 OSI 许可且无商业双许可、已发布、首页有「Code signing policy」段落、作者/审核/批准角色、MFA、每次发布人工批准、构建可验证、产物元数据受限 | 仓库当前没有签名政策段落，P8 必须补齐后才能申请 |
-| .NET 单文件部署 | 默认只打包托管程序集；原生库需 `IncludeNativeLibrariesForSelfExtract`，且在启动前解压到 `%TEMP%/.net`；压缩会额外增加启动开销 | 与「自包含单 EXE」和「首帧稳定、尽早可交互」目标冲突，需实测取舍 |
+| .NET 单文件部署 | 默认只打包托管程序集；原生库需 `IncludeNativeLibrariesForSelfExtract`，且在启动前解压到 `%TEMP%/.net`；压缩会额外增加启动开销 | 方案 §10.4 已定：保留单 EXE，但最小化解包内容、按构建标识复用、首屏后异步回收，P7 测量后固定预算 |
 | macOS 27 首次打开 | 逐应用在「系统设置 → 隐私与安全性」点「仍要打开」，按钮仅在尝试打开后约一小时内可用，需输入密码；不要求全局关闭 Gatekeeper | 与方案 §14.1 一致，分发说明按此撰写 |
 | Liquid Glass | 用新 SDK 重建即自动采用标准控件的材质；自定义背景会干扰效果；`UIDesignRequiresCompatibility` 可临时保留旧外观；应用图标改为分层设计 | 现有 SwiftUI 骨架的自定义背景需要移除，图标需用 Icon Composer 重制 |
 
 ### 需要澄清的问题
 
-1. **单 EXE 与原生库**：`IncludeNativeLibrariesForSelfExtract` 会在启动前解压，是否接受这部分启动开销？若不接受，是否改为「ZIP 分发 + 同目录 DLL」，放弃单 EXE？
+1. **单 EXE 与解包缓存**（已由补充方案回答）：§10.4 保留单 EXE 并要求缓存索引、构建标识复用与空间回收。仍需确定的是构建标识的取值（源码提交 + 工具链？）、缓存根目录与保留预算，这三项要在 P3 定标识、P7 测量后定数值。
 2. **macOS 预览镜像**：`xcode-27` 是预览镜像，不在 Actions SLA 内。正式发布构建是否允许使用预览镜像，还是等 macOS 27 转正后再发？
 3. **Swift 与 Xcode 对应关系**：方案写 Swift 6.4 系列，需在镜像上以 `swift --version` 确认实际版本并写入构建记录。
 4. **签名政策位置**：SignPath 要求的「Code signing policy」放在根 README，还是单独页面并在 README 链接？
@@ -55,15 +55,17 @@ conclusions, as the plan itself states.
 | NVIDIA Video Codec SDK 13.1 | Native Windows ARM64 builds are supported; ARM64EC is explicitly not; driver 610+, CUDA 13.1+; samples built against FFmpeg 7.1 | ARM64 FFmpeg, native dependencies and SDK stubs must all be ARM64 builds |
 | AMF settings in FFmpeg | `rc` defaults to -1 and is reserved, so it must be set explicitly; `qvbr_quality_level` requires `rc=qvbr`; `bf` applies to H.264 only; the page says nothing about 10-bit | AMF 10-bit and HDR presets cannot rely on that page; the SDK docs plus measurement are required |
 | SignPath terms | Requires an OSI license without commercial dual-licensing, a released project, a "Code signing policy" section on the home page, author/reviewer/approver roles, MFA, manual approval per release, verifiable builds and restricted artifact metadata | The repository has no signing policy section yet; P8 must add it before applying |
-| .NET single-file | Bundles managed assemblies only; native libraries need `IncludeNativeLibrariesForSelfExtract`, which extracts to `%TEMP%/.net` before start; compression adds startup cost | Conflicts with single EXE plus a stable, early first frame; decide by measurement |
+| .NET single-file | Bundles managed assemblies only; native libraries need `IncludeNativeLibrariesForSelfExtract`, which extracts to `%TEMP%/.net` before start; compression adds startup cost | §10.4 decides it: keep the single file, minimise extraction, reuse per build identity, reclaim after the first screen, fix the budget in P7 |
 | macOS 27 first open | Per-app override in System Settings → Privacy & Security → "Open Anyway", available for about an hour after the attempt, password required; no global Gatekeeper override | Matches plan §14.1; distribution notes should say exactly this |
 | Liquid Glass | Standard controls adopt the material when rebuilt with the new SDK; custom backgrounds interfere; `UIDesignRequiresCompatibility` keeps the old look temporarily; app icons move to layered artwork | The SwiftUI shell's custom backgrounds must go; the icon needs Icon Composer artwork |
 
 ### Open questions
 
-1. **Single EXE versus the native library**: is the pre-start extraction
-   acceptable? If not, does distribution move to a ZIP with the DLL beside the
-   EXE, giving up the single file?
+1. **Single EXE and the extraction cache** (answered by the supplement): §10.4
+   keeps the single file and requires a cache index, per-build reuse and space
+   reclamation. What remains is the build identity value (source commit plus
+   toolchain?), the cache root, and the retention budget — identity in P3,
+   numbers after the P7 measurements.
 2. **Preview runner image**: `xcode-27` is a preview outside the Actions SLA. May
    release builds use it, or should the macOS release wait for macOS 27 GA?
 3. **Swift and Xcode mapping**: the plan names the Swift 6.4 series. Confirm the
