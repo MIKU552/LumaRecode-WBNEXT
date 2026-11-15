@@ -1,0 +1,12 @@
+[package]
+name = "luma-core"
+description = "Platform-neutral planning, format policy and timeline rules for LumaRecode."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

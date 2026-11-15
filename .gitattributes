@@ -13,3 +13,7 @@ Assets/OpenOSV/LICENSE -text
 Assets/OpenOSV/NOTICE -text
 # Retain full upstream legal documents without counting them as application code.
 licenses/** -text -whitespace conflict-marker-size=32 linguist-vendored=true
+# Shell scripts and native sources keep LF so they run and build on every host.
+*.sh text eol=lf
+*.rs text eol=lf
+*.swift text eol=lf

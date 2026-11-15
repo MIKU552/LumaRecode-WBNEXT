@@ -1,0 +1,6 @@
+[toolchain]
+# P0 records the exact patch release used for a build; this file is the
+# single place that decides which compiler the workspace uses.
+channel = "1.90.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
