@@ -1,0 +1,4 @@
+module CLumaCore [system] {
+    header "luma_core.h"
+    export *
+}
