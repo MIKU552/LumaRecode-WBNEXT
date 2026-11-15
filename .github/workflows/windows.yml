@@ -81,6 +81,21 @@ jobs:
           }
           Get-Content build-info/parity.log | Select-Object -Last 5
 
+      - name: CLI smoke
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Select-Object -First 1
+          if ($null -eq $exe) { throw "LumaRecode.exe was not built." }
+          $env:LUMARECODE_DIAGNOSTICS = "1"
+          $output = & $exe.FullName --cli --version 2>&1
+          $output | ForEach-Object { $_.ToString() }
+          if ($LASTEXITCODE -ne 0) { throw "CLI --version failed with $LASTEXITCODE." }
+          $text = $output | Out-String
+          if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
+          if ($text -notmatch 'LumaRecode 4\.4\.3') { throw "Unexpected version output." }
+
       - name: Record hashes
         shell: pwsh
         run: |

@@ -10,22 +10,34 @@ namespace VideoConverter.Native;
 /// </remarks>
 public static class SharedCoreBridge
 {
+    /// <summary>True when the shared core answers resolve and validate in this process.</summary>
+    public static bool Active { get; private set; }
+
+    /// <summary>Version reported by the loaded core, or an empty string when it is absent.</summary>
+    public static string Version => LumaCoreNative.IsAvailable ? LumaCoreNative.CoreVersion : string.Empty;
+
     /// <summary>Routes format resolution through the shared core when it is available.</summary>
     public static bool Install()
     {
         if (!LumaCoreNative.IsAvailable)
         {
             SharedCore.Reset();
+            Active = false;
             return false;
         }
 
         SharedCore.Resolver = Resolve;
         SharedCore.Validator = Validate;
+        Active = true;
         return true;
     }
 
     /// <summary>Restores the managed rules.</summary>
-    public static void Uninstall() => SharedCore.Reset();
+    public static void Uninstall()
+    {
+        SharedCore.Reset();
+        Active = false;
+    }
 
     private static SharedValidation Validate(EncodeOptions options, MediaInfo media)
     {

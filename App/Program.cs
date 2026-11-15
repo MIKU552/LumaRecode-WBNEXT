@@ -16,7 +16,15 @@ internal static class Program
         }
         // Resolve output formats through the shared core when its native library is
         // present; the managed rules stay authoritative otherwise.
-        SharedCoreBridge.Install();
+        bool shared = SharedCoreBridge.Install();
+        if (Environment.GetEnvironmentVariable("LUMARECODE_DIAGNOSTICS") == "1")
+        {
+            // Support and CI use this line to prove which rules answered; it stays
+            // silent unless the variable is set, so normal output is unchanged.
+            Console.Error.WriteLine(shared
+                ? $"core: shared {SharedCoreBridge.Version}"
+                : "core: managed");
+        }
 
         if (StartupMode.IsCommandLine(args))
         {
