@@ -36,7 +36,9 @@ final class CoreClientTests: XCTestCase {
         let archived = try client.resolve(source: tenBitHlg, options: archive)
         XCTAssertEqual(archived.bitDepth, 10)
         XCTAssertEqual(archived.pixelFormat, "yuv420p10le")
-        XCTAssertEqual(archived.container, "mp4")
+        // Archive defaults to MKV so the original audio tracks survive intact.
+        XCTAssertEqual(archived.container, "mkv")
+        XCTAssertEqual(archived.suffix, ".mkv")
 
         let shared = try client.resolve(source: tenBitHlg, options: OutputOptions())
         XCTAssertEqual(shared.bitDepth, 8)
