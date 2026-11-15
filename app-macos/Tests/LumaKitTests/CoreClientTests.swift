@@ -25,7 +25,8 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(described.source.depth, 10)
         XCTAssertEqual(described.source.range, "limited")
         XCTAssertEqual(described.choices.samplings, ["420"])
-        XCTAssertEqual(described.choices.depths, [10])
+        // A 10-bit source may be shared at 8 or 10 bits; HDR would filter to 10.
+        XCTAssertEqual(described.choices.depths, [8, 10])
         XCTAssertFalse(described.audio.flac)
     }
 
