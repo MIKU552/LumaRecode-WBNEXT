@@ -61,16 +61,18 @@ if [[ $stage_only -eq 1 ]]; then
     exit 0
 fi
 
-# ld resolves -llumacore through LIBRARY_PATH.
+# SwiftPM's link step does not read LIBRARY_PATH reliably, so pass the staged
+# directory to the linker explicitly as well.
 export LIBRARY_PATH="$app_dir/Libraries"
+linker=(-Xlinker "-L$app_dir/Libraries")
 
 if [[ $run_tests -eq 1 ]]; then
     echo "==> Testing LumaKit"
-    swift test --package-path "$app_dir"
+    swift test --package-path "$app_dir" "${linker[@]}"
 fi
 
 echo "==> Building LumaRecode ($configuration)"
-swift build --package-path "$app_dir" -c "$configuration"
+swift build --package-path "$app_dir" -c "$configuration" "${linker[@]}"
 bin_path="$(swift build --package-path "$app_dir" -c "$configuration" --show-bin-path)"
 
 echo "==> Assembling app bundle"
