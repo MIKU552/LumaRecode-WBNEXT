@@ -191,10 +191,22 @@ fn entry_path_appends_the_build_key() {
 
 #[test]
 fn containment_refuses_escapes_and_siblings() {
-    assert!(luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode/a"));
-    assert!(luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode"));
-    assert!(!luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode/../other"));
-    assert!(!luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode2/a"));
+    assert!(luma_core::cache::within(
+        "C:/cache/luma-recode",
+        "C:/cache/luma-recode/a"
+    ));
+    assert!(luma_core::cache::within(
+        "C:/cache/luma-recode",
+        "C:/cache/luma-recode"
+    ));
+    assert!(!luma_core::cache::within(
+        "C:/cache/luma-recode",
+        "C:/cache/luma-recode/../other"
+    ));
+    assert!(!luma_core::cache::within(
+        "C:/cache/luma-recode",
+        "C:/cache/luma-recode2/a"
+    ));
     assert!(!luma_core::cache::within("", "C:/cache/a"));
 }
 
@@ -205,7 +217,9 @@ fn scope_rejects_system_roots_and_shared_extraction_directories() {
     assert!(!luma_core::cache::scope_allowed("C:/"));
     assert!(!luma_core::cache::scope_allowed("C:/Windows/Temp"));
     assert!(!luma_core::cache::scope_allowed("/var/tmp"));
-    assert!(!luma_core::cache::scope_allowed("C:/Users/u/AppData/Local/Temp/.net"));
+    assert!(!luma_core::cache::scope_allowed(
+        "C:/Users/u/AppData/Local/Temp/.net"
+    ));
 }
 
 #[test]

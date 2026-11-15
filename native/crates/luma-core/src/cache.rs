@@ -256,7 +256,10 @@ pub fn scope_allowed(root: &str) -> bool {
 
     // A bare root such as "/" or "c:" has nothing after the prefix.
     let without_prefix = normalized.trim_start_matches('/');
-    let segments: Vec<&str> = without_prefix.split('/').filter(|part| !part.is_empty()).collect();
+    let segments: Vec<&str> = without_prefix
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect();
     if segments.is_empty() || (segments.len() == 1 && segments[0].ends_with(':')) {
         return false;
     }
