@@ -52,28 +52,18 @@ App/（WinUI 3，P3 接入）     LumaKit + 视图（P5 接入）
 - C# 对照检查会用 12 组源描述 × 12 组选项比较采样、位深、范围、可选值、默认值与
   `ResolveFormat` 的接受/拒绝结果。
 
-**已在本机验证**：Rust 1.90.0（GNU 目标）与 .NET SDK 11.0.100 下，`cargo test`
-通过 50 项，`cargo fmt --check` 与 `cargo clippy -D warnings` 无问题，
-`qa/NativeChecks` 完成 1176 次比较且无差异。工具链锁定随后上调到 1.100.0（当时最新稳定，Windows 与 macOS 共用同一版本）：
-低于 1.99 的 rustc 在 macOS 27 上生成的 proc-macro dylib 会被 dyld 拒绝
-（mis-aligned LINKEDIT）。macOS 作业还会选用镜像中最新安装的 Xcode，
-后续结论以 CI 结果为准。
+**验证方式**：本机不再编译或测试，结论全部来自 GitHub Actions（提交 `5d93e26`）。
 
-**尚未验证**：Swift 应用（本机没有 Swift 与 Xcode）、WinUI 界面（本机没有
-Windows App SDK 构建环境），以及 `Build-Native.ps1` 的 MSVC 分支（本机只有
-MinGW，故用 GNU 目标验证核心）。这些项目应按方案 §12 记为“未运行”，
-不与通过或失败合并统计。具备对应环境时应先执行：
+- `native` 工作流：Linux / Windows / macOS 三平台通过格式、Clippy 与 50 项单元测试；
+  Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
+  运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名。
+- `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
+  构建托管层并运行对照检查，1176 次比较无差异。
+- 工具链：Rust 1.100.0（Windows 与 macOS 共用同一 `rust-toolchain.toml`）、
+  .NET 11.0.100、Swift 6.4.2 与 Xcode 27.2（镜像内最新安装版本）。
 
-```powershell
-# Windows
-./tools/Build-Native.ps1 -Configuration Debug -Test
-dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
-```
-
-```bash
-# macOS
-bash app-macos/scripts/build-macos.sh --skip-dmg --test
-```
+**仍未验证**：真实硬件编解码（QSV / AMF / NVENC / VideoToolbox）、GUI 运行时行为与
+首帧呈现、签名申请与发布产物。按方案 §12 记为“未运行”，不与通过或失败合并统计。
 
 ### 阶段进度
 
@@ -173,30 +163,23 @@ Implemented and reviewable in this repository:
 - The C# parity check compares sampling, depth, range, option lists, defaults and
   `ResolveFormat` accept/reject across 12 source descriptions × 12 option sets.
 
-**Verified locally**: with Rust 1.90.0 (GNU target) and .NET SDK 11.0.100,
-`cargo test` passes 50 tests, `cargo fmt --check` and `cargo clippy -D warnings`
-are clean, and `qa/NativeChecks` reports 1176 comparisons with no mismatch.
-The toolchain pin then moved to 1.100.0, the latest stable at the time and the
-single version both hosts use: rustc before 1.99 produced proc-macro dylibs that
-macOS 27's dyld rejected (mis-aligned LINKEDIT). The macOS job also selects the
-newest installed Xcode, so CI results are authoritative from here on.
+**Verification path**: the repository is no longer built or tested locally;
+every result below comes from GitHub Actions at commit `5d93e26`.
 
-**Not verified**: the Swift app (no Swift or Xcode here), the WinUI window (no
-Windows App SDK build environment), and the MSVC branch of `Build-Native.ps1`
-(only MinGW was available, so the core was verified with the GNU target). Plan
-§12 records those as "not run" rather than folding them into pass or fail. With
-the right environment, run:
+- `native`: format, Clippy and 50 unit tests pass on Linux, Windows and macOS; the
+  Windows x64 and ARM64 libraries build and stage; macOS 27 builds the Swift
+  package on the `xcode-27` image, runs the LumaKit tests, assembles `.app` and
+  applies the ad-hoc signature.
+- `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
+  application, builds the managed layers and runs the parity check — 1176
+  comparisons, no mismatch.
+- Toolchain: Rust 1.100.0 (one `rust-toolchain.toml` shared by both hosts),
+  .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).
 
-```powershell
-# Windows
-./tools/Build-Native.ps1 -Configuration Debug -Test
-dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
-```
-
-```bash
-# macOS
-bash app-macos/scripts/build-macos.sh --skip-dmg --test
-```
+**Still unverified**: real hardware encode/decode (QSV / AMF / NVENC /
+VideoToolbox), GUI runtime behaviour and first-frame presentation, signing
+application and release artifacts. Plan §12 records these as "not run" rather
+than folding them into pass or fail.
 
 ### Phase status
 
