@@ -52,6 +52,18 @@ public sealed partial class Transcoder
     /// <remarks>Call before using PixelFormat or Depth; their values must be concrete.</remarks>
     public EncodeOptions ResolveFormat(EncodeOptions options, MediaInfo media)
     {
+        var shared = SharedCore.Resolver;
+        if (shared is not null)
+        {
+            SharedResolution resolution = shared(options, media);
+            if (resolution.Options is null)
+            {
+                throw new InvalidDataException(SharedCore.Message(resolution.Code, resolution.Detail));
+            }
+
+            return resolution.Options;
+        }
+
         Require(options.Purpose is "share" or "archive" && options.Codec is "hevc" or "av1" or "avc", "请选择有效的用途和编码器。");
         Require(options.Output != "hdr" || options.Codec != "avc", "HDR 输出请选择 HEVC 或 AV1。");
         Require(options.Sampling is "auto" or "source" or "420" or "422" or "444" or "gray", "请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。");

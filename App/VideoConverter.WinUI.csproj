@@ -46,6 +46,7 @@
     <Content Remove="Native/**" />
     <None Remove="Native/**" />
     <ProjectReference Include="../Core/LumaRecode.Core.csproj" />
+    <ProjectReference Include="../Interop/LumaRecode.Native.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
     <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />

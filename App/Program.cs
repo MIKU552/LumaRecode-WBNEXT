@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using VideoConverter.Native;
 
 namespace VideoConverter;
 
@@ -13,6 +14,10 @@ internal static class Program
         {
             return exitCode;
         }
+        // Resolve output formats through the shared core when its native library is
+        // present; the managed rules stay authoritative otherwise.
+        SharedCoreBridge.Install();
+
         if (StartupMode.IsCommandLine(args))
         {
             return CommandLineHost.RunAsync(args[0] == "--cli" ? args[1..] : args).GetAwaiter().GetResult();

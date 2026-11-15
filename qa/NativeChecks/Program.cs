@@ -94,6 +94,40 @@ foreach (Fixture fixture in Fixture.AudioCases)
     Compare(fixture.Name, "flac-request", managedRequest ? "true" : "false", nativeRequest ? "true" : "false", ref failures, ref comparisons);
 }
 
+// Behaviour preservation through the public API: install the bridge, replay every
+// request and require the same decision, resolved values and message.
+List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
+Dictionary<string, string> managedOutcomes = new(StringComparer.Ordinal);
+foreach (Fixture fixture in Fixture.All)
+{
+    MediaInfo media = fixture.ToMedia();
+    foreach ((string purpose, string codec, string output, string transform, string? profile) in validateCases)
+    {
+        EncodeOptions options = new(purpose, codec, output, transform, profile);
+        string label = $"{fixture.Name}/{purpose}/{codec}/{output}/{transform}";
+        replay.Add((label, options, media));
+        managedOutcomes[label] = ManagedOutcome(transcoder, options, media);
+    }
+}
+
+if (!SharedCoreBridge.Install())
+{
+    Console.Error.WriteLine("native core unavailable; bridge replay was not run");
+    return 3;
+}
+
+try
+{
+    foreach ((string label, EncodeOptions options, MediaInfo media) in replay)
+    {
+        Compare(label, "bridge", managedOutcomes[label], ManagedOutcome(transcoder, options, media), ref failures, ref comparisons);
+    }
+}
+finally
+{
+    SharedCoreBridge.Uninstall();
+}
+
 Console.WriteLine($"{comparisons} comparisons, {failures} mismatches");
 return failures == 0 ? 0 : 1;
 
@@ -115,6 +149,21 @@ static string ManagedFormat(Transcoder transcoder, EncodeOptions options, MediaI
     catch (InvalidDataException)
     {
         return "error";
+    }
+}
+
+/// <summary>Runs resolve and validate, keeping the rejection message for comparison.</summary>
+static string ManagedOutcome(Transcoder transcoder, EncodeOptions options, MediaInfo media)
+{
+    try
+    {
+        EncodeOptions resolved = transcoder.ResolveFormat(options, media);
+        transcoder.Validate(options, media);
+        return $"{resolved.Sampling}|{resolved.ColorRange}|{resolved.BitDepth}";
+    }
+    catch (InvalidDataException error)
+    {
+        return "error:" + error.Message;
     }
 }
 

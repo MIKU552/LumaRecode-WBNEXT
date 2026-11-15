@@ -44,6 +44,11 @@ App/（WinUI 3，P3 接入）     LumaKit + 视图（P5 接入）
 核心只描述“要做什么”，不生成 FFmpeg 参数：命令构造属于具体后端，两个平台各自实现。
 这样 Windows 的 QSV 参数和 macOS 的 VideoToolbox 参数不会互相污染业务规则。
 
+Windows 的 `Transcoder.ResolveFormat` 已接入共享核心：原生库可用时由核心解析采样、范围与位深，
+库缺失时自动回退托管规则；核心的拒绝码仍映射回现有中文文案，因此界面与 CLI 的提示不变。
+桥接由 `Core/SharedCore.cs` 的委托与 `Interop/SharedCoreBridge.cs` 实现，`qa/NativeChecks`
+在安装桥接后重放同一批请求，比较判定、结果与消息。
+
 ### 已验证与未验证
 
 已经在本仓库内完成、可直接检查的部分：
@@ -158,6 +163,13 @@ App/ (WinUI 3, wired in P3) LumaKit + views (wired in P5)
 The core describes *what* must happen and never builds FFmpeg arguments: command
 construction belongs to each backend, so QSV flags and VideoToolbox settings
 cannot leak into shared business rules.
+
+`Transcoder.ResolveFormat` now resolves through the shared core when the native
+library is present and falls back to the managed rules when it is not. Core
+rejection codes are mapped back to the existing localized messages, so GUI and
+CLI wording is unchanged. `Core/SharedCore.cs` holds the delegate and
+`Interop/SharedCoreBridge.cs` the implementation; `qa/NativeChecks` installs the
+bridge and replays the same requests to compare decision, values and message.
 
 ### Verified and unverified
 
