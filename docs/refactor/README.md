@@ -50,8 +50,14 @@ App/（WinUI 3，P3 接入）     LumaKit + 视图（P5 接入）
 - C# 对照检查会用 12 组源描述 × 12 组选项比较采样、位深、范围、可选值、默认值与
   `ResolveFormat` 的接受/拒绝结果。
 
-**尚未验证**：本次实施环境没有 Rust、Swift 和 .NET SDK（只有 .NET 运行时），
-因此上述代码没有在本机编译或运行过。首个具备工具链的环境必须先执行：
+**已在本机验证**：Rust 1.90.0（GNU 目标）与 .NET SDK 11.0.100 下，`cargo test`
+通过 50 项，`cargo fmt --check` 与 `cargo clippy -D warnings` 无问题，
+`qa/NativeChecks` 完成 1044 次比较且无差异。
+
+**尚未验证**：Swift 应用（本机没有 Swift 与 Xcode）、WinUI 界面（本机没有
+Windows App SDK 构建环境），以及 `Build-Native.ps1` 的 MSVC 分支（本机只有
+MinGW，故用 GNU 目标验证核心）。这些项目应按方案 §12 记为“未运行”，
+不与通过或失败合并统计。具备对应环境时应先执行：
 
 ```powershell
 # Windows
@@ -64,15 +70,12 @@ dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
 bash app-macos/scripts/build-macos.sh --skip-dmg --test
 ```
 
-在 `cargo test` 与 `NativeChecks` 通过之前，不应把任何一条规则视为“已验证”。
-这也是方案 §12 把“编译与打包”“单元与属性测试”“计划与模拟测试”分开记录的原因。
-
 ### 阶段进度
 
 | 阶段 | 状态 | 说明 |
 | --- | --- | --- |
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
-| P1 架构验证 | 代码完成，待实机验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪 |
+| P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 首片完成 | 模型、输出规则、时间轴、预设、能力、规划已迁移；探测、执行、元数据未迁移 |
 | P3 Windows 接入 | 未开始 | 需要 `Transcoder` 规划改为调用核心，并保留 GUI/CLI 行为 |
 | P4 多厂商适配 | 未开始 | 能力提供器与参数规则表尚未实现 |
@@ -98,7 +101,8 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
 
 ### 下一步（P3 入口条件）
 
-1. 在有工具链的机器上跑通 `cargo test`、`NativeChecks`，把结果记入本目录。
+1. 在能构建 Windows App SDK 的环境里，把 `Interop` 与 `qa/NativeChecks` 加入
+   `LumaRecode.slnx` 与 `.sln`，让 IDE 与命令行构建使用同一入口。
 2. 把 `Core/Transcoder` 的规划段改为“解析选项 → 调核心 → 由后端生成参数”，
    保留现有 QSV 时间戳、VPP、LowPower 策略。
 3. 用 `NativeChecks` 扩展迁移对照：加入 `Validate` 的拒绝路径与 FLAC 判定。
@@ -156,12 +160,15 @@ Implemented and reviewable in this repository:
 - The C# parity check compares sampling, depth, range, option lists, defaults and
   `ResolveFormat` accept/reject across 12 source descriptions × 12 option sets.
 
-**Not verified**: this environment has no Rust, Swift or .NET SDK (only the .NET
-runtime), so none of the above was compiled or executed here. The first machine
-with a toolchain must run the commands shown in the Chinese section.
+**Verified locally**: with Rust 1.90.0 (GNU target) and .NET SDK 11.0.100,
+`cargo test` passes 50 tests, `cargo fmt --check` and `cargo clippy -D warnings`
+are clean, and `qa/NativeChecks` reports 1044 comparisons with no mismatch.
 
-Nothing above counts as "verified" until `cargo test` and `NativeChecks` pass, so
-the first machine with a toolchain must run:
+**Not verified**: the Swift app (no Swift or Xcode here), the WinUI window (no
+Windows App SDK build environment), and the MSVC branch of `Build-Native.ps1`
+(only MinGW was available, so the core was verified with the GNU target). Plan
+§12 records those as "not run" rather than folding them into pass or fail. With
+the right environment, run:
 
 ```powershell
 # Windows
@@ -174,15 +181,12 @@ dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
 bash app-macos/scripts/build-macos.sh --skip-dmg --test
 ```
 
-The plan's §12 separates compile/package, unit and property tests, and plan and
-simulation tests for exactly this reason: none of them substitutes for the next.
-
 ### Phase status
 
 | Phase | State | Note |
 | --- | --- | --- |
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
-| P1 Architecture | Coded, unverified | Minimal core plus both hosts and the startup shell are in place |
+| P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | First slice | Model, policy, timeline, presets, capability, planning; probe, execution and metadata remain |
 | P3 Windows integration | Not started | `Transcoder` planning must call the core while GUI/CLI behaviour is preserved |
 | P4 Multi-vendor | Not started | Capability providers and parameter rule tables |
@@ -212,11 +216,12 @@ simulation tests for exactly this reason: none of them substitutes for the next.
 
 ### Next steps (entry conditions for P3)
 
-1. Run `cargo test` and `NativeChecks` on a machine with the toolchains, and
-   record the results here.
+1. Add `Interop` and `qa/NativeChecks` to `LumaRecode.slnx` and `.sln` from a
+   machine that can build Windows App SDK projects, so the IDE and the command
+   line use one entry point.
 2. Split `Core/Transcoder` planning into "resolve options → call core → backend
    builds arguments", keeping the existing QSV timestamp, VPP and LowPower
-   policies.
+   policies..
 3. Extend the parity harness to `Validate` rejection paths and FLAC decisions.
 4. Add a probe adapter that turns `MediaProbe` output into `SourceDto`, so no
    rule reads ffprobe JSON directly.
