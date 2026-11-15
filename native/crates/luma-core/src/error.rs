@@ -128,6 +128,7 @@ pub mod codes {
     pub const PLAN_PREVIEW: &str = "plan.preview_size";
     pub const PLAN_DURATION: &str = "plan.duration";
     pub const PLAN_MOTION_SIZE: &str = "plan.motion_size";
+pub const CACHE_IDENTITY: &str = "cache.identity";
 
     // Native boundary.
     pub const FFI_NULL: &str = "ffi.null_argument";

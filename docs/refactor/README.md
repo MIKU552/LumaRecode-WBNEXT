@@ -63,12 +63,14 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
 
 **验证方式**：本机不再编译或测试，结论全部来自 GitHub Actions（提交 `5d93e26`）。
 
-- `native` 工作流：Linux / Windows / macOS 三平台通过格式、Clippy 与 50 项单元测试；
+- `native` 工作流：Linux / Windows / macOS 三平台通过格式、Clippy 与全部单元测试
+  （含新增的缓存标识与回收策略用例）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
   构建托管层并运行对照检查（1254 次比较，含桥接回放，无差异），随后以
-  `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心。
+  `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
+  再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p。
 - 工具链：Rust 1.100.0（Windows 与 macOS 共用同一 `rust-toolchain.toml`）、
   .NET 11.0.100、Swift 6.4.2 与 Xcode 27.2（镜像内最新安装版本）。
 
@@ -189,7 +191,8 @@ Implemented and reviewable in this repository:
 **Verification path**: the repository is no longer built or tested locally;
 every result below comes from GitHub Actions at commit `5d93e26`.
 
-- `native`: format, Clippy and 50 unit tests pass on Linux, Windows and macOS; the
+- `native`: format, Clippy and every unit test pass on Linux, Windows and macOS,
+  including the new cache identity and retention cases; the
   Windows x64 and ARM64 libraries build and stage; macOS 27 builds the Swift
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app` and
   applies the ad-hoc signature.
@@ -197,7 +200,8 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   application, builds the managed layers and runs the parity check (1254
   comparisons including the bridge replay, no mismatch), then runs one
   `--cli --version` with `LUMARECODE_DIAGNOSTICS=1` to confirm the host really
-  loaded the shared core.
+  loaded the shared core, and finally converts a two-second synthetic clip and
+  checks the output is HEVC / yuv420p.
 - Toolchain: Rust 1.100.0 (one `rust-toolchain.toml` shared by both hosts),
   .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).
 

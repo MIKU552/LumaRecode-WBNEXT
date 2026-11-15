@@ -101,6 +101,36 @@ jobs:
           if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
           if ($text -notmatch 'LumaRecode 4\.4\.3') { throw "Unexpected version output." }
 
+      - name: Integration smoke
+        shell: pwsh
+        run: |
+          choco install ffmpeg -y --no-progress | Out-Null
+          $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
+          ffmpeg -version | Select-Object -First 1
+          $source = Join-Path $env:RUNNER_TEMP "source.mp4"
+          $target = Join-Path $env:RUNNER_TEMP "out.mkv"
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 `
+            -c:v libx264 -pix_fmt yuv420p -y $source
+          if ($LASTEXITCODE -ne 0) { throw "Synthetic source generation failed." }
+
+          $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Select-Object -First 1
+          $env:LUMARECODE_DIAGNOSTICS = "1"
+          $stdout = Join-Path $env:RUNNER_TEMP "convert-stdout.txt"
+          $stderr = Join-Path $env:RUNNER_TEMP "convert-stderr.txt"
+          $process = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'convert', $source, '-o', $target, '--purpose', 'archive', '--codec', 'hevc', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
+          $text
+          if ($process.ExitCode -ne 0) { throw "CLI convert failed with $($process.ExitCode)." }
+          if (-not (Test-Path -LiteralPath $target)) { throw "Convert did not produce the output file." }
+
+          $probe = ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 $target
+          $probe
+          if ($probe -notmatch '^hevc,yuv420p') { throw "Unexpected output stream: $probe" }
+
       - name: Record hashes
         shell: pwsh
         run: |

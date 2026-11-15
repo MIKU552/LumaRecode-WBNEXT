@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_debug_implementations)]
 
+pub mod cache;
 pub mod capability;
 pub mod domain;
 pub mod error;
