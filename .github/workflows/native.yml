@@ -1,0 +1,135 @@
+# Builds and tests the shared core on every host, then the two delivery targets.
+#
+# The core job is the gate: format rules, timeline and preset parsing must pass
+# on Linux, Windows and macOS before a platform artifact is produced. Hardware
+# media tests stay a separate, non-blocking result because a hosted runner does
+# not guarantee an encoder.
+name: native
+
+on:
+  push:
+    branches: [next]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          rustup show active-toolchain
+          rustc -Vv
+          cargo -V
+
+      - name: Format
+        if: runner.os == 'Linux'
+        run: cargo fmt --manifest-path native/Cargo.toml --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+
+      - name: Unit tests
+        run: cargo test --manifest-path native/Cargo.toml --workspace
+
+  windows:
+    name: windows (${{ matrix.arch }})
+    needs: core
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: X64
+            arch: x64
+            rid: win-x64
+            triple: x86_64-pc-windows-msvc
+          - target: Arm64
+            arch: arm64
+            rid: win-arm64
+            triple: aarch64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.triple }}
+
+      - name: Build native library
+        shell: pwsh
+        run: |
+          $test = '${{ matrix.target }}' -eq 'X64'
+          ./tools/Build-Native.ps1 -Configuration Release -Target ${{ matrix.target }} -Test:$test
+
+      - name: Build managed interop
+        shell: pwsh
+        run: dotnet build Interop/LumaRecode.Native.csproj -c Release -p:LumaRecodeArchitecture=${{ matrix.arch }} --nologo
+
+      - name: Record versions
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build-info -Force | Out-Null
+          rustc -Vv | Out-File build-info/rust.txt
+          dotnet --version | Out-File build-info/dotnet.txt
+          (Get-FileHash "artifacts/native/${{ matrix.arch }}/lumacore.dll" -Algorithm SHA256).Hash |
+            Out-File build-info/lumacore.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: |
+            artifacts/native/${{ matrix.arch }}/
+            build-info/
+          if-no-files-found: error
+
+  macos:
+    name: macos (arm64)
+    needs: core
+    # The plan targets macOS 27; pin the runner image once GitHub publishes it.
+    # Until then macos-latest is the only image guaranteed to exist.
+    runs-on: macos-latest
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "27.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build, test and package
+        run: bash app-macos/scripts/build-macos.sh --skip-dmg --test
+
+      - name: Record versions and signature
+        run: |
+          mkdir -p build-info
+          rustc -Vv > build-info/rust.txt
+          swift --version > build-info/swift.txt
+          codesign --verify --strict --verbose=2 app-macos/dist/LumaRecode.app 2> build-info/codesign.txt
+          shasum -a 256 app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode > build-info/lumarecode.sha256
+
+      - name: Archive app bundle
+        run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm64
+          path: |
+            LumaRecode-arm64-app.tar.gz
+            build-info/
+          if-no-files-found: error
