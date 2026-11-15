@@ -290,3 +290,40 @@ fn canonical(path: &str) -> String {
     let prefix = if unified.starts_with('/') { "/" } else { "" };
     format!("{prefix}{}", segments.join("/")).to_lowercase()
 }
+
+/// Operations the cache manager needs from the filesystem.
+///
+/// Keeping them behind a trait means the removal sequence is tested with a fake store and
+/// that the real implementation, which owns permission checks and reparse-point handling,
+/// cannot change the policy by accident.
+pub trait Store {
+    /// Current directories, already measured by the caller.
+    fn entries(&self) -> Vec<Entry>;
+
+    /// Deletes one directory by key. Errors are reported, not swallowed silently.
+    fn remove(&mut self, key: &str) -> std::io::Result<()>;
+}
+
+/// Applies a plan through `store` and reports what was actually reclaimed.
+///
+/// A failed deletion stops nothing: the entry stays on disk, its bytes are not counted, and
+/// the next maintenance pass sees it again. That matches §10.4, which says a busy or
+/// permission-denied directory is skipped rather than forced.
+pub fn apply<S: Store>(store: &mut S, current: &str, policy: &Policy) -> (Vec<String>, u64) {
+    let entries = store.entries();
+    let decisions = plan(&entries, current, policy);
+    let mut removed = Vec::new();
+    let mut bytes = 0_u64;
+    for (entry, (_, decision)) in entries.iter().zip(&decisions) {
+        if !decision.remove() {
+            continue;
+        }
+
+        if store.remove(&entry.key).is_ok() {
+            removed.push(entry.key.clone());
+            bytes = bytes.saturating_add(entry.bytes);
+        }
+    }
+
+    (removed, bytes)
+}

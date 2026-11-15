@@ -231,3 +231,74 @@ fn scope_accepts_the_programs_own_cache() {
         "/Users/u/Library/Caches/luma-recode"
     ));
 }
+
+struct FakeStore {
+    entries: Vec<Entry>,
+    removed: Vec<String>,
+    fail: bool,
+}
+
+impl luma_core::cache::Store for FakeStore {
+    fn entries(&self) -> Vec<Entry> {
+        self.entries.clone()
+    }
+
+    fn remove(&mut self, key: &str) -> std::io::Result<()> {
+        if self.fail {
+            return Err(std::io::Error::other("busy"));
+        }
+
+        self.removed.push(key.to_owned());
+        Ok(())
+    }
+}
+
+fn fake(entries: Vec<Entry>, fail: bool) -> FakeStore {
+    FakeStore {
+        entries,
+        removed: Vec::new(),
+        fail,
+    }
+}
+
+#[test]
+fn apply_removes_only_the_planned_entries() {
+    let mut store = fake(
+        vec![
+            entry("current", 0, 100, false),
+            entry("old", 60, 200, false),
+            entry("recent", 1, 300, false),
+        ],
+        false,
+    );
+
+    let (removed, bytes) = luma_core::cache::apply(&mut store, "current", &Policy::default());
+    assert_eq!(removed, vec!["old".to_owned()]);
+    assert_eq!(bytes, 200);
+    assert_eq!(store.removed, vec!["old".to_owned()]);
+}
+
+#[test]
+fn apply_skips_a_busy_directory_and_reports_nothing() {
+    let mut store = fake(vec![entry("old", 60, 200, false)], true);
+    let (removed, bytes) = luma_core::cache::apply(&mut store, "current", &Policy::default());
+
+    assert!(removed.is_empty());
+    assert_eq!(bytes, 0);
+    assert!(store.removed.is_empty());
+}
+
+#[test]
+fn apply_never_removes_the_current_or_an_in_use_entry() {
+    let mut store = fake(
+        vec![
+            entry("current", 400, 10, false),
+            entry("running", 400, 10, true),
+        ],
+        false,
+    );
+
+    let (removed, bytes) = luma_core::cache::apply(&mut store, "current", &Policy::default());
+    assert!(removed.is_empty());
+    assert_eq!(bytes, 0);
+}
