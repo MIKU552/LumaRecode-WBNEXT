@@ -68,9 +68,10 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
-  构建托管层并运行对照检查（1254 次比较，含桥接回放，无差异），随后以
+  构建托管层并运行对照检查（1282 次比较，含预设与桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
-  再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p。
+  再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p，
+  并用 `doctor --json` 确认 `core.mode` 为 `shared`。
 - 工具链：Rust 1.100.0（Windows 与 macOS 共用同一 `rust-toolchain.toml`）、
   .NET 11.0.100、Swift 6.4.2 与 Xcode 27.2（镜像内最新安装版本）。
 
@@ -197,11 +198,11 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
   applies the ad-hoc signature and checks the terminal entry with `--version`.
 - `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
-  application, builds the managed layers and runs the parity check (1254
-  comparisons including the bridge replay, no mismatch), then runs one
-  `--cli --version` with `LUMARECODE_DIAGNOSTICS=1` to confirm the host really
-  loaded the shared core, and finally converts a two-second synthetic clip and
-  checks the output is HEVC / yuv420p.
+  application, builds the managed layers and runs the parity check (1282
+  comparisons including presets and the bridge replay, no mismatch), runs
+  `--cli --version` to confirm the host loaded the shared core, converts a
+  two-second synthetic clip and checks the output is HEVC / yuv420p, and finally
+  asserts `doctor --json` reports `core.mode` as `shared`.
 - Toolchain: Rust 1.100.0 (one `rust-toolchain.toml` shared by both hosts),
   .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).
 

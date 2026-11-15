@@ -27,11 +27,18 @@ public static class SharedCore
     /// <summary>Validates a request through the shared core; null means "use the managed rules".</summary>
     public static Func<EncodeOptions, MediaInfo, SharedValidation>? Validator { get; set; }
 
+    /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
+    public static string CoreVersion { get; set; } = "";
+
+    /// <summary>True when the bridges are installed and the core answers requests.</summary>
+    public static bool CoreActive => Resolver is not null;
+
     /// <summary>Removes both bridges, which restores the managed rules.</summary>
     public static void Reset()
     {
         Resolver = null;
         Validator = null;
+        CoreVersion = "";
     }
 
     /// <summary>Maps a core rejection onto the message the current UI already shows, or null when unmapped.</summary>

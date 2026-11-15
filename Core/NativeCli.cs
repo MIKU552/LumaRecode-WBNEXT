@@ -273,7 +273,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             var tools = new MediaTools(Tool("ffmpeg", args.Get("ffmpeg"), context.SavedTools.Ffmpeg), Tool("ffprobe", args.Get("ffprobe"), context.SavedTools.Ffprobe));
             if (args.Command == "doctor")
             {
-                var values = new JsonObject { ["schema_version"] = 1, ["backend"] = "native-dotnet", ["tools"] = new JsonObject { ["ffmpeg"] = tools.Ffmpeg, ["ffprobe"] = tools.Ffprobe }, ["encoders"] = new JsonObject(), ["filters"] = new JsonObject() };
+                var values = new JsonObject { ["schema_version"] = 1, ["backend"] = "native-dotnet", ["tools"] = new JsonObject { ["ffmpeg"] = tools.Ffmpeg, ["ffprobe"] = tools.Ffprobe }, ["encoders"] = new JsonObject(), ["filters"] = new JsonObject(), ["core"] = new JsonObject { ["mode"] = SharedCore.CoreActive ? "shared" : "managed", ["version"] = SharedCore.CoreVersion } };
                 foreach (var (name, executable) in new[] { ("ffmpeg", tools.Ffmpeg), ("ffprobe", tools.Ffprobe) })
                 {
                     var result = await ProcessRunner.CaptureAsync(executable, ["-version"], cancellation, 15);

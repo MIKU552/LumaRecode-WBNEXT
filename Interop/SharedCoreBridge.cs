@@ -17,8 +17,8 @@ public static class SharedCoreBridge
         private set;
     }
 
-    /// <summary>Version reported by the loaded core, or an empty string when it is absent.</summary>
-    public static string Version => LumaCoreNative.IsAvailable ? LumaCoreNative.CoreVersion : string.Empty;
+    /// <summary>Version reported by the core, or an empty string when it is absent.</summary>
+    public static string Version => SharedCore.CoreVersion;
 
     /// <summary>Routes format resolution through the shared core when it is available.</summary>
     public static bool Install()
@@ -32,6 +32,7 @@ public static class SharedCoreBridge
 
         SharedCore.Resolver = Resolve;
         SharedCore.Validator = Validate;
+        SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
     }
@@ -42,6 +43,7 @@ public static class SharedCoreBridge
         SharedCore.Reset();
         Active = false;
     }
+
 
     private static SharedValidation Validate(EncodeOptions options, MediaInfo media)
     {
