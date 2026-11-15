@@ -42,7 +42,7 @@ case "$configuration" in
     *) echo "--configuration must be debug or release" >&2; exit 2 ;;
 esac
 
-repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 app_dir="$repo/app-macos"
 architecture="$(uname -m)"
 if [[ "$architecture" != "arm64" ]]; then
