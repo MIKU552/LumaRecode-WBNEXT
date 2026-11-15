@@ -133,9 +133,13 @@ jobs:
 
           $doctorOut = Join-Path $env:RUNNER_TEMP "doctor.json"
           $doctorErr = Join-Path $env:RUNNER_TEMP "doctor-err.txt"
-          $doctor = Start-Process -FilePath $exe.FullName -ArgumentList 'doctor', '--json', '--no-settings' `
+          $doctor = Start-Process -FilePath $exe.FullName -ArgumentList 'doctor', '--json', '--no-settings', '--accept-terms' `
             -Wait -PassThru -NoNewWindow -RedirectStandardOutput $doctorOut -RedirectStandardError $doctorErr
-          if ($doctor.ExitCode -ne 0) { Get-Content $doctorErr; throw "doctor failed with $($doctor.ExitCode)." }
+          if ($doctor.ExitCode -ne 0) {
+            Get-Content $doctorOut
+            Get-Content $doctorErr
+            throw "doctor failed with $($doctor.ExitCode)."
+          }
           $report = Get-Content $doctorOut -Raw | ConvertFrom-Json
           $report.core
           if ($report.core.mode -ne 'shared') { throw "doctor did not report the shared core." }
