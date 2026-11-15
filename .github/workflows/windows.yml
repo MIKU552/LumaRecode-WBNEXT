@@ -120,7 +120,7 @@ jobs:
           $stdout = Join-Path $env:RUNNER_TEMP "convert-stdout.txt"
           $stderr = Join-Path $env:RUNNER_TEMP "convert-stderr.txt"
           $process = Start-Process -FilePath $exe.FullName `
-            -ArgumentList 'convert', $source, '-o', $target, '--purpose', 'archive', '--codec', 'hevc', '--no-settings', '--accept-terms' `
+            -ArgumentList 'convert', $source, '-o', $target, '--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'sdr', '--no-settings', '--accept-terms' `
             -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           $text = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
           $text

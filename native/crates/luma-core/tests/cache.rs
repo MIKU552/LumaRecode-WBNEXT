@@ -1,4 +1,6 @@
-use luma_core::cache::{kept_bytes, plan, reclaimable_bytes, BuildIdentity, Decision, Entry, Policy};
+use luma_core::cache::{
+    BuildIdentity, Decision, Entry, Policy, kept_bytes, plan, reclaimable_bytes,
+};
 
 fn entry(key: &str, age_days: u32, bytes: u64, in_use: bool) -> Entry {
     Entry {
@@ -25,7 +27,12 @@ fn key_is_short_lowercase_and_ignores_the_display_version() {
     assert!(key.starts_with("0e9b340a1b2c-"), "{key}");
     assert!(key.contains("rust"), "{key}");
     assert!(key.ends_with("-aabbccdd"), "{key}");
-    assert!(key.chars().all(|character| character.is_ascii_lowercase() || character.is_ascii_digit() || character == '-'), "{key}");
+    assert!(
+        key.chars().all(|character| character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || character == '-'),
+        "{key}"
+    );
     assert!(identity.validate().is_ok());
 }
 
@@ -68,10 +75,22 @@ fn in_use_build_is_never_removed() {
         entry("stale", 90, 10, false),
     ];
 
-    let plan = plan(&entries, "current", &Policy { keep_recent: 0, max_age_days: 30, max_bytes: 1 });
+    let plan = plan(
+        &entries,
+        "current",
+        &Policy {
+            keep_recent: 0,
+            max_age_days: 30,
+            max_bytes: 1,
+        },
+    );
     assert_eq!(
         decisions(&plan),
-        vec![Decision::KeepCurrent, Decision::KeepInUse, Decision::RemoveTooOld]
+        vec![
+            Decision::KeepCurrent,
+            Decision::KeepInUse,
+            Decision::RemoveTooOld
+        ]
     );
 }
 
@@ -83,7 +102,11 @@ fn only_the_newest_reclaimable_builds_survive_the_count_pass() {
         entry("b", 5, 1, false),
         entry("c", 20, 1, false),
     ];
-    let policy = Policy { keep_recent: 2, max_age_days: 0, max_bytes: 0 };
+    let policy = Policy {
+        keep_recent: 2,
+        max_age_days: 0,
+        max_bytes: 0,
+    };
 
     let plan = plan(&entries, "current", &policy);
     assert_eq!(
@@ -104,12 +127,20 @@ fn budget_drops_the_oldest_reclaimable_build_first() {
         entry("a", 1, 400, false),
         entry("b", 9, 400, false),
     ];
-    let policy = Policy { keep_recent: 5, max_age_days: 0, max_bytes: 1_000 };
+    let policy = Policy {
+        keep_recent: 5,
+        max_age_days: 0,
+        max_bytes: 1_000,
+    };
 
     let plan = plan(&entries, "current", &policy);
     assert_eq!(
         decisions(&plan),
-        vec![Decision::KeepCurrent, Decision::KeepRecent, Decision::RemoveOverBudget]
+        vec![
+            Decision::KeepCurrent,
+            Decision::KeepRecent,
+            Decision::RemoveOverBudget
+        ]
     );
     assert_eq!(kept_bytes(&entries, &plan), 900);
     assert_eq!(reclaimable_bytes(&entries, &plan), 400);
@@ -124,8 +155,16 @@ fn an_empty_cache_plans_nothing() {
 #[test]
 fn a_blank_policy_keeps_everything_recent() {
     let entries = [entry("a", 3, 10, false), entry("b", 4, 10, false)];
-    let policy = Policy { keep_recent: 10, max_age_days: 0, max_bytes: 0 };
+    let policy = Policy {
+        keep_recent: 10,
+        max_age_days: 0,
+        max_bytes: 0,
+    };
 
     let plan = plan(&entries, "current", &policy);
-    assert!(decisions(&plan).iter().all(|decision| matches!(decision, Decision::KeepRecent)));
+    assert!(
+        decisions(&plan)
+            .iter()
+            .all(|decision| matches!(decision, Decision::KeepRecent))
+    );
 }

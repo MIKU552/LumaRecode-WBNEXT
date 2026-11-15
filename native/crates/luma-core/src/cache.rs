@@ -27,7 +27,12 @@ impl BuildIdentity {
     pub fn key(&self) -> String {
         let commit = &self.source_commit[..self.source_commit.len().min(12)];
         let digest = &self.payload_digest[..self.payload_digest.len().min(8)];
-        format!("{}-{}-{}", sanitize(commit), sanitize(&self.toolchain), sanitize(digest))
+        format!(
+            "{}-{}-{}",
+            sanitize(commit),
+            sanitize(&self.toolchain),
+            sanitize(digest)
+        )
     }
 
     /// Rejects identities that would collapse different builds onto one directory.
@@ -102,7 +107,10 @@ pub enum Decision {
 impl Decision {
     /// True when the caller may delete the directory.
     pub fn remove(self) -> bool {
-        matches!(self, Self::RemoveTooOld | Self::RemoveOverCount | Self::RemoveOverBudget)
+        matches!(
+            self,
+            Self::RemoveTooOld | Self::RemoveOverCount | Self::RemoveOverBudget
+        )
     }
 }
 

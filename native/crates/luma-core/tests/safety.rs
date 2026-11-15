@@ -1,4 +1,4 @@
-use luma_core::safety::{check, Action, PathFacts};
+use luma_core::safety::{Action, PathFacts, check};
 
 fn facts(path: &str, exists: bool) -> PathFacts {
     PathFacts {
@@ -76,7 +76,10 @@ fn a_symbolic_link_destination_is_refused() {
         case_insensitive: false,
     };
 
-    assert_eq!(check(&output, &[], true).unwrap_err().code(), "output.symlink");
+    assert_eq!(
+        check(&output, &[], true).unwrap_err().code(),
+        "output.symlink"
+    );
 }
 
 #[test]

@@ -79,19 +79,32 @@ impl Action {
 /// not mean, overwriting one of the inputs, and replacing a file without confirmation.
 pub fn check(output: &PathFacts, inputs: &[PathFacts], overwrite: bool) -> CoreResult<Action> {
     if output.symlink {
-        return Err(CoreError::with_detail(codes::OUTPUT_SYMLINK, output.path.clone()));
+        return Err(CoreError::with_detail(
+            codes::OUTPUT_SYMLINK,
+            output.path.clone(),
+        ));
     }
 
     let target = output.normalized();
     for input in inputs {
         if input.normalized() == target {
-            return Err(CoreError::with_detail(codes::OUTPUT_SAME_AS_INPUT, input.path.clone()));
+            return Err(CoreError::with_detail(
+                codes::OUTPUT_SAME_AS_INPUT,
+                input.path.clone(),
+            ));
         }
     }
 
     if output.exists && !overwrite {
-        return Err(CoreError::with_detail(codes::OUTPUT_EXISTS, output.path.clone()));
+        return Err(CoreError::with_detail(
+            codes::OUTPUT_EXISTS,
+            output.path.clone(),
+        ));
     }
 
-    Ok(if output.exists { Action::Replace } else { Action::Create })
+    Ok(if output.exists {
+        Action::Replace
+    } else {
+        Action::Create
+    })
 }
