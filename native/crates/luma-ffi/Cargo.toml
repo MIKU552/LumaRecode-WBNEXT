@@ -1,0 +1,17 @@
+[package]
+name = "luma-ffi"
+description = "Versioned C ABI for the LumaRecode shared core."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "lumacore"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+luma-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

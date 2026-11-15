@@ -1,0 +1,522 @@
+//! Versioned C ABI for the shared core.
+//!
+//! Ownership rules:
+//!
+//! - Every `*mut c_char` returned here is owned by the caller and must be
+//!   released with [`luma_string_free`].
+//! - Input pointers are borrowed for the duration of the call only; the core
+//!   never keeps them.
+//! - `luma_core_version` returns a pointer to static storage and must *not* be
+//!   freed.
+//!
+//! Every call answers with one JSON envelope:
+//!
+//! ```json
+//! {"ok":true,"data":{...}}
+//! {"ok":false,"error":{"code":"policy.hdr_depth","detail":null}}
+//! ```
+//!
+//! A panic never crosses the boundary: it is reported as `ffi.panic` so a host
+//! process cannot be aborted by a rule bug.
+
+use std::ffi::{CStr, CString, c_char};
+use std::panic::{AssertUnwindSafe, catch_unwind};
+
+use luma_core::capability::{Backend, Device, DeviceDto, Requirement, select, summarize};
+use luma_core::domain::{Codec, ColorRange, EncodeOptions, OptionsDto, Output, Purpose, Sampling};
+use luma_core::error::{CoreError, CoreResult, codes};
+use luma_core::plan::{self, PlanRequest};
+use luma_core::policy;
+use luma_core::presets::PresetRegistry;
+use luma_core::source::{SourceDto, SourceFormat};
+use luma_core::timeline::{FramePoint, FrameRange, FrameTimeline};
+use serde::Deserialize;
+use serde_json::{Value, json};
+
+/// ABI revision. Bumped only for incompatible changes to exports or envelopes.
+const ABI_VERSION: u32 = luma_core::ABI_VERSION;
+
+/// NUL-terminated crate version in static storage.
+const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
+
+/// Operations understood by [`luma_call_json`].
+const OPERATIONS: [&str; 10] = [
+    "core.info",
+    "policy.describe",
+    "policy.resolve",
+    "policy.validate",
+    "timeline.resolve",
+    "presets.resolve",
+    "presets.validate",
+    "capability.select",
+    "capability.summary",
+    "plan.build",
+];
+
+/// Returns the ABI revision the loaded library implements.
+#[unsafe(no_mangle)]
+pub extern "C" fn luma_abi_version() -> u32 {
+    ABI_VERSION
+}
+
+/// Returns a static NUL-terminated core version. Do not free this pointer.
+#[unsafe(no_mangle)]
+pub extern "C" fn luma_core_version() -> *const c_char {
+    VERSION.as_ptr().cast()
+}
+
+/// Releases a string returned by [`luma_call_json`].
+///
+/// # Safety
+///
+/// `value` must be null or a pointer previously returned by this library and
+/// not yet freed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn luma_string_free(value: *mut c_char) {
+    if value.is_null() {
+        return;
+    }
+    // SAFETY: the caller upholds the contract above; the pointer came from
+    // CString::into_raw in this module.
+    drop(unsafe { CString::from_raw(value) });
+}
+
+/// Executes one operation and returns an owned JSON envelope.
+///
+/// # Safety
+///
+/// `op` and `request` must be null or point to NUL-terminated UTF-8 strings
+/// that stay valid for the duration of the call. The result must be freed with
+/// [`luma_string_free`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn luma_call_json(op: *const c_char, request: *const c_char) -> *mut c_char {
+    let envelope = catch_unwind(AssertUnwindSafe(|| {
+        let op = match unsafe { read_string(op) } {
+            Ok(op) => op,
+            Err(error) => return error_envelope(&error),
+        };
+        let request = match unsafe { read_string(request) } {
+            Ok(request) => request,
+            Err(error) => return error_envelope(&error),
+        };
+        match dispatch(&op, &request) {
+            Ok(data) => json!({ "ok": true, "data": data }).to_string(),
+            Err(error) => error_envelope(&error),
+        }
+    }))
+    .unwrap_or_else(|_| error_envelope(&CoreError::new(codes::FFI_PANIC)));
+    into_c_string(envelope)
+}
+
+fn error_envelope(error: &CoreError) -> String {
+    json!({
+        "ok": false,
+        "error": { "code": error.code(), "detail": error.detail() }
+    })
+    .to_string()
+}
+
+/// # Safety
+///
+/// `ptr` is null or a valid NUL-terminated C string.
+unsafe fn read_string(ptr: *const c_char) -> CoreResult<String> {
+    if ptr.is_null() {
+        return Err(CoreError::new(codes::FFI_NULL));
+    }
+    // SAFETY: guaranteed by the caller of the exported function.
+    let bytes = unsafe { CStr::from_ptr(ptr) }.to_bytes();
+    std::str::from_utf8(bytes)
+        .map(str::to_owned)
+        .map_err(|_| CoreError::new(codes::FFI_UTF8))
+}
+
+fn into_c_string(text: String) -> *mut c_char {
+    // JSON output never contains a raw NUL; a failure here would mean a bug in
+    // the encoder, so the caller receives null and reports the missing result.
+    CString::new(text)
+        .map(CString::into_raw)
+        .unwrap_or(std::ptr::null_mut())
+}
+
+fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
+    let payload: Value =
+        serde_json::from_str(request).map_err(|_| CoreError::new(codes::FFI_JSON))?;
+    match op {
+        "core.info" => Ok(core_info()),
+        "policy.describe" => policy_describe(&payload),
+        "policy.resolve" => policy_resolve(&payload),
+        "policy.validate" => policy_validate(&payload),
+        "timeline.resolve" => timeline_resolve(&payload),
+        "presets.resolve" => presets_resolve(&payload),
+        "presets.validate" => presets_validate(&payload),
+        "capability.select" => capability_select(&payload),
+        "capability.summary" => capability_summary(&payload),
+        "plan.build" => plan_build(&payload),
+        other => Err(CoreError::with_detail(codes::FFI_OP, other)),
+    }
+}
+
+fn core_info() -> Value {
+    json!({
+        "abi": ABI_VERSION,
+        "core_version": luma_core::CORE_VERSION,
+        "target_arch": std::env::consts::ARCH,
+        "target_os": std::env::consts::OS,
+        "operations": OPERATIONS,
+    })
+}
+
+fn object_field<'a>(payload: &'a Value, key: &str) -> CoreResult<&'a Value> {
+    payload
+        .get(key)
+        .ok_or_else(|| CoreError::with_detail(codes::FFI_ENVELOPE, key))
+}
+
+fn parse_source(payload: &Value) -> CoreResult<SourceFormat> {
+    let source: SourceDto = serde_json::from_value(object_field(payload, "source")?.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "source"))?;
+    source.into_source()
+}
+
+fn parse_options(payload: &Value) -> CoreResult<EncodeOptions> {
+    match payload.get("options") {
+        None | Some(Value::Null) => Ok(EncodeOptions::default()),
+        Some(value) => {
+            let dto: OptionsDto = serde_json::from_value(value.clone())
+                .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "options"))?;
+            dto.into_options()
+        }
+    }
+}
+
+fn range_label(range: ColorRange) -> &'static str {
+    range.as_str()
+}
+
+fn policy_describe(payload: &Value) -> CoreResult<Value> {
+    let source = parse_source(payload)?;
+    let options = parse_options(payload)?;
+    let samplings = policy::sampling_choices(&source);
+    let depths = policy::depth_choices(
+        policy::source_depth(&source),
+        options.purpose,
+        options.codec,
+        options.output,
+    );
+    Ok(json!({
+        "source": {
+            "sampling": policy::source_sampling(&source).label(),
+            "depth": policy::source_depth(&source),
+            "range": range_label(policy::source_range(&source, None)),
+            "kind": source.effective_kind(options.source_kind).as_str(),
+            "dynamic_hdr": source.dynamic_hdr.is_present(),
+        },
+        "choices": {
+            "samplings": samplings.iter().map(|value| value.label()).collect::<Vec<_>>(),
+            "depths": depths,
+            "sampling": policy::default_sampling(&source, options.purpose, options.codec).label(),
+            "depth": policy::default_depth(&depths, options.purpose, options.output),
+        },
+        "audio": {
+            "flac": policy::flac_eligibility(&source).is_ok(),
+        },
+    }))
+}
+
+fn resolved_json(resolved: &luma_core::ResolvedEncode) -> Value {
+    json!({
+        "sampling": resolved.format.sampling.label(),
+        "color_range": resolved.format.color_range.as_str(),
+        "bit_depth": resolved.format.bit_depth,
+        "pixel_format": resolved.format.pixel_format(),
+        "range_tag": resolved.format.range_tag(),
+        "source_kind": resolved.source_kind.as_str(),
+        "container": resolved.options.container(),
+        "suffix": resolved.options.suffix(),
+    })
+}
+
+fn policy_resolve(payload: &Value) -> CoreResult<Value> {
+    let source = parse_source(payload)?;
+    let options = parse_options(payload)?;
+    let resolved = policy::resolve(&options, &source)?;
+    Ok(resolved_json(&resolved))
+}
+
+fn policy_validate(payload: &Value) -> CoreResult<Value> {
+    let source = parse_source(payload)?;
+    let options = parse_options(payload)?;
+    let resolved = policy::validate(&options, &source)?;
+    Ok(resolved_json(&resolved))
+}
+
+#[derive(Deserialize)]
+struct FrameDto {
+    #[serde(default)]
+    pts: i64,
+    #[serde(default)]
+    duration: i64,
+    #[serde(default)]
+    key_frame: bool,
+}
+
+#[derive(Deserialize)]
+struct RangeDto {
+    #[serde(default)]
+    start: usize,
+    #[serde(default)]
+    end: Option<usize>,
+}
+
+#[derive(Deserialize)]
+struct TimelineRequest {
+    frames: Vec<FrameDto>,
+    /// `numerator/denominator`, as reported by the probe.
+    time_base: String,
+    #[serde(default)]
+    packet_indexed: bool,
+    #[serde(default)]
+    range: Option<RangeDto>,
+}
+
+fn timeline_resolve(payload: &Value) -> CoreResult<Value> {
+    let request: TimelineRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "timeline"))?;
+    let (numerator, denominator) = request
+        .time_base
+        .split_once('/')
+        .ok_or_else(|| CoreError::with_detail(codes::SOURCE_TIME_BASE, &request.time_base))?;
+    let numerator = numerator
+        .trim()
+        .parse::<i64>()
+        .map_err(|_| CoreError::with_detail(codes::SOURCE_TIME_BASE, &request.time_base))?;
+    let denominator = denominator
+        .trim()
+        .parse::<i64>()
+        .map_err(|_| CoreError::with_detail(codes::SOURCE_TIME_BASE, &request.time_base))?;
+    let frames = request
+        .frames
+        .into_iter()
+        .map(|frame| FramePoint {
+            pts: frame.pts,
+            duration: frame.duration,
+            key_frame: frame.key_frame,
+        })
+        .collect();
+    let timeline = FrameTimeline::new(frames, numerator, denominator, request.packet_indexed)?;
+    let window = match request.range {
+        None => None,
+        Some(range) => Some(timeline.resolve(FrameRange {
+            start: range.start,
+            end: range.end,
+        })?),
+    };
+    Ok(json!({
+        "count": timeline.count(),
+        "duration": timeline.duration(),
+        "packet_indexed": timeline.is_packet_indexed(),
+        "window": window.map(|window| json!({
+            "start": window.start,
+            "end": window.end,
+            "count": window.count(),
+            "seek_frame": window.seek_frame,
+            "seek_seconds": window.seek_seconds,
+            "start_seconds": window.start_seconds,
+            "end_seconds": window.end_seconds,
+            "duration": window.duration(),
+        })),
+    }))
+}
+
+#[derive(Deserialize)]
+struct PresetRequest {
+    /// Preset document text; the host owns file access.
+    document: String,
+    purpose: String,
+    codec: String,
+    #[serde(default)]
+    variant: Option<String>,
+}
+
+fn presets_resolve(payload: &Value) -> CoreResult<Value> {
+    let request: PresetRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "presets"))?;
+    let registry = PresetRegistry::parse(&request.document)?;
+    let purpose = Purpose::parse(&request.purpose)?;
+    let codec = Codec::parse(&request.codec)?;
+    let variant = match request.variant.as_deref() {
+        None | Some("") | Some("standard") => luma_core::Variant::Standard,
+        Some(value) => luma_core::Variant::parse(value)?,
+    };
+    let preset = registry.video(purpose, codec, variant)?;
+    let audio = registry.audio(purpose, codec)?;
+    Ok(json!({
+        "selector": preset.selector,
+        "encoder": preset.encoder,
+        "preset": preset.preset,
+        "quality": preset.quality,
+        "pixel_format": preset.declared_pixel_format,
+        "tune": preset.tune,
+        "lookahead": preset.lookahead,
+        "async_depth": preset.async_depth,
+        "parameters": preset.parameters,
+        "audio": match audio {
+            luma_core::AudioDefault::Copy => json!({"mode": "copy"}),
+            luma_core::AudioDefault::Encode(name) => json!({"mode": "encode", "preset": name}),
+        },
+    }))
+}
+
+#[derive(Deserialize)]
+struct PresetDocument {
+    document: String,
+}
+
+fn presets_validate(payload: &Value) -> CoreResult<Value> {
+    let request: PresetDocument = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "presets"))?;
+    let registry = PresetRegistry::parse(&request.document)?;
+    let catalog = registry
+        .catalog()
+        .into_iter()
+        .map(|preset| {
+            json!({
+                "selector": preset.selector,
+                "encoder": preset.encoder,
+                "quality": preset.quality,
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({ "count": catalog.len(), "presets": catalog }))
+}
+
+#[derive(Deserialize)]
+struct RequirementDto {
+    purpose: String,
+    codec: String,
+    output: String,
+    depth: u8,
+    sampling: String,
+    #[serde(default)]
+    dynamic_hdr: bool,
+}
+
+impl RequirementDto {
+    fn into_requirement(self) -> CoreResult<Requirement> {
+        Ok(Requirement {
+            purpose: Purpose::parse(&self.purpose)?,
+            codec: Codec::parse(&self.codec)?,
+            output: Output::parse(&self.output)?,
+            depth: self.depth,
+            sampling: Sampling::from_label(&self.sampling)
+                .ok_or_else(|| CoreError::with_detail(codes::OPTION_SAMPLING, &self.sampling))?,
+            dynamic_hdr: self.dynamic_hdr,
+        })
+    }
+}
+
+fn parse_devices(payload: &Value) -> CoreResult<Vec<Device>> {
+    let entries: Vec<DeviceDto> = serde_json::from_value(object_field(payload, "devices")?.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "devices"))?;
+    Ok(entries
+        .into_iter()
+        .filter_map(DeviceDto::into_device)
+        .collect())
+}
+
+fn capability_select(payload: &Value) -> CoreResult<Value> {
+    let devices = parse_devices(payload)?;
+    let request: RequirementDto =
+        serde_json::from_value(object_field(payload, "requirement")?.clone())
+            .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "requirement"))?;
+    let request = request.into_requirement()?;
+    let selection = select(&devices, &request)?;
+    Ok(json!({
+        "device_id": selection.device_id,
+        "device_name": selection.device_name,
+        "backend": selection.backend.as_str(),
+        "score": selection.score,
+        "reasons": selection.reasons,
+        "fallback": selection.fallback,
+    }))
+}
+
+#[derive(Deserialize)]
+struct SummaryRequest {
+    devices: Value,
+    codec: String,
+}
+
+fn capability_summary(payload: &Value) -> CoreResult<Value> {
+    let request: SummaryRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "summary"))?;
+    let entries: Vec<DeviceDto> = serde_json::from_value(request.devices)
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "devices"))?;
+    let devices: Vec<Device> = entries
+        .into_iter()
+        .filter_map(DeviceDto::into_device)
+        .collect();
+    let codec = Codec::parse(&request.codec)?;
+    let summary = summarize(&devices, codec);
+    Ok(json!({
+        "backends": summary.backends.iter().map(|backend| backend.as_str()).collect::<Vec<_>>(),
+        "max_depth": summary.max_depth,
+        "samplings": summary.samplings.iter().map(|value| value.label()).collect::<Vec<_>>(),
+        "hdr": summary.hdr,
+        "dynamic_hdr": summary.dynamic_hdr,
+    }))
+}
+
+#[derive(Deserialize)]
+struct PlanDto {
+    source: Value,
+    #[serde(default)]
+    options: Option<Value>,
+    #[serde(default)]
+    backend: Option<String>,
+    #[serde(default)]
+    frame_window: bool,
+    #[serde(default)]
+    motion_photo: bool,
+    #[serde(default)]
+    preview_size: u32,
+}
+
+fn plan_build(payload: &Value) -> CoreResult<Value> {
+    let request: PlanDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let source: SourceDto = serde_json::from_value(request.source)
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "source"))?;
+    let source = source.into_source()?;
+    let options = match request.options {
+        None => EncodeOptions::default(),
+        Some(value) => {
+            let dto: OptionsDto = serde_json::from_value(value)
+                .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "options"))?;
+            dto.into_options()?
+        }
+    };
+    let backend = match request.backend.as_deref() {
+        None | Some("") => Backend::Software,
+        Some(value) => Backend::parse(value)
+            .ok_or_else(|| CoreError::with_detail(codes::FFI_ENVELOPE, value))?,
+    };
+    let plan = plan::build(&PlanRequest {
+        options,
+        source,
+        backend,
+        frame_window: request.frame_window,
+        motion_photo: request.motion_photo,
+        preview_size: request.preview_size,
+    })?;
+    Ok(json!({
+        "resolved": resolved_json(&plan.resolved),
+        "decode": plan.decode.as_str(),
+        "transport": plan.transport.as_str(),
+        "steps": plan.steps.iter().map(|step| json!({
+            "kind": step.kind.as_str(),
+            "transport": step.transport.as_str(),
+        })).collect::<Vec<_>>(),
+        "notes": plan.notes,
+    }))
+}
