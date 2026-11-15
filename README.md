@@ -1,9 +1,11 @@
 <p align="center">
   <img src="Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode 图标" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 简体中文 | [English](docs/readme/en.md) | [日本語](docs/readme/ja.md) | [Español](docs/readme/es.md)
+
+> **WBNEXT 重构预览版**：本分支是独立于上游的跨平台重构版本，基线为 [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode)。重构由 WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）协助完成，**非正式发布版**，不提供上游正式版本的支持承诺。构建产物来自 GitHub Actions Artifacts，进度见[重构实施记录](docs/refactor/README.md)。
 
 基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 

@@ -1,9 +1,11 @@
 <p align="center">
   <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode アイコン" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 [简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
+
+> **WBNEXT リファクタープレビュー版**：[LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode) を基にした独立のクロスプラットフォーム版です。WorkBuddy（DeepSeek-V4.1-Flash-1017、高推論、1M コンテキスト）の支援で開発しており、**正式リリースではありません**。ビルド成果物は GitHub Actions の Artifacts から取得し、進捗は[リファクタリング記録](../refactor/README.md#english)にまとめています。
 
 C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 

@@ -47,6 +47,18 @@ jobs:
       - name: Unit tests
         run: cargo test --manifest-path native/Cargo.toml --workspace
 
+  docs:
+    name: documentation
+    needs: core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Validates parallel language sections, anchors and links for every
+      # Markdown file, including the four READMEs this branch renames.
+      - name: Documentation checks
+        run: python3 qa/DocumentationChecks/check_docs.py
+
   windows:
     name: windows (${{ matrix.arch }})
     needs: core

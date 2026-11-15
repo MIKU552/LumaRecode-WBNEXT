@@ -18,8 +18,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>LumaRecode.ico</ApplicationIcon>
     <AssemblyName>LumaRecode</AssemblyName>
-    <Title>映码 · LumaRecode</Title>
-    <Product>映码 · LumaRecode</Product>
+    <Title>映码 · LumaRecode WBNEXT</Title>
+    <Product>映码 · LumaRecode WBNEXT</Product>
     <Description>视频转码与色彩转换</Description>
     <RootNamespace>VideoConverter</RootNamespace>
     <Nullable>enable</Nullable>

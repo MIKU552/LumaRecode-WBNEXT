@@ -8,6 +8,9 @@
 [重构实施方案](../../README.md) 的阶段划分一一对应。方案描述目标；本目录只记录已经落地、
 可以检查的内容，以及尚未开始的部分。
 
+本分支的产品标识为 **LumaRecode WBNEXT**（独立于上游 4.4.3 的重构预览版）；开发协助由 WorkBuddy
+（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）提供，提交不添加协作者记录。
+
 逐条核对方案链接与待澄清问题的记录见[方案核对记录](plan-review.md)。
 
 ### 本次落地范围
@@ -114,6 +117,11 @@ This directory records what the cross-platform refactor actually landed on the
 `next` branch, mapped onto the phases of the refactor plan. The plan states the
 target; this directory states what exists, what can be checked, and what has not
 started.
+
+The product identity on this branch is **LumaRecode WBNEXT**, an independent
+refactor preview of upstream 4.4.3; development assistance comes from WorkBuddy
+(DeepSeek-V4.1-Flash-1017, high reasoning, 1M context) and commits carry no
+co-author trailer.
 
 Link-by-link verification and the open questions are recorded in
 [plan verification](plan-review.md#english).

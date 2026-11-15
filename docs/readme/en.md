@@ -1,9 +1,11 @@
 <p align="center">
   <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
+
+> **WBNEXT refactor preview**: this branch is an independent cross-platform rewrite based on [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), developed with WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context). It is **not an official release** and carries no support commitment from upstream. Builds come from GitHub Actions artifacts; progress is tracked in the [refactor record](../refactor/README.md#english).
 
 Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
