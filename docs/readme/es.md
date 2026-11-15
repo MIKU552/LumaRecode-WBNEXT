@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | [日本語](ja.md) | Español
 
-> **Vista previa de la reescritura WBNEXT**: esta rama es una reescritura multiplataforma independiente basada en [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), desarrollada con WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). **No es una versión oficial** y no hereda el soporte del proyecto original. Las compilaciones provienen de los artefactos de GitHub Actions; el avance se registra en el [registro de la reescritura](../refactor/README.md#english).
+> **Vista previa de la reescritura WBNEXT**: esta rama es una reescritura multiplataforma independiente basada en [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), desarrollada con WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). **No es una versión oficial** y no hereda el soporte del proyecto original. Las compilaciones provienen de los artefactos de GitHub Actions; el avance se registra en el [registro de la reescritura (chino e inglés)](../refactor/README.md#english).
 
 Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
