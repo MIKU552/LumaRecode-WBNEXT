@@ -181,26 +181,25 @@ public static class LumaCoreNative
 
         private static IEnumerable<string> Candidates()
         {
-            string directory = AppContext.BaseDirectory;
-            if (OperatingSystem.IsWindows())
+            string file = OperatingSystem.IsWindows()
+                ? "lumacore.dll"
+                : OperatingSystem.IsMacOS() ? "liblumacore.dylib" : "liblumacore.so";
+
+            yield return Path.Combine(AppContext.BaseDirectory, file);
+
+            // Repository layout used by a development build: walk up from the
+            // output directory instead of assuming one fixed depth.
+            DirectoryInfo? directory = new(AppContext.BaseDirectory);
+            for (int depth = 0; depth < 6 && directory is not null; depth++, directory = directory.Parent)
             {
-                yield return Path.Combine(directory, "lumacore.dll");
-            }
-            else if (OperatingSystem.IsMacOS())
-            {
-                yield return Path.Combine(directory, "liblumacore.dylib");
-            }
-            else
-            {
-                yield return Path.Combine(directory, "liblumacore.so");
+                yield return Path.Combine(directory.FullName, "artifacts", "native", ArchitectureDirectory(), file);
             }
 
-            // Repository layout used by a development build.
-            string arch = RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant();
-            string artifacts = Path.GetFullPath(Path.Combine(directory, "..", "..", "..", "..", "..", "artifacts", "native", arch));
-            yield return OperatingSystem.IsWindows() ? Path.Combine(artifacts, "lumacore.dll") : Path.Combine(artifacts, "liblumacore.dylib");
             yield return Library;
         }
+
+        private static string ArchitectureDirectory()
+            => RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "arm64" : "x64";
     }
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, ExactSpelling = true)]
