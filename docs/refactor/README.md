@@ -54,8 +54,9 @@ App/（WinUI 3，P3 接入）     LumaKit + 视图（P5 接入）
 
 **已在本机验证**：Rust 1.90.0（GNU 目标）与 .NET SDK 11.0.100 下，`cargo test`
 通过 50 项，`cargo fmt --check` 与 `cargo clippy -D warnings` 无问题，
-`qa/NativeChecks` 完成 1176 次比较且无差异。工具链锁定随后上调到 1.99.1：
-1.90.0 在 macOS 27 上生成的 proc-macro dylib 被 dyld 拒绝（mis-aligned LINKEDIT），
+`qa/NativeChecks` 完成 1176 次比较且无差异。工具链锁定随后上调到 1.100.0（当时最新稳定，Windows 与 macOS 共用同一版本）：
+低于 1.99 的 rustc 在 macOS 27 上生成的 proc-macro dylib 会被 dyld 拒绝
+（mis-aligned LINKEDIT）。macOS 作业还会选用镜像中最新安装的 Xcode，
 后续结论以 CI 结果为准。
 
 **尚未验证**：Swift 应用（本机没有 Swift 与 Xcode）、WinUI 界面（本机没有
@@ -175,9 +176,10 @@ Implemented and reviewable in this repository:
 **Verified locally**: with Rust 1.90.0 (GNU target) and .NET SDK 11.0.100,
 `cargo test` passes 50 tests, `cargo fmt --check` and `cargo clippy -D warnings`
 are clean, and `qa/NativeChecks` reports 1176 comparisons with no mismatch.
-The toolchain pin then moved to 1.99.1: 1.90.0 produced proc-macro dylibs that
-macOS 27's dyld rejected (mis-aligned LINKEDIT), so CI results are authoritative
-from here on.
+The toolchain pin then moved to 1.100.0, the latest stable at the time and the
+single version both hosts use: rustc before 1.99 produced proc-macro dylibs that
+macOS 27's dyld rejected (mis-aligned LINKEDIT). The macOS job also selects the
+newest installed Xcode, so CI results are authoritative from here on.
 
 **Not verified**: the Swift app (no Swift or Xcode here), the WinUI window (no
 Windows App SDK build environment), and the MSVC branch of `Build-Native.ps1`

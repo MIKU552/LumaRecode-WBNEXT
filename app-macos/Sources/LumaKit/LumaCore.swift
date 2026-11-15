@@ -234,7 +234,7 @@ public struct CoreClient: Sendable {
         return try call(operation, request: text)
     }
 
-    private func call(_ operation: String, request: String) throws -> Data {
+    private func call(_ operation: String, request: String = "{}") throws -> Data {
         let response = operation.withCString { name in
             request.withCString { body in
                 luma_call_json(name, body)

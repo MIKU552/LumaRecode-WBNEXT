@@ -118,8 +118,15 @@ jobs:
 
       - name: Toolchain
         run: |
+          # The image ships several Xcode builds and defaults to an older one.
+          # Select the newest installed major.minor so the app is always built
+          # with the latest Swift the image provides; the resolved version is
+          # recorded below.
+          latest="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
           swift --version
           xcodebuild -version
+          rustup show active-toolchain
 
       - name: Build, test and package
         run: bash app-macos/scripts/build-macos.sh --skip-dmg --test
