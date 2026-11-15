@@ -94,8 +94,8 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
    回调注册；在 P2 完成前不会把进度事件塞进这个信封。头文件已注明该边界。
 2. **单 EXE 与解包缓存**：补充后的方案 §10.4 已给出取舍——保留单 EXE，但要求把解包内容
    最小化、按构建标识复用、只保留当前与近期回退构建、在首屏就绪后异步回收，并提供缓存
-   占用与清理入口；§11.3 还要求测试使用独立的解包缓存。当前实现仍把 `lumacore.dll` 放在
-   EXE 同目录，尚未启用 `IncludeNativeLibrariesForSelfExtract`，也没有缓存索引。这部分属于
+   占用与清理入口；§11.3 还要求测试使用独立的解包缓存。当前 App 仍使用 `PublishSingleFile` + `IncludeAllContentForSelfExtract`（.NET 已把全量提取标注为不推荐），
+   Rust 原生库尚未接入应用，也没有缓存索引。这部分属于
    P3（原生库接入）与 P7（缓存与空间回收），不能在 P3 之前用「解压到默认 %TEMP%」了事。
 3. **Xcode 工程**：macOS 侧用 Swift 包表达工程，可直接用 Xcode 打开 `app-macos/Package.swift`。
    方案 §11.2 要求的共享 Scheme、Archive 与 DMG 流程由脚本承担；若后续需要
@@ -218,8 +218,9 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
    per build identity, retain only the current and a few fallback builds, reclaim
    asynchronously after the first screen, and expose cache size and cleanup in
    settings; §11.3 also requires tests to use a separate extraction cache. The
-   current tree still keeps `lumacore.dll` next to the EXE, does not set
-   `IncludeNativeLibrariesForSelfExtract`, and has no cache index. That work
+   app still publishes with `PublishSingleFile` plus `IncludeAllContentForSelfExtract`
+   — the full-extraction mode .NET marks as not recommended — the Rust library is
+   not wired into it yet, and there is no cache index. That work
    belongs to P3 (native library wiring) and P7 (cache and space reclamation);
    extracting into the default `%TEMP%` is not an acceptable shortcut.
 3. **Xcode project**: the macOS side is a Swift package that Xcode opens

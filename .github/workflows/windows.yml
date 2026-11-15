@@ -1,0 +1,97 @@
+# Windows build and parity gate.
+#
+# Everything here runs on a hosted runner: the repository is not built or tested
+# on a developer machine. The job proves three things in order — the Rust core
+# builds and passes its tests on Windows, the managed layers compile against it,
+# and the existing WinUI application still builds with the baseline core.
+name: windows
+
+on:
+  push:
+    branches: [next]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build and parity (x64)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Toolchain
+        shell: pwsh
+        run: |
+          rustup show active-toolchain
+          rustc -Vv
+          dotnet --version
+          New-Item -ItemType Directory -Path build-info -Force | Out-Null
+          rustc -Vv | Out-File build-info/rust.txt
+          dotnet --version | Out-File build-info/dotnet.txt
+
+      - name: Build core and stage the native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target X64 -Test
+
+      - name: Restore application (locked)
+        shell: pwsh
+        run: dotnet restore App/VideoConverter.WinUI.csproj --locked-mode -p:Platform=x64
+
+      - name: Build application
+        shell: pwsh
+        run: dotnet build App/VideoConverter.WinUI.csproj -c Release -p:Platform=x64 --no-restore
+
+      - name: Build managed interop
+        shell: pwsh
+        run: |
+          dotnet build Interop/LumaRecode.Native.csproj -c Release -p:LumaRecodeArchitecture=x64
+          dotnet build qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64
+
+      - name: Check formatting
+        shell: pwsh
+        run: |
+          dotnet format Interop/LumaRecode.Native.csproj --verify-no-changes --verbosity diagnostic
+          if ($LASTEXITCODE -ne 0) { throw "Interop formatting differs." }
+          dotnet format qa/NativeChecks/NativeChecks.csproj --verify-no-changes --verbosity diagnostic
+          if ($LASTEXITCODE -ne 0) { throw "NativeChecks formatting differs." }
+
+      - name: Parity check
+        shell: pwsh
+        run: |
+          dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64 *> build-info/parity.log
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content build-info/parity.log | Select-Object -Last 60
+            throw "Parity check failed."
+          }
+          Get-Content build-info/parity.log | Select-Object -Last 5
+
+      - name: Record hashes
+        shell: pwsh
+        run: |
+          (Get-FileHash "artifacts/native/x64/lumacore.dll" -Algorithm SHA256).Hash |
+            Out-File build-info/lumacore.sha256
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64
+          path: |
+            artifacts/native/x64/
+            build-info/
+          if-no-files-found: warn
