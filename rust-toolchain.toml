@@ -1,6 +1,11 @@
 [toolchain]
-# P0 records the exact patch release used for a build; this file is the
-# single place that decides which compiler the workspace uses.
-channel = "1.90.0"
+# P0 records the exact patch release used for a build; this file is the single
+# place that decides which compiler the workspace uses.
+#
+# 1.99.1 is the stable release shipped with the macOS 27 runner image. The
+# earlier 1.90.0 pin produced proc-macro dylibs that dyld on macOS 27 rejected
+# with "mis-aligned LINKEDIT string pool", so the workspace moved to the version
+# the target OS is known to load.
+channel = "1.99.1"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
