@@ -101,6 +101,19 @@ jobs:
           if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
           if ($text -notmatch 'LumaRecode 4\.4\.3') { throw "Unexpected version output." }
 
+          # The fallback must work too: force the managed rules and require the
+          # CLI to stay usable when the native library is deliberately ignored.
+          $env:LUMARECODE_CORE = "managed"
+          $managedOut = Join-Path $env:RUNNER_TEMP "cli-managed-out.txt"
+          $managedErr = Join-Path $env:RUNNER_TEMP "cli-managed-err.txt"
+          $managed = Start-Process -FilePath $exe.FullName -ArgumentList '--cli', '--version' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $managedOut -RedirectStandardError $managedErr
+          $managedText = (Get-Content $managedOut -Raw) + (Get-Content $managedErr -Raw)
+          $managedText
+          if ($managed.ExitCode -ne 0) { throw "Managed fallback failed with $($managed.ExitCode)." }
+          if ($managedText -notmatch 'core: managed') { throw "Managed fallback was not used." }
+          Remove-Item Env:LUMARECODE_CORE
+
       - name: Integration smoke
         shell: pwsh
         run: |

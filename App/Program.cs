@@ -15,8 +15,21 @@ internal static class Program
             return exitCode;
         }
         // Resolve output formats through the shared core when its native library is
-        // present; the managed rules stay authoritative otherwise.
-        bool shared = SharedCoreBridge.Install();
+        // present; the managed rules stay authoritative otherwise. LUMARECODE_CORE
+        // pins the choice for support and for the CI fallback check.
+        string coreChoice = Environment.GetEnvironmentVariable("LUMARECODE_CORE") ?? "auto";
+        bool shared = !coreChoice.Equals("managed", StringComparison.OrdinalIgnoreCase)
+            && SharedCoreBridge.Install();
+        if (!shared)
+        {
+            SharedCoreBridge.Uninstall();
+        }
+
+        if (coreChoice.Equals("shared", StringComparison.OrdinalIgnoreCase) && !shared)
+        {
+            Console.Error.WriteLine("core: shared requested but unavailable");
+            return 4;
+        }
         if (Environment.GetEnvironmentVariable("LUMARECODE_DIAGNOSTICS") == "1")
         {
             // Support and CI use this line to prove which rules answered; it stays
