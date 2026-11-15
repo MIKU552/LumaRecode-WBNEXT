@@ -18,7 +18,7 @@
 | `Core/Models.cs`（`MediaInfo`） | `luma-core/src/source.rs` | 首片 | 仅保留规则所需字段 |
 | `Core/DynamicHdr.cs`（`Validate`、`Preserve`） | `luma-core/src/policy.rs` | 完成 | `tests/policy.rs` |
 | `Core/DynamicHdr.cs`（`ExtractAsync`） | 未迁移 | 未开始 | 依赖执行层 |
-| `Core/Transcoder.cs`（`ResolveFormat`、`Validate`） | `luma-core/src/policy.rs` | 首片（ResolveFormat 已接原生桥） | `qa/NativeChecks` 对照与桥接回放 |
+| `Core/Transcoder.cs`（`ResolveFormat`、`Validate`） | `luma-core/src/policy.rs` | 首片（ResolveFormat 与 Validate 已接原生桥） | `qa/NativeChecks` 对照与桥接回放 |
 | `Core/Transcoder.cs`（FFmpeg 参数生成） | 保留在平台后端 | 未开始 | 方案 §3.2 明确归属后端 |
 | `Core/Transcoder.cs`（执行、原子发布） | 执行层（P2 后续） | 未开始 | — |
 | `Core/MediaProbe.cs` | 探测适配器（P2 后续） | 未开始 | — |
@@ -54,7 +54,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | `Core/Models.cs` (`MediaInfo`) | `luma-core/src/source.rs` | First slice | Only fields the rules need |
 | `Core/DynamicHdr.cs` (`Validate`, `Preserve`) | `luma-core/src/policy.rs` | Done | `tests/policy.rs` |
 | `Core/DynamicHdr.cs` (`ExtractAsync`) | Not migrated | Not started | Needs the execution layer |
-| `Core/Transcoder.cs` (`ResolveFormat`, `Validate`) | `luma-core/src/policy.rs` | First slice (ResolveFormat bridged) | `qa/NativeChecks` parity and bridge replay |
+| `Core/Transcoder.cs` (`ResolveFormat`, `Validate`) | `luma-core/src/policy.rs` | First slice (ResolveFormat and Validate bridged) | `qa/NativeChecks` parity and bridge replay |
 | `Core/Transcoder.cs` (FFmpeg arguments) | Stays in the platform backend | Not started | Plan §3.2 assigns this to the backend |
 | `Core/Transcoder.cs` (execution, atomic publish) | Execution layer, later in P2 | Not started | — |
 | `Core/MediaProbe.cs` | Probe adapter, later in P2 | Not started | — |

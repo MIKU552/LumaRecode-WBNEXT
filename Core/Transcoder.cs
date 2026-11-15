@@ -56,12 +56,15 @@ public sealed partial class Transcoder
         if (shared is not null)
         {
             SharedResolution resolution = shared(options, media);
-            if (resolution.Options is null)
+            if (resolution.Options is not null)
             {
-                throw new InvalidDataException(SharedCore.Message(resolution.Code, resolution.Detail));
+                return resolution.Options;
             }
 
-            return resolution.Options;
+            if (SharedCore.Message(resolution.Code, resolution.Detail) is { } text)
+            {
+                throw new InvalidDataException(text);
+            }
         }
 
         Require(options.Purpose is "share" or "archive" && options.Codec is "hevc" or "av1" or "avc", "请选择有效的用途和编码器。");
@@ -99,6 +102,22 @@ public sealed partial class Transcoder
     /// <remarks>A manual SourceKind overrides detection; a Log profile is only valid for Log transforms.</remarks>
     public string Validate(EncodeOptions options, MediaInfo media)
     {
+        var validator = SharedCore.Validator;
+        if (validator is not null)
+        {
+            SharedValidation validation = validator(options, media);
+            if (validation.Kind is not null)
+            {
+                return validation.Kind;
+            }
+
+            string? text = SharedCore.Message(validation.Code, validation.Detail);
+            if (text is not null)
+            {
+                throw new InvalidDataException(text);
+            }
+        }
+
         options = ResolveFormat(options, media);
         Require(options.Container is "auto" or "mp4" or "mkv", "请选择自动、MP4 或 MKV 封装。");
         Require(options.Output is "sdr" or "hdr", "请选择 SDR 或 HDR 输出。");

@@ -20,11 +20,27 @@ public static class SharedCoreBridge
         }
 
         SharedCore.Resolver = Resolve;
+        SharedCore.Validator = Validate;
         return true;
     }
 
     /// <summary>Restores the managed rules.</summary>
     public static void Uninstall() => SharedCore.Reset();
+
+    private static SharedValidation Validate(EncodeOptions options, MediaInfo media)
+    {
+        JsonObject request = new()
+        {
+            ["source"] = ProbeAdapter.Describe(media),
+            ["options"] = options.ToJson()
+        };
+        if (!LumaCoreNative.TryCall("policy.validate", request, out JsonNode? data, out LumaCoreError? error))
+        {
+            return new SharedValidation(null, error?.Code, error?.Detail);
+        }
+
+        return new SharedValidation(data?["source_kind"]?.ToString(), null, null);
+    }
 
     private static SharedResolution Resolve(EncodeOptions options, MediaInfo media)
     {
