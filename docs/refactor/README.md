@@ -8,6 +8,8 @@
 [重构实施方案](../../README.md) 的阶段划分一一对应。方案描述目标；本目录只记录已经落地、
 可以检查的内容，以及尚未开始的部分。
 
+逐条核对方案链接与待澄清问题的记录见[方案核对记录](plan-review.md)。
+
 ### 本次落地范围
 
 对应方案 P0（基线与研究）、P1（架构验证），并开始 P2（共享核心）的第一片：
@@ -90,14 +92,19 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
 1. **跨语言传输**：ABI 1 的全部规划调用走单个 `luma_call_json` 入口与 JSON 信封。
    方案 §3.3 要求进度事件带任务 ID 与顺序信息并可靠送达终态，这需要类型化结构体与
    回调注册；在 P2 完成前不会把进度事件塞进这个信封。头文件已注明该边界。
-2. **FLAC 浮点音轨**：Windows 基线 `OutputPolicy.FlacTracks` 实际允许
-   `sample_fmt` 为 `flt`/`dbl` 的音轨，与其注释和方案 §6.2“仅整数无损”矛盾。
-   Rust 实现按方案拒绝浮点，`qa/NativeChecks` 不比较该项。基线需要在 P2 同步修正。
+2. **单 EXE 与原生库**：.NET 单文件默认只打包托管程序集；原生库要进入单文件必须设置
+   `IncludeNativeLibrariesForSelfExtract`，而该模式会在应用启动前把文件解压到
+   `%TEMP%/.net`，与方案 §8.4「首帧完整稳定、尽早可交互」和 §10.1 的启动测量目标直接冲突。
+   方案 §14.3 只写了「受控打包 / 提取流程」，未给出取舍。当前实现把 `lumacore.dll` 放在
+   EXE 同目录；是否改为单文件内的提取，需要按 §10.1 实测后决定。
 3. **Xcode 工程**：macOS 侧用 Swift 包表达工程，可直接用 Xcode 打开 `app-macos/Package.swift`。
    方案 §11.2 要求的共享 Scheme、Archive 与 DMG 流程由脚本承担；若后续需要
    `.xcodeproj` 专有配置（entitlements 编辑器、归档设置），再补生成工程。
-4. **CI 镜像**：方案要求 macOS 27 镜像；当前工作流使用 `macos-latest` 并在注释中标明
-   待镜像发布后改为固定标签，避免引用不存在的标签导致整条流水线不可用。
+4. **CI 镜像**：GitHub 的 macOS 镜像按 Xcode 主版本命名。macOS 27 目前发布在标签
+   `xcode-27` 上，实际系统为 macOS 27.0.1、Xcode 27.0/27.1/27.2；没有 `macos-27`
+   标签，而 `macos-latest` 指向 macOS 26，无法构建 27.0 部署目标。应用构建作业因此固定
+   使用 `xcode-27`。该镜像属于预览镜像，不在 Actions SLA 内，待 macOS 27 正式发布后
+   改为对应的稳定标签。
 
 ### 下一步（P3 入口条件）
 
@@ -114,6 +121,9 @@ This directory records what the cross-platform refactor actually landed on the
 `next` branch, mapped onto the phases of the refactor plan. The plan states the
 target; this directory states what exists, what can be checked, and what has not
 started.
+
+Link-by-link verification and the open questions are recorded in
+[plan verification](plan-review.md#english).
 
 ### Scope of this change
 
@@ -203,16 +213,23 @@ bash app-macos/scripts/build-macos.sh --skip-dmg --test
    guaranteed terminal delivery, which requires typed structs and callback
    registration; they will not be pushed into this envelope. The header states
    the boundary.
-2. **FLAC float tracks**: the baseline `OutputPolicy.FlacTracks` accepts tracks
-   whose `sample_fmt` is `flt`/`dbl`, contradicting its own comment and plan
-   §6.2. The Rust implementation rejects them; the parity harness skips the case.
-   The baseline needs the same correction in P2.
+2. **Single EXE and the native library**: .NET bundles only managed assemblies by
+   default. Putting a native library inside the single file requires
+   `IncludeNativeLibrariesForSelfExtract`, which extracts files to `%TEMP%/.net`
+   before the process starts — in direct tension with plan §8.4 ("stable first
+   frame, interactive as early as possible") and the §10.1 startup measurements.
+   Plan §14.3 only mentions a "controlled packaging/extraction flow" without
+   choosing between them. The current tree keeps `lumacore.dll` next to the EXE;
+   whether to embed it is a P3 decision backed by measurement.
 3. **Xcode project**: the macOS side is a Swift package that Xcode opens
    directly. Shared schemes, Archive and DMG packaging are handled by the script;
    a generated `.xcodeproj` is only needed for settings SwiftPM cannot express.
-4. **CI image**: the plan asks for a macOS 27 runner. The workflow uses
-   `macos-latest` with a comment to pin the label once the image exists, so the
-   pipeline never references a label that does not resolve.
+4. **CI image**: GitHub names macOS images after the Xcode major. macOS 27 is
+   currently published under the label `xcode-27` — the image itself runs macOS
+   27.0.1 with Xcode 27.0/27.1/27.2. No `macos-27` label exists, and
+   `macos-latest` resolves to macOS 26, which cannot build a 27.0 deployment
+   target, so the app job pins `xcode-27`. That image is a preview and sits
+   outside the Actions SLA; switch to the stable label once macOS 27 is GA.
 
 ### Next steps (entry conditions for P3)
 
