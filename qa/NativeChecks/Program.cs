@@ -128,6 +128,28 @@ foreach ((string purpose, string codec, string variant, string selector) in sele
     Compare(label, "quality", row?["quality"]?.ToString() ?? "", resolved?["quality"]?.ToString() ?? "", ref failures, ref comparisons);
 }
 
+// Rejection paths the format matrix cannot reach: Log transforms, dynamic HDR and
+// FLAC container rules. The replay below also compares the message, so a code that
+// still falls back to the managed checks is proven to produce identical text.
+(string Fixture, string Label, EncodeOptions Options)[] edgeCases =
+[
+    ("milog-10", "log-no-profile", new EncodeOptions("share", "hevc", "hdr", "log-hdr")),
+    ("pocket3-10", "log-target-mismatch", new EncodeOptions("share", "hevc", "sdr", "log-hdr", "pocket3")),
+    ("420-8", "log-requires-log", new EncodeOptions("share", "hevc", "hdr", "log-hdr", "pocket3")),
+    ("420-8", "hdr-sdr-on-sdr", new EncodeOptions("share", "hevc", "sdr", "hdr-sdr")),
+    ("420-8", "sdr-to-hdr", new EncodeOptions("share", "hevc", "hdr", "none")),
+    ("420-10", "hdr-to-sdr-required", new EncodeOptions("share", "hevc", "sdr", "none")),
+    ("hdr10plus-10", "dvhdr-share", new EncodeOptions("share", "hevc", "sdr", "none")),
+    ("420-8", "flac-mp4", new EncodeOptions("archive", "hevc", "sdr", "none", null, "auto", "standard", "flac", "auto", false, "mp4")),
+    ("420-8", "flac-no-audio", new EncodeOptions("archive", "hevc", "sdr", "none", null, "auto", "standard", "flac", "auto", false, "mkv")),
+];
+
+foreach ((string fixtureName, string label, EncodeOptions options) in edgeCases)
+{
+    MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
+    Compare(label, "edge", ManagedFormat(transcoder, options, media), NativeFormat(ProbeAdapter.Describe(media), options), ref failures, ref comparisons);
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
@@ -142,6 +164,13 @@ foreach (Fixture fixture in Fixture.All)
         replay.Add((label, options, media));
         managedOutcomes[label] = ManagedOutcome(transcoder, options, media);
     }
+}
+
+foreach ((string fixtureName, string label, EncodeOptions options) in edgeCases)
+{
+    MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
+    replay.Add((label, options, media));
+    managedOutcomes[label] = ManagedOutcome(transcoder, options, media);
 }
 
 if (!SharedCoreBridge.Install())
