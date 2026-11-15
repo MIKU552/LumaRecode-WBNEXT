@@ -168,3 +168,52 @@ fn a_blank_policy_keeps_everything_recent() {
             .all(|decision| matches!(decision, Decision::KeepRecent))
     );
 }
+
+#[test]
+fn owner_root_keeps_the_program_segment() {
+    assert_eq!(
+        luma_core::cache::owner_root("C:/Users/u/AppData/Local/"),
+        "C:/Users/u/AppData/Local/luma-recode"
+    );
+    assert_eq!(
+        luma_core::cache::owner_root("/Users/u/Library/Caches"),
+        "/Users/u/Library/Caches/luma-recode"
+    );
+}
+
+#[test]
+fn entry_path_appends_the_build_key() {
+    assert_eq!(
+        luma_core::cache::entry_path("C:/cache/luma-recode", "abc-123"),
+        "C:/cache/luma-recode/abc-123"
+    );
+}
+
+#[test]
+fn containment_refuses_escapes_and_siblings() {
+    assert!(luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode/a"));
+    assert!(luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode"));
+    assert!(!luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode/../other"));
+    assert!(!luma_core::cache::within("C:/cache/luma-recode", "C:/cache/luma-recode2/a"));
+    assert!(!luma_core::cache::within("", "C:/cache/a"));
+}
+
+#[test]
+fn scope_rejects_system_roots_and_shared_extraction_directories() {
+    assert!(!luma_core::cache::scope_allowed(""));
+    assert!(!luma_core::cache::scope_allowed("/"));
+    assert!(!luma_core::cache::scope_allowed("C:/"));
+    assert!(!luma_core::cache::scope_allowed("C:/Windows/Temp"));
+    assert!(!luma_core::cache::scope_allowed("/var/tmp"));
+    assert!(!luma_core::cache::scope_allowed("C:/Users/u/AppData/Local/Temp/.net"));
+}
+
+#[test]
+fn scope_accepts_the_programs_own_cache() {
+    assert!(luma_core::cache::scope_allowed(
+        "C:/Users/u/AppData/Local/luma-recode"
+    ));
+    assert!(luma_core::cache::scope_allowed(
+        "/Users/u/Library/Caches/luma-recode"
+    ));
+}

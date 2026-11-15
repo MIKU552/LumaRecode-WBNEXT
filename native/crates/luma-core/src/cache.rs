@@ -211,3 +211,79 @@ fn sanitize(value: &str) -> String {
         })
         .collect()
 }
+
+/// Directory the application owns inside a user cache location.
+///
+/// The segment keeps this program's files identifiable so a cleanup can decide ownership
+/// before touching anything, which §10.4 requires before reclaiming space.
+pub const OWNER_DIRECTORY: &str = "luma-recode";
+
+/// Joins the user cache base directory with this program's owner directory.
+pub fn owner_root(base: &str) -> String {
+    let trimmed = base.trim_end_matches(['/', '\\']);
+    format!("{trimmed}/{OWNER_DIRECTORY}")
+}
+
+/// Directory that holds one build's extracted files.
+pub fn entry_path(root: &str, key: &str) -> String {
+    let trimmed = root.trim_end_matches(['/', '\\']);
+    format!("{trimmed}/{key}")
+}
+
+/// True when `candidate` stays inside `root` after resolving separators and `..`.
+///
+/// A cache cleanup must never widen beyond the directory it owns, so the comparison is
+/// textual and conservative: anything that escapes the prefix is refused.
+pub fn within(root: &str, candidate: &str) -> bool {
+    let root = canonical(root);
+    let candidate = canonical(candidate);
+    if root.is_empty() {
+        return false;
+    }
+
+    candidate == root || candidate.starts_with(&format!("{root}/"))
+}
+
+/// True when `root` is a directory this program may manage.
+///
+/// Rejects an empty path, a filesystem root, and the system temporary or `.net` directories
+/// that hold other applications' extractions. Clearing those would break unrelated software.
+pub fn scope_allowed(root: &str) -> bool {
+    let normalized = canonical(root);
+    if normalized.is_empty() {
+        return false;
+    }
+
+    // A bare root such as "/" or "c:" has nothing after the prefix.
+    let without_prefix = normalized.trim_start_matches('/');
+    let segments: Vec<&str> = without_prefix.split('/').filter(|part| !part.is_empty()).collect();
+    if segments.is_empty() || (segments.len() == 1 && segments[0].ends_with(':')) {
+        return false;
+    }
+
+    let last = segments.last().copied().unwrap_or_default();
+    if last == OWNER_DIRECTORY {
+        return true;
+    }
+
+    let lowered = normalized.to_lowercase();
+    !(lowered.ends_with("/temp") || lowered.ends_with("/tmp") || lowered.ends_with("/.net"))
+}
+
+/// Normalizes separators and resolves `.`/`..` without touching the filesystem.
+fn canonical(path: &str) -> String {
+    let unified = path.replace('\\', "/");
+    let mut segments: Vec<&str> = Vec::new();
+    for segment in unified.split('/') {
+        match segment {
+            "" | "." => {}
+            ".." => {
+                segments.pop();
+            }
+            other => segments.push(other),
+        }
+    }
+
+    let prefix = if unified.starts_with('/') { "/" } else { "" };
+    format!("{prefix}{}", segments.join("/")).to_lowercase()
+}

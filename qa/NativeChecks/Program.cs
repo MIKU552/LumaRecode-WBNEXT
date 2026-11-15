@@ -94,6 +94,40 @@ foreach (Fixture fixture in Fixture.AudioCases)
     Compare(fixture.Name, "flac-request", managedRequest ? "true" : "false", nativeRequest ? "true" : "false", ref failures, ref comparisons);
 }
 
+// Preset parity: the shared registry and the managed table must agree on the
+// encoder, preset and quality for every published selector.
+string document = File.ReadAllText(Path.Combine(assets, "recommended-presets.json"));
+(string Purpose, string Codec, string Variant, string Selector)[] selectors =
+[
+    ("share", "avc", "standard", "share/avc"),
+    ("share", "hevc", "standard", "share/hevc"),
+    ("share", "av1", "standard", "share/av1"),
+    ("archive", "avc", "standard", "archive/avc"),
+    ("archive", "hevc", "standard", "archive/hevc"),
+    ("archive", "av1", "standard", "archive/av1"),
+    ("archive", "av1", "fast", "archive_fast_av1"),
+];
+
+foreach ((string purpose, string codec, string variant, string selector) in selectors)
+{
+    JsonObject request = new()
+    {
+        ["document"] = document,
+        ["purpose"] = purpose,
+        ["codec"] = codec,
+        ["variant"] = variant
+    };
+    JsonNode? resolved = LumaCoreNative.Call("presets.resolve", request);
+    JsonObject? row = selector == "archive_fast_av1"
+        ? transcoder.Config["archive_fast_av1"] as JsonObject
+        : transcoder.Config[purpose] is JsonObject table ? table[codec] as JsonObject : null;
+    string label = $"preset/{selector}";
+    Compare(label, "selector", selector, resolved?["selector"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "encoder", row?["encoder"]?.ToString() ?? "", resolved?["encoder"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "preset", row?["preset"]?.ToString() ?? "", resolved?["preset"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "quality", row?["quality"]?.ToString() ?? "", resolved?["quality"]?.ToString() ?? "", ref failures, ref comparisons);
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();

@@ -13,7 +13,7 @@
 | `Core/OutputPolicy.cs` | `luma-core/src/policy.rs` | 完成 | `tests/policy.rs` |
 | `Core/FrameTimeline.cs`（时间换算、seek、范围） | `luma-core/src/timeline.rs` | 完成 | `tests/timeline.rs` |
 | `Core/FrameTimeline.cs`（ffprobe 读取与回退） | 待定：探测适配器 | 未开始 | — |
-| `Assets/recommended-presets.json` | `luma-core/src/presets.rs` | 完成 | `tests/presets.rs` 内嵌资源 |
+| `Assets/recommended-presets.json` | `luma-core/src/presets.rs` | 完成 | `tests/presets.rs` 内嵌资源；`qa/NativeChecks` 逐选择器对照 |
 | `Core/Models.cs`（`EncodeOptions`） | `luma-core/src/domain.rs` | 完成 | `tests/policy.rs` |
 | `Core/Models.cs`（`MediaInfo`） | `luma-core/src/source.rs` | 首片 | 仅保留规则所需字段 |
 | `Core/DynamicHdr.cs`（`Validate`、`Preserve`） | `luma-core/src/policy.rs` | 完成 | `tests/policy.rs` |
@@ -51,7 +51,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | `Core/OutputPolicy.cs` | `luma-core/src/policy.rs` | Done | `tests/policy.rs` |
 | `Core/FrameTimeline.cs` (conversion, seek, range) | `luma-core/src/timeline.rs` | Done | `tests/timeline.rs` |
 | `Core/FrameTimeline.cs` (ffprobe read and fallback) | Probe adapter, TBD | Not started | — |
-| `Assets/recommended-presets.json` | `luma-core/src/presets.rs` | Done | `tests/presets.rs` embeds the asset |
+| `Assets/recommended-presets.json` | `luma-core/src/presets.rs` | Done | `tests/presets.rs` embeds it; `qa/NativeChecks` compares every selector |
 | `Core/Models.cs` (`EncodeOptions`) | `luma-core/src/domain.rs` | Done | `tests/policy.rs` |
 | `Core/Models.cs` (`MediaInfo`) | `luma-core/src/source.rs` | First slice | Only fields the rules need |
 | `Core/DynamicHdr.cs` (`Validate`, `Preserve`) | `luma-core/src/policy.rs` | Done | `tests/policy.rs` |
