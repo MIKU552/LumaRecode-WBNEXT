@@ -11,7 +11,11 @@ namespace VideoConverter.Native;
 public static class SharedCoreBridge
 {
     /// <summary>True when the shared core answers resolve and validate in this process.</summary>
-    public static bool Active { get; private set; }
+    public static bool Active
+    {
+        get;
+        private set;
+    }
 
     /// <summary>Version reported by the loaded core, or an empty string when it is absent.</summary>
     public static string Version => LumaCoreNative.IsAvailable ? LumaCoreNative.CoreVersion : string.Empty;
