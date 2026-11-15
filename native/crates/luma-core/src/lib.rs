@@ -24,6 +24,7 @@ pub mod error;
 pub mod plan;
 pub mod policy;
 pub mod presets;
+pub mod safety;
 pub mod source;
 pub mod timeline;
 

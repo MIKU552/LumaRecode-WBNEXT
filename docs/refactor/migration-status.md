@@ -34,6 +34,7 @@
 | — | `luma-core/src/capability.rs` | 新增 | 对应方案 §4，无基线 |
 | — | `luma-core/src/plan.rs` | 新增 | 对应方案 §3.2「任务规划」，无基线 |
 | — | `luma-core/src/cache.rs` | 新增（§10.4 标识与回收策略） | `tests/cache.rs` |
+| — | `luma-core/src/safety.rs` | 新增（§10.3 输出路径安全） | `tests/safety.rs` |
 
 规则层的“完成”指该文件中的格式决策已逐条迁移并有测试，不代表整个管线可用。
 执行、探测与元数据仍在 C# 侧，P3 之前 Windows 应用继续使用现有实现。
@@ -71,6 +72,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | — | `luma-core/src/capability.rs` | New | Plan §4, no baseline |
 | — | `luma-core/src/plan.rs` | New | Plan §3.2 "task planning", no baseline |
 | — | `luma-core/src/cache.rs` | New (§10.4 identity and retention) | `tests/cache.rs` |
+| — | `luma-core/src/safety.rs` | New (§10.3 output path safety) | `tests/safety.rs` |
 
 "Done" for a rule file means its format decisions are migrated and tested, not
 that the pipeline works end to end. Probing, execution and metadata are still in

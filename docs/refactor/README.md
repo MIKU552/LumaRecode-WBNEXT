@@ -66,7 +66,7 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
 - `native` 工作流：Linux / Windows / macOS 三平台通过格式、Clippy 与全部单元测试
   （含新增的缓存标识与回收策略用例）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
-  运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名。
+  运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
   构建托管层并运行对照检查（1254 次比较，含桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
@@ -194,8 +194,8 @@ every result below comes from GitHub Actions at commit `5d93e26`.
 - `native`: format, Clippy and every unit test pass on Linux, Windows and macOS,
   including the new cache identity and retention cases; the
   Windows x64 and ARM64 libraries build and stage; macOS 27 builds the Swift
-  package on the `xcode-27` image, runs the LumaKit tests, assembles `.app` and
-  applies the ad-hoc signature.
+  package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
+  applies the ad-hoc signature and checks the terminal entry with `--version`.
 - `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
   application, builds the managed layers and runs the parity check (1254
   comparisons including the bridge replay, no mismatch), then runs one

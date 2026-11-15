@@ -5,7 +5,7 @@
 //! module touches the disk, so the policy can be tested without creating a cache and
 //! without depending on the clock.
 
-use crate::error::{codes, CoreError, CoreResult};
+use crate::error::{CoreError, CoreResult, codes};
 
 /// Identifies one published build.
 ///

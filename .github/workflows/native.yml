@@ -151,6 +151,14 @@ jobs:
           codesign --verify --strict --verbose=2 app-macos/dist/LumaRecode.app 2> build-info/codesign.txt
           shasum -a 256 app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode > build-info/lumarecode.sha256
 
+      - name: CLI smoke
+        run: |
+          # The bundle executable doubles as the terminal entry point; run it
+          # headless and require the same core line the Windows job checks.
+          binary="app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode"
+          "$binary" --version | tee build-info/cli.txt
+          grep -q "core: shared 0.1.0" build-info/cli.txt
+
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
 
