@@ -89,10 +89,15 @@ jobs:
             Select-Object -First 1
           if ($null -eq $exe) { throw "LumaRecode.exe was not built." }
           $env:LUMARECODE_DIAGNOSTICS = "1"
-          $output = & $exe.FullName --cli --version 2>&1
-          $output | ForEach-Object { $_.ToString() }
-          if ($LASTEXITCODE -ne 0) { throw "CLI --version failed with $LASTEXITCODE." }
-          $text = $output | Out-String
+          # The application is a GUI-subsystem binary, so "&" neither waits nor sets
+          # $LASTEXITCODE. Start it, wait, and capture the redirected streams.
+          $stdout = Join-Path $env:RUNNER_TEMP "cli-stdout.txt"
+          $stderr = Join-Path $env:RUNNER_TEMP "cli-stderr.txt"
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList '--cli', '--version' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
+          $text
+          if ($process.ExitCode -ne 0) { throw "CLI --version failed with $($process.ExitCode)." }
           if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
           if ($text -notmatch 'LumaRecode 4\.4\.3') { throw "Unexpected version output." }
 
