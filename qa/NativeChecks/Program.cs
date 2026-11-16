@@ -152,10 +152,10 @@ foreach ((string fixtureName, string label, EncodeOptions options) in edgeCases)
 
 // Probe parity on the document CI captured from ffprobe: the shared summary and
 // the managed classification must agree about the same file.
-string fixture = Path.Combine(Path.GetDirectoryName(assets)!, "native", "crates", "luma-core", "tests", "fixtures", "ffprobe-testsrc.json");
-string document = File.ReadAllText(fixture);
-JsonNode? summary = LumaCoreNative.Call("probe.summarize", new JsonObject { ["document"] = document });
-JsonObject probe = JsonNode.Parse(document)!.AsObject();
+string probeFixture = Path.Combine(Path.GetDirectoryName(assets)!, "native", "crates", "luma-core", "tests", "fixtures", "ffprobe-testsrc.json");
+string probeDocument = File.ReadAllText(probeFixture);
+JsonNode? summary = LumaCoreNative.Call("probe.summarize", new JsonObject { ["document"] = probeDocument });
+JsonObject probe = JsonNode.Parse(probeDocument)!.AsObject();
 JsonObject video = probe["streams"]!.AsArray().Objects().First(stream => stream.Text("codec_type") == "video");
 JsonObject formatTags = probe["format"]?["tags"] as JsonObject ?? new JsonObject();
 string managedKind = MediaProbe.Classify(video, formatTags).Kind;
