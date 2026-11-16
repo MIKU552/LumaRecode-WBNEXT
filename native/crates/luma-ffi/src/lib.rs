@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 13] = [
+const OPERATIONS: [&str; 14] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -54,6 +54,7 @@ const OPERATIONS: [&str; 13] = [
     "probe.summarize",
     "capability.backend",
     "capability.supports",
+    "cache.plan",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -157,6 +158,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "capability.summary" => capability_summary(&payload),
         "capability.backend" => capability_backend(&payload),
         "capability.supports" => capability_supports(&payload),
+        "cache.plan" => cache_plan(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -403,6 +405,70 @@ fn capability_supports(payload: &Value) -> CoreResult<Value> {
     Ok(json!({
         "supported": luma_core::capability::supports(backend, codec, request.depth, &request.sampling),
     }))
+}
+
+#[derive(Deserialize)]
+struct CacheEntryDto {
+    key: String,
+    age_days: u32,
+    bytes: u64,
+    #[serde(default)]
+    in_use: bool,
+}
+
+#[derive(Deserialize)]
+struct CachePolicyDto {
+    keep_recent: usize,
+    max_age_days: u32,
+    max_bytes: u64,
+}
+
+#[derive(Deserialize)]
+struct CacheRequest {
+    entries: Vec<CacheEntryDto>,
+    #[serde(default)]
+    current: String,
+    policy: CachePolicyDto,
+}
+
+fn cache_plan(payload: &Value) -> CoreResult<Value> {
+    let request: CacheRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "cache"))?;
+    let entries = request
+        .entries
+        .into_iter()
+        .map(|entry| luma_core::cache::Entry {
+            key: entry.key,
+            age_days: entry.age_days,
+            bytes: entry.bytes,
+            in_use: entry.in_use,
+        })
+        .collect::<Vec<_>>();
+    let policy = luma_core::cache::Policy {
+        keep_recent: request.policy.keep_recent,
+        max_age_days: request.policy.max_age_days,
+        max_bytes: request.policy.max_bytes,
+    };
+    let decisions = luma_core::cache::plan(&entries, &request.current, &policy);
+    Ok(json!({
+        "decisions": decisions
+            .iter()
+            .map(|(key, decision)| json!({ "key": key, "decision": decision_name(*decision) }))
+            .collect::<Vec<_>>(),
+        "kept_bytes": luma_core::cache::kept_bytes(&entries, &decisions),
+        "reclaimable_bytes": luma_core::cache::reclaimable_bytes(&entries, &decisions),
+    }))
+}
+
+fn decision_name(decision: luma_core::cache::Decision) -> &'static str {
+    match decision {
+        luma_core::cache::Decision::KeepCurrent => "keep_current",
+        luma_core::cache::Decision::KeepInUse => "keep_in_use",
+        luma_core::cache::Decision::KeepRecent => "keep_recent",
+        luma_core::cache::Decision::RemoveTooOld => "remove_too_old",
+        luma_core::cache::Decision::RemoveOverCount => "remove_over_count",
+        luma_core::cache::Decision::RemoveOverBudget => "remove_over_budget",
+    }
 }
 
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {

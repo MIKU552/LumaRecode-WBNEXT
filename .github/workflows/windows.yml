@@ -201,6 +201,15 @@ jobs:
           $hlgProbe
           if ($hlgProbe -notmatch '^hevc,yuv420p10le') { throw "HDR output is not 10-bit HEVC: $hlgProbe" }
 
+          # Seed the cache so the retention plan has something to decide about.
+          $cacheRoot = Join-Path $env:LOCALAPPDATA "luma-recode"
+          $oldCache = Join-Path $cacheRoot "old-build"
+          $freshCache = Join-Path $cacheRoot "fresh-build"
+          New-Item -ItemType Directory -Force -Path $oldCache, $freshCache | Out-Null
+          Set-Content -Path (Join-Path $oldCache "payload.bin") -Value ("x" * 2048) -NoNewline
+          Set-Content -Path (Join-Path $freshCache "payload.bin") -Value ("x" * 512) -NoNewline
+          (Get-Item $oldCache).LastWriteTime = (Get-Date).AddDays(-60)
+
           $doctorOut = Join-Path $env:RUNNER_TEMP "doctor.json"
           $doctorErr = Join-Path $env:RUNNER_TEMP "doctor-err.txt"
           $doctor = Start-Process -FilePath $exe.FullName -ArgumentList 'doctor', '--json', '--no-settings', '--accept-terms' `
@@ -217,6 +226,10 @@ jobs:
           $report.cache
           if ($report.backends.software -lt 1) { throw "doctor reported no software encoder." }
           if (-not $report.cache.root) { throw "doctor reported no cache root." }
+          if ($report.cache.plan.reclaimable_bytes -lt 2048) { throw "cache plan did not reclaim the old build." }
+          $decision = $report.cache.plan.decisions | Where-Object { $_.key -eq 'old-build' } | Select-Object -First 1
+          $decision
+          if ($decision.decision -ne 'remove_too_old') { throw "unexpected cache decision: $($decision.decision)" }
 
           # Capture real probe and plan documents. They feed the shared probe parser
           # and the planning parity work, and they prove both commands run headless.

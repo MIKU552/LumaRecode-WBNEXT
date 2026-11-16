@@ -1,6 +1,8 @@
 using System.Reflection;
 using VideoConverter.Core;
 
+using VideoConverter.Native;
+
 namespace VideoConverter;
 
 /// <summary>Adapts desktop preferences, component terms and console cancellation to the UI-independent CLI.</summary>
@@ -31,7 +33,8 @@ internal static class CommandLineHost
         try
         {
             var context = new CliContext(version, LegalNotices.Folder, settings.AcceptedThirdPartyTerms == LegalNotices.Revision,
-                new MediaTools(settings.Ffmpeg, settings.Ffprobe), text => L.Translate(text, language), language);
+                new MediaTools(settings.Ffmpeg, settings.Ffprobe), text => L.Translate(text, language), language,
+                cache => CacheBridge.Plan(cache));
             var code = await new NativeCli(ConversionClient.Engine, context).RunAsync(args, cancellation.Token);
             if (!noSettings && code == 0 && args.TakeWhile(a => a != "--").Contains("--accept-terms") && settings.AcceptedThirdPartyTerms != LegalNotices.Revision)
             {
