@@ -108,6 +108,16 @@ jobs:
           if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
           if ($text -notmatch 'LumaRecode 4\.4\.3') { throw "Unexpected version output." }
 
+          # Help must stay in step with the command list: a missing description used
+          # to read past the array, so run it and require the newest command to appear.
+          $helpOut = Join-Path $env:RUNNER_TEMP "cli-help.txt"
+          $helpErr = Join-Path $env:RUNNER_TEMP "cli-help-err.txt"
+          $help = Start-Process -FilePath $exe.FullName -ArgumentList '--help' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $helpOut -RedirectStandardError $helpErr
+          $helpText = (Get-Content $helpOut -Raw) + (Get-Content $helpErr -Raw)
+          if ($help.ExitCode -ne 0) { $helpText; throw "CLI --help failed with $($help.ExitCode)." }
+          if ($helpText -notmatch 'cache') { throw "Help does not list the cache command." }
+
           # The fallback must work too: force the managed rules and require the
           # CLI to stay usable when the native library is deliberately ignored.
           $env:LUMARECODE_CORE = "managed"
