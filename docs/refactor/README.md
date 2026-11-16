@@ -54,6 +54,11 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
 远离零取整；这条约定写在两处，`qa/NativeChecks` 逐帧率比较两条路径算出的 `-g`，因此任何一侧
 改动都会立刻显形，而不是让装了原生库的机器与没装的机器产出不同的关键帧间隔。
 
+HDR 元数据的参数组合也移到核心（`plan.hdr_metadata`）：保留动态 HDR 需要的码率下限、HDR10+
+的 `dhdr10-info`，以及 x265 的 `master-display` / `max-cll` 与 SVT-AV1 的 `mastering-display` /
+`content-light`，都按各编码器的十进制精度生成。托管回退保留同一套规则，`qa/NativeChecks` 用
+PQ、Dolby Vision 与 HDR10+ 三种素材逐编码器比较完整参数串，两处不会写出不同的标签。
+
 ### 已验证与未验证
 
 已经在本仓库内完成、可直接检查的部分：
@@ -93,7 +98,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
-| P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签、编码器段、参数串、滤镜链拼接与 GOP 间隔均已走原生桥；滤镜内容与动态 HDR 元数据仍由宿主生成 |
+| P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签、编码器段、参数串、滤镜链拼接、GOP 间隔与 HDR 元数据参数均已走原生桥；滤镜内容仍由宿主生成 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
 | P5 macOS 应用 | 媒体入口已接 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；预览、转换与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
@@ -191,6 +196,13 @@ compares the `-g` value both paths produce across a range of frame rates. An edi
 either side therefore fails at once, instead of letting a machine with the library and
 one without write different keyframe intervals.
 
+The HDR metadata parameters come from `plan.hdr_metadata`: the rate-control floor that
+Dolby Vision needs, the `dhdr10-info` payload for HDR10+, and the `master-display` /
+`max-cll` or `mastering-display` / `content-light` tokens, each at the precision its
+encoder family expects. The managed fallback keeps the same rules and the harness
+compares the whole parameter string per encoder for PQ, Dolby Vision and HDR10+
+sources, so the two paths cannot label a stream differently.
+
 ### Verified and unverified
 
 Implemented and reviewable in this repository:
@@ -237,7 +249,7 @@ than folding them into pass or fail.
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
-| P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags, encoder block, parameter string, filter joining and the GOP interval are bridged; filter content and dynamic HDR metadata stay in the host |
+| P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags, encoder block, parameter string, filter joining, the GOP interval and the HDR metadata parameters are bridged; filter content stays in the host |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
 | P5 macOS app | Media intake wired | Open, ffprobe probe, core normalization and real stream display work; preview, conversion and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |

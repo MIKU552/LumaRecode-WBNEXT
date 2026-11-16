@@ -38,6 +38,7 @@ public static class SharedCoreBridge
         SharedCore.ParameterBuilder = BuildParameterString;
         SharedCore.FilterBuilder = BuildFilterChain;
         SharedCore.Gop = ComputeGop;
+        SharedCore.HdrMetadata = ComposeHdrMetadata;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -181,6 +182,49 @@ public static class SharedCoreBridge
         payload["motion_photo"] = request.MotionPhoto;
         JsonNode? frames = LumaCoreNative.Call("plan.gop", payload)?["frames"];
         return frames is null ? null : frames.GetValue<long>();
+    }
+
+    /// <summary>Composes the HDR metadata parameters through the core.</summary>
+    private static HdrMetadataArguments? ComposeHdrMetadata(HdrMetadataRequest request)
+    {
+        JsonObject payload = new();
+        payload["codec"] = request.Codec;
+        payload["output"] = request.Output;
+        payload["source_kind"] = request.SourceKind;
+        payload["preserve_dynamic"] = request.PreserveDynamic;
+        payload["hdr10_plus"] = request.Hdr10Plus;
+        if (request.DolbyVisionProfile is int profile)
+        {
+            payload["dolby_vision_profile"] = profile;
+        }
+
+        JsonArray sideData = new();
+        foreach (JsonObject entry in request.SideData)
+        {
+            sideData.Add(entry.DeepClone());
+        }
+
+        payload["side_data"] = sideData;
+        if (LumaCoreNative.Call("plan.hdr_metadata", payload) is not JsonObject data)
+        {
+            return null;
+        }
+
+        List<ParameterPair> parameters = new();
+        JsonArray entries = data["parameters"] as JsonArray ?? new JsonArray();
+        foreach (JsonNode? entry in entries)
+        {
+            parameters.Add(new ParameterPair(entry?["key"]?.ToString() ?? "", entry?["value"]?.ToString() ?? ""));
+        }
+
+        List<string> appended = new();
+        JsonArray tokens = data["appended"] as JsonArray ?? new JsonArray();
+        foreach (JsonNode? token in tokens)
+        {
+            appended.Add(token?.ToString() ?? "");
+        }
+
+        return new HdrMetadataArguments(parameters, appended);
     }
 
     /// <summary>Restores the managed rules.</summary>

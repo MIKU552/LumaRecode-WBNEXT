@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace VideoConverter.Core;
 
 /// <summary>Result of one resolve call: a resolved request or a stable error identity.</summary>
@@ -36,6 +38,22 @@ public sealed record GopRequest(double FrameRate, bool Share, bool MotionPhoto);
 /// <summary>One encoder parameter, in insertion order.</summary>
 public sealed record ParameterPair(string Key, string Value);
 
+/// <summary>HDR metadata one encode should carry into the encoder parameters.</summary>
+/// <param name="Codec">Encoder family; the two families spell the tokens differently.</param>
+/// <param name="Output">Target transfer function; an SDR target keeps only the dynamic payload.</param>
+/// <param name="SourceKind">Effective interpretation, so an override to SDR drops the tokens.</param>
+/// <param name="PreserveDynamic">Dynamic metadata survives the encode.</param>
+/// <param name="DolbyVisionProfile">Dolby Vision profile the probe found, when any.</param>
+/// <param name="Hdr10Plus">HDR10+ dynamic metadata was found.</param>
+/// <param name="SideData">Video and first-frame side data, as the probe reported it.</param>
+public sealed record HdrMetadataRequest(string Codec, string Output, string SourceKind, bool PreserveDynamic,
+    int? DolbyVisionProfile, bool Hdr10Plus, IReadOnlyList<JsonObject> SideData);
+
+/// <summary>Parameter entries and bare tokens that carry the metadata.</summary>
+/// <param name="Parameters">Entries to append after the preset table, in order.</param>
+/// <param name="Appended">Bare tokens for the same parameter string.</param>
+public sealed record HdrMetadataArguments(IReadOnlyList<ParameterPair> Parameters, IReadOnlyList<string> Appended);
+
 /// <summary>Optional bridge from the managed rules to the shared native core.</summary>
 /// <remarks>
 /// The host installs the bridge after loading the native library. When a delegate is null the
@@ -69,6 +87,9 @@ public static class SharedCore
     /// <summary>Computes the GOP length through the shared core; null means "use the managed formula".</summary>
     public static Func<GopRequest, long?>? Gop { get; set; }
 
+    /// <summary>Composes the HDR metadata parameters through the shared core; null means "use the managed rule".</summary>
+    public static Func<HdrMetadataRequest, HdrMetadataArguments?>? HdrMetadata { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -86,6 +107,7 @@ public static class SharedCore
         ParameterBuilder = null;
         FilterBuilder = null;
         Gop = null;
+        HdrMetadata = null;
         CoreVersion = "";
     }
 

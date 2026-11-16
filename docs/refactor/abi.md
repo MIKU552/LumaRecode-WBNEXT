@@ -56,6 +56,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.parameter_string` | `values`、`appended` | 冒号连接的参数串 |
 | `plan.filter_chain` | `filters` | 逗号连接的滤镜链 |
 | `plan.gop` | `frame_rate`、`share`、`motion_photo` | GOP 帧数 |
+| `plan.hdr_metadata` | `codec`、`output`、`source_kind`、`preserve_dynamic`、`dolby_vision_profile`、`hdr10_plus`、`side_data` | 编码器参数条目与静态元数据 token |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -130,6 +131,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.parameter_string` | `values`, `appended` | Colon-separated parameter string |
 | `plan.filter_chain` | `filters` | Comma-separated filter chain |
 | `plan.gop` | `frame_rate`, `share`, `motion_photo` | GOP length in frames |
+| `plan.hdr_metadata` | `codec`, `output`, `source_kind`, `preserve_dynamic`, `dolby_vision_profile`, `hdr10_plus`, `side_data` | Parameter entries and static metadata tokens |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.

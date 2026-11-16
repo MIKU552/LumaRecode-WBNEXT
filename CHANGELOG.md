@@ -14,6 +14,7 @@
 - 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
 - 新增 `cache` 命令：查看缓存清单与回收计划，`--purge` 在范围保护下真正删除。
 - 编码器的 GOP 间隔改由共享核心计算（`plan.gop`）；托管回退沿用同一规则，两条路径的 `-g` 由对照检查逐帧率比较。
+- HDR 元数据参数组合改由共享核心生成（`plan.hdr_metadata`）：Dolby Vision 码率下限、HDR10+ 负载与 x265 / SVT-AV1 的静态元数据 token 统一在核心拼装。
 
 ### 4.4.3
 
@@ -293,6 +294,7 @@
 - The pipeline now builds the ARM64 application and verifies the x64 single-file publish.
 - New `cache` command: inspect the inventory and retention plan; `--purge` deletes inside the guarded root.
 - The encoder GOP interval is computed by the shared core (`plan.gop`); the managed fallback keeps the same rule and the harness compares the `-g` value both paths produce for every frame rate.
+- HDR metadata parameters are composed by the shared core (`plan.hdr_metadata`): the Dolby Vision rate-control floor, the HDR10+ payload and the x265 / SVT-AV1 static tokens are spelled in one place.
 
 ### 4.4.3
 

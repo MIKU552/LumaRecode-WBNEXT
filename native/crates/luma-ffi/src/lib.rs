@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 22] = [
+const OPERATIONS: [&str; 23] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -63,6 +63,7 @@ const OPERATIONS: [&str; 22] = [
     "plan.parameter_string",
     "plan.filter_chain",
     "plan.gop",
+    "plan.hdr_metadata",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -175,6 +176,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.parameter_string" => plan_parameter_string(&payload),
         "plan.filter_chain" => plan_filter_chain(&payload),
         "plan.gop" => plan_gop(&payload),
+        "plan.hdr_metadata" => plan_hdr_metadata(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -672,6 +674,48 @@ fn plan_gop(payload: &Value) -> CoreResult<Value> {
     Ok(json!({
         "frames": luma_core::render::gop(request.frame_rate, request.share, request.motion_photo),
     }))
+}
+
+#[derive(Deserialize)]
+struct HdrMetadataDto {
+    codec: String,
+    output: String,
+    #[serde(default)]
+    source_kind: Option<String>,
+    #[serde(default)]
+    preserve_dynamic: bool,
+    #[serde(default)]
+    dolby_vision_profile: Option<i32>,
+    #[serde(default)]
+    hdr10_plus: bool,
+    /// Video and first-frame side data, as the probe reported it.
+    #[serde(default)]
+    side_data: Vec<Value>,
+}
+
+fn plan_hdr_metadata(payload: &Value) -> CoreResult<Value> {
+    let request: HdrMetadataDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let source_kind = match request.source_kind.as_deref() {
+        None | Some("") => luma_core::SourceKind::Unknown,
+        Some(value) => luma_core::SourceKind::parse(value)?,
+    };
+    let core_request = luma_core::metadata::HdrMetadataRequest {
+        codec: Codec::parse(&request.codec)?,
+        output: Output::parse(&request.output)?,
+        source_kind,
+        preserve_dynamic: request.preserve_dynamic,
+        dolby_vision_profile: request.dolby_vision_profile,
+        hdr10_plus: request.hdr10_plus,
+        side_data: &request.side_data,
+    };
+    let arguments = luma_core::metadata::encoder_metadata(&core_request);
+    let parameters = arguments
+        .parameters
+        .iter()
+        .map(|(key, value)| json!({ "key": key, "value": value }))
+        .collect::<Vec<_>>();
+    Ok(json!({ "parameters": parameters, "appended": arguments.appended }))
 }
 
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {

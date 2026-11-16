@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 22);
+    assert_eq!(operations.len(), 23);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -80,6 +80,11 @@ fn core_info_lists_every_operation() {
             .any(|value| value == "capability.parameters")
     );
     assert!(operations.iter().any(|value| value == "plan.gop"));
+    assert!(
+        operations
+            .iter()
+            .any(|value| value == "plan.hdr_metadata")
+    );
 }
 
 #[test]
@@ -260,4 +265,39 @@ fn plan_gop_accepts_every_rate_a_probe_can_report() {
     assert_eq!(gop(fast), Value::from(240));
     let long = r#"{"frame_rate":1000,"share":false}"#;
     assert_eq!(gop(long), Value::from(8000));
+}
+
+#[test]
+fn plan_hdr_metadata_spells_the_tokens_the_encoder_expects() {
+    let side = r#"[{"side_data_type":"Mastering display metadata",
+        "green_x":"13250/50000","green_y":"34500/50000",
+        "blue_x":"7500/50000","blue_y":"3000/50000",
+        "red_x":"34000/50000","red_y":"16000/50000",
+        "white_point_x":"15635/50000","white_point_y":"16450/50000",
+        "max_luminance":"10000000/10000","min_luminance":"50/10000"},
+        {"side_data_type":"Content light level metadata","max_content":1000,"max_average":400}]"#;
+    let request = format!(
+        r#"{{"codec":"hevc","output":"hdr","source_kind":"pq","side_data":{side}}}"#
+    );
+    let arguments = data("plan.hdr_metadata", &request);
+
+    assert_eq!(
+        arguments["appended"][0],
+        "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50)"
+    );
+    assert_eq!(arguments["appended"][1], "max-cll=1000,400");
+    assert_eq!(arguments["parameters"][0]["key"], "hdr10");
+    assert_eq!(arguments["parameters"][0]["value"], "1");
+    assert_eq!(arguments["parameters"].as_array().expect("parameters").len(), 3);
+}
+
+#[test]
+fn plan_hdr_metadata_keeps_dynamic_metadata_on_an_sdr_target() {
+    let request = r#"{"codec":"hevc","output":"sdr","source_kind":"pq","preserve_dynamic":true,
+        "hdr10_plus":true,"side_data":[]}"#;
+    let arguments = data("plan.hdr_metadata", request);
+
+    assert_eq!(arguments["appended"], serde_json::json!([]));
+    assert_eq!(arguments["parameters"][0]["key"], "dhdr10-info");
+    assert_eq!(arguments["parameters"][0]["value"], "hdr10plus.json");
 }

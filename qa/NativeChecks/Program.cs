@@ -322,6 +322,25 @@ foreach ((string fixtureName, string purpose, string output, bool motionPhoto) i
     }
 }
 
+// HDR metadata parity: the parameter string must carry the same tokens whether the rule
+// runs in the core or in the managed fallback. The cases cover static tokens, the Dolby
+// Vision rate-control floor and the HDR10+ payload.
+(string Fixture, string Codec)[] metadataCases =
+[
+    ("pq-10", "hevc"),
+    ("pq-10", "av1"),
+    ("dovi-10", "hevc"),
+    ("dovi-10", "av1"),
+    ("hdr10plus-10", "hevc"),
+];
+List<(string Label, MediaInfo Media, EncodeOptions Options, string Managed)> metadataChecks = new();
+foreach ((string fixtureName, string codec) in metadataCases)
+{
+    MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
+    EncodeOptions options = new("archive", codec, "hdr", "none");
+    metadataChecks.Add(($"metadata/{fixtureName}/{codec}", media, options, ParameterArgument(transcoder, media, options)));
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
@@ -359,10 +378,16 @@ try
     }
 
     Compare("bridge", "gop-route", "shared", SharedCore.Gop is null ? "managed" : "shared", ref failures, ref comparisons);
+    Compare("bridge", "metadata-route", "shared", SharedCore.HdrMetadata is null ? "managed" : "shared", ref failures, ref comparisons);
     foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in gopChecks)
     {
         bool motionPhoto = label.EndsWith("/motion", StringComparison.Ordinal);
         Compare(label, "gop", managed, GopArgument(transcoder, media, options, motionPhoto), ref failures, ref comparisons);
+    }
+
+    foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in metadataChecks)
+    {
+        Compare(label, "metadata", managed, ParameterArgument(transcoder, media, options), ref failures, ref comparisons);
     }
 
     // The interval must follow the bridge, not merely find it installed: a sentinel
@@ -421,6 +446,15 @@ static string GopArgument(Transcoder transcoder, MediaInfo media, EncodeOptions 
 {
     EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv", motionPhoto: motionPhoto);
     int index = Array.IndexOf(plan.Arguments, "-g");
+    return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
+}
+
+/// <summary>Builds a plan and returns the encoder parameter string it would pass.</summary>
+static string ParameterArgument(Transcoder transcoder, MediaInfo media, EncodeOptions options)
+{
+    EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv");
+    string flag = options.Codec == "av1" ? "-svtav1-params" : "-x265-params";
+    int index = Array.IndexOf(plan.Arguments, flag);
     return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
 }
 
@@ -514,6 +548,8 @@ internal sealed record Fixture(
     int? ChromaW = null,
     int? ChromaH = null,
     bool Hdr10Plus = false,
+    bool MasteringDisplay = false,
+    bool DolbyVision = false,
     AudioSpec[]? Audio = null)
 {
     public static Fixture[] All =>
@@ -530,6 +566,9 @@ internal sealed record Fixture(
         new("milog-10", "yuv420p10le", "log", "milog", null, [10, 10, 10], ChromaW: 1, ChromaH: 1),
         new("pocket3-10", "yuv420p10le", "log", "pocket3", null, [10, 10, 10], ChromaW: 1, ChromaH: 1),
         new("hdr10plus-10", "yuv420p10le", "hlg", null, null, [10, 10, 10], ChromaW: 1, ChromaH: 1, Hdr10Plus: true),
+        new("pq-10", "yuv420p10le", "pq", null, null, [10, 10, 10], ChromaW: 1, ChromaH: 1, MasteringDisplay: true),
+        new("dovi-10", "yuv420p10le", "pq", null, null, [10, 10, 10], ChromaW: 1, ChromaH: 1,
+            MasteringDisplay: true, DolbyVision: true),
         new("yuvj-8", "yuvj420p", "sdr", null, null, [8, 8, 8], ChromaW: 1, ChromaH: 1),
     ];
 
@@ -597,9 +636,52 @@ internal sealed record Fixture(
             video["_monochrome"] = "1";
         }
 
+        JsonArray sideData = new();
         if (Hdr10Plus)
         {
-            video["side_data_list"] = new JsonArray(new JsonObject { ["side_data_type"] = "HDR10+ Metadata" });
+            sideData.Add(new JsonObject { ["side_data_type"] = "HDR10+ Metadata" });
+        }
+
+        if (DolbyVision)
+        {
+            sideData.Add(new JsonObject
+            {
+                ["side_data_type"] = "DOVI configuration record",
+                ["dv_profile"] = 8,
+                ["dv_bl_signal_compatibility_id"] = 1,
+                ["rpu_present_flag"] = 1,
+                ["bl_present_flag"] = 1,
+                ["el_present_flag"] = 0
+            });
+        }
+
+        if (MasteringDisplay)
+        {
+            sideData.Add(new JsonObject
+            {
+                ["side_data_type"] = "Mastering display metadata",
+                ["green_x"] = "13250/50000",
+                ["green_y"] = "34500/50000",
+                ["blue_x"] = "7500/50000",
+                ["blue_y"] = "3000/50000",
+                ["red_x"] = "34000/50000",
+                ["red_y"] = "16000/50000",
+                ["white_point_x"] = "15635/50000",
+                ["white_point_y"] = "16450/50000",
+                ["max_luminance"] = "10000000/10000",
+                ["min_luminance"] = "50/10000"
+            });
+            sideData.Add(new JsonObject
+            {
+                ["side_data_type"] = "Content light level metadata",
+                ["max_content"] = 1000,
+                ["max_average"] = 400
+            });
+        }
+
+        if (sideData.Count > 0)
+        {
+            video["side_data_list"] = sideData;
         }
 
         JsonArray streams = new();

@@ -197,6 +197,34 @@ public sealed partial class Transcoder
     private static long ManagedGop(double frameRate, bool share, bool motionPhoto) => share
         ? (long)Math.Clamp(Math.Round(2 * frameRate, MidpointRounding.AwayFromZero), 1, 240)
         : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate, MidpointRounding.AwayFromZero));
+    // Fallback for a machine without the native library: the same rules the core applies.
+    // Static tokens are only re-declared for PQ output, and only for encoders that can carry
+    // them; an SDR target keeps the dynamic payload but drops the mastering declaration.
+    private static HdrMetadataArguments ManagedHdrMetadata(HdrMetadataRequest request)
+    {
+        var parameters = new List<ParameterPair>();
+        if (request.PreserveDynamic && request.DolbyVisionProfile is not null && request.Codec == "hevc")
+        {
+            parameters.Add(new("vbv-maxrate", "100000"));
+            parameters.Add(new("vbv-bufsize", "100000"));
+        }
+        if (request.PreserveDynamic && request.Hdr10Plus)
+        {
+            parameters.Add(new("dhdr10-info", "hdr10plus.json"));
+        }
+
+        string[] appended = request.Output == "hdr" && request.SourceKind == "pq" && request.Codec is "hevc" or "av1"
+            ? HdrMetadata(request.SideData, request.Codec)
+            : [];
+        if (request.Codec == "hevc" && appended.Length > 0)
+        {
+            parameters.Add(new("hdr10", "1"));
+            parameters.Add(new("hdr10-opt", "1"));
+            parameters.Add(new("repeat-headers", "1"));
+        }
+
+        return new HdrMetadataArguments(parameters, appended);
+    }
     // ffprobe reports rational SI values. x265 expects chromaticity in
     // 1/50000 and luminance in 1/10000 cd/m²; SVT-AV1 accepts decimal values.
     private static string[] HdrMetadata(IEnumerable<JsonObject> side, string codec)
@@ -208,7 +236,7 @@ public sealed partial class Transcoder
         var result = new List<string>();
         if (md is not null && fields.All(md.ContainsKey))
         {
-            var values = fields.Select((f, i) => codec == "hevc" ? FormatNumber(Math.Round(JsonFields.Number(md.Text(f)) * (i < 8 ? 50000 : 10000))) : JsonFields.Number(md.Text(f)).ToString("F8", CultureInfo.InvariantCulture)).ToArray();
+            var values = fields.Select((f, i) => codec == "hevc" ? FormatNumber(Math.Round(JsonFields.Number(md.Text(f)) * (i < 8 ? 50000 : 10000), MidpointRounding.AwayFromZero)) : JsonFields.Number(md.Text(f)).ToString("F8", CultureInfo.InvariantCulture)).ToArray();
             result.Add((codec == "hevc" ? "master-display" : "mastering-display") + $"=G({values[0]},{values[1]})B({values[2]},{values[3]})R({values[4]},{values[5]})WP({values[6]},{values[7]})L({values[8]},{values[9]})");
         }
         if (cl is not null && cl.ContainsKey("max_content") && cl.ContainsKey("max_average"))
@@ -504,22 +532,15 @@ public sealed partial class Transcoder
                 extra[p.Key] = p.Value?.DeepClone();
             }
 
-            if (preserveDynamic && media.DolbyVision is not null && options.Codec == "hevc")
+            HdrMetadataRequest hdrRequest = new(options.Codec, options.Output, kind, preserveDynamic,
+                media.DolbyVision?.Integer("dv_profile"), media.Hdr10Plus, media.SideData.ToList());
+            HdrMetadataArguments hdr = SharedCore.HdrMetadata?.Invoke(hdrRequest) ?? ManagedHdrMetadata(hdrRequest);
+            foreach (ParameterPair pair in hdr.Parameters)
             {
-                extra["vbv-maxrate"] = 100000;
-                extra["vbv-bufsize"] = 100000;
+                extra[pair.Key] = pair.Value;
             }
-            if (preserveDynamic && media.Hdr10Plus)
-            {
-                extra["dhdr10-info"] = "hdr10plus.json";
-            }
-            var metadata = options.Output == "hdr" && kind == "pq" && options.Codec is "hevc" or "av1" ? HdrMetadata(media.SideData, options.Codec) : [];
-            if (options.Codec == "hevc" && metadata.Length > 0)
-            {
-                extra["hdr10"] = 1;
-                extra["hdr10-opt"] = 1;
-                extra["repeat-headers"] = 1;
-            }
+
+            var metadata = hdr.Appended.ToArray();
             if (extra.Count > 0 || options.Codec is "hevc" or "av1")
             {
                 var pairs = extra.Select(p => new ParameterPair(p.Key, p.Value?.ToString() ?? "")).ToList();
