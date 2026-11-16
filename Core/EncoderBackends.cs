@@ -19,4 +19,17 @@ public static class EncoderBackends
         _ when encoder.StartsWith("lib", StringComparison.Ordinal) => "software",
         _ => null
     };
+
+    /// <summary>Short product name for display; brand names are not localized.</summary>
+    public static string Label(string? backend) => backend switch
+    {
+        "qsv" => "QSV",
+        "amf" => "AMF",
+        "nvenc" => "NVENC",
+        "media_foundation" => "Media Foundation",
+        "videotoolbox" => "VideoToolbox",
+        "software" => "CPU",
+        null => "—",
+        _ => backend
+    };
 }

@@ -177,11 +177,14 @@ FramePoint[] timelinePoints = Enumerable.Range(0, 100)
     .Select(index => new FramePoint(index * 1000L, 1000L, index % 30 == 0))
     .ToArray();
 FrameTimeline timeline = new(timelinePoints, 1, 1000, false);
-CompareTimeline(0, null, "full");
-CompareTimeline(10, 40, "middle");
-CompareTimeline(99, null, "last");
+FrameTimeline packetTimeline = new(timelinePoints, 1, 1000, true);
+CompareTimeline(timeline, false, 0, null, "full");
+CompareTimeline(timeline, false, 10, 40, "middle");
+CompareTimeline(timeline, false, 99, null, "last");
+CompareTimeline(packetTimeline, true, 10, 40, "packet/middle");
+CompareTimeline(packetTimeline, true, 99, null, "packet/last");
 
-void CompareTimeline(int start, int? end, string label)
+void CompareTimeline(FrameTimeline source, bool packetIndexed, int start, int? end, string label)
 {
     JsonArray frames = new(timelinePoints.Select(point => (JsonNode?)new JsonObject
     {
@@ -200,10 +203,10 @@ void CompareTimeline(int start, int? end, string label)
     {
         ["frames"] = frames,
         ["time_base"] = "1/1000",
-        ["packet_indexed"] = false,
+        ["packet_indexed"] = packetIndexed,
         ["range"] = range
     });
-    FrameWindow window = timeline.Resolve(new FrameRange(start, end));
+    FrameWindow window = source.Resolve(new FrameRange(start, end));
     string id = $"timeline/{label}";
     Compare(id, "start", $"{window.Start}", native?["window"]?["start"]?.ToString() ?? "", ref failures, ref comparisons);
     Compare(id, "end", $"{window.End}", native?["window"]?["end"]?.ToString() ?? "", ref failures, ref comparisons);
