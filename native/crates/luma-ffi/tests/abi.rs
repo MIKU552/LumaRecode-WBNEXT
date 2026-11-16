@@ -67,11 +67,7 @@ fn core_info_lists_every_operation() {
             .iter()
             .any(|value| value == "plan.parameter_string")
     );
-    assert!(
-        operations
-            .iter()
-            .any(|value| value == "plan.filter_chain")
-    );
+    assert!(operations.iter().any(|value| value == "plan.filter_chain"));
     assert!(operations.iter().any(|value| value == "capability.detect"));
     assert!(
         operations
