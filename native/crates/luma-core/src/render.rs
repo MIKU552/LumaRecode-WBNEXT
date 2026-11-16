@@ -99,11 +99,16 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
         request.preset.clone(),
     ];
     if request.share {
+        let low_power = if request.auto_low_power {
+            "-1"
+        } else {
+            "1"
+        };
         arguments.extend([
             "-global_quality:v".to_owned(),
             request.quality.clone(),
             "-low_power".to_owned(),
-            if request.auto_low_power { "-1" } else { "1" }.to_owned(),
+            low_power.to_owned(),
             "-async_depth".to_owned(),
             request.async_depth.clone(),
             "-g".to_owned(),
@@ -113,7 +118,11 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
             arguments.extend(["-bf:v".to_owned(), "0".to_owned()]);
         }
         if request.codec == Codec::Hevc {
-            let profile = if request.depth == 10 { "main10" } else { "main" };
+            let profile = if request.depth == 10 {
+                "main10"
+            } else {
+                "main"
+            };
             arguments.extend(["-profile:v".to_owned(), profile.to_owned()]);
         }
     } else {
