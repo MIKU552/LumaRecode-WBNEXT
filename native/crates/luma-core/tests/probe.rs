@@ -92,7 +92,10 @@ fn a_tagged_transfer_function_becomes_sdr() {
       "streams": [{ "codec_type": "video", "pix_fmt": "yuv420p", "color_transfer": "bt709" }]
     }"#;
 
-    assert_eq!(summarize(document).unwrap().source.kind.as_deref(), Some("sdr"));
+    assert_eq!(
+        summarize(document).unwrap().source.kind.as_deref(),
+        Some("sdr")
+    );
 }
 
 #[test]
