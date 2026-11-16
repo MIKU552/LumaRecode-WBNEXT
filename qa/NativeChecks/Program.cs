@@ -294,6 +294,34 @@ foreach (string family in new[] { "software", "qsv", "nvenc", "amf", "media_foun
     }
 }
 
+// GOP parity: the interval handed to the encoder must be identical whether the rule
+// runs in the core or in the managed fallback. The rates include the tie cases where
+// a double lands exactly on .5 after the factor, which is where .NET's default
+// rounding and the core's "halves away from zero" would diverge by one frame.
+double[] gopRates =
+    [23.976, 24, 25, 29.97, 30, 30.0625, 30.25, 50, 59.94, 60, 119.88, 120, 240, 1000];
+(string Fixture, string Purpose, string Output, bool MotionPhoto)[] gopCases =
+[
+    ("420-8", "share", "sdr", false),
+    ("420-8", "archive", "sdr", false),
+    ("420-10", "share", "hdr", false),
+    ("420-10", "archive", "hdr", false),
+    ("420-8", "archive", "sdr", true),
+];
+List<(string Label, MediaInfo Media, EncodeOptions Options, string Managed)> gopChecks = new();
+foreach ((string fixtureName, string purpose, string output, bool motionPhoto) in gopCases)
+{
+    MediaInfo fixture = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
+    EncodeOptions options = new(purpose, "hevc", output, "none");
+    foreach (double rate in gopRates)
+    {
+        MediaInfo media = AtRate(fixture, rate);
+        string text = rate.ToString("R", CultureInfo.InvariantCulture);
+        string label = $"gop/{fixtureName}/{purpose}/{output}/{text}{(motionPhoto ? "/motion" : "")}";
+        gopChecks.Add((label, media, options, GopArgument(transcoder, media, options, motionPhoto)));
+    }
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
@@ -329,6 +357,22 @@ try
     {
         Compare(label, "bridge", managedOutcomes[label], ManagedOutcome(transcoder, options, media), ref failures, ref comparisons);
     }
+
+    Compare("bridge", "gop-route", "shared", SharedCore.Gop is null ? "managed" : "shared", ref failures, ref comparisons);
+    foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in gopChecks)
+    {
+        bool motionPhoto = label.EndsWith("/motion", StringComparison.Ordinal);
+        Compare(label, "gop", managed, GopArgument(transcoder, media, options, motionPhoto), ref failures, ref comparisons);
+    }
+
+    // The interval must follow the bridge, not merely find it installed: a sentinel
+    // proves the transcoder still routes the rule instead of recomputing it locally.
+    Func<GopRequest, long?>? installed = SharedCore.Gop;
+    SharedCore.Gop = _ => 12345L;
+    var sentinelCase = gopChecks[0];
+    string sentinel = GopArgument(transcoder, sentinelCase.Media, sentinelCase.Options, false);
+    SharedCore.Gop = installed;
+    Compare(sentinelCase.Label, "gop-sentinel", "12345", sentinel, ref failures, ref comparisons);
 }
 finally
 {
@@ -357,6 +401,24 @@ static string ManagedFormat(Transcoder transcoder, EncodeOptions options, MediaI
     {
         return "error";
     }
+}
+
+/// <summary>Returns the source with both probe rate fields replaced by one value.</summary>
+static MediaInfo AtRate(MediaInfo media, double rate)
+{
+    JsonObject video = media.Video.DeepClone().AsObject();
+    string text = rate.ToString("R", CultureInfo.InvariantCulture);
+    video["avg_frame_rate"] = text;
+    video["r_frame_rate"] = text;
+    return media with { Video = video };
+}
+
+/// <summary>Builds a plan and returns the `-g` value the encoder would receive.</summary>
+static string GopArgument(Transcoder transcoder, MediaInfo media, EncodeOptions options, bool motionPhoto)
+{
+    EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv", motionPhoto: motionPhoto);
+    int index = Array.IndexOf(plan.Arguments, "-g");
+    return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
 }
 
 /// <summary>Formats a timestamp so both sides compare at the same precision.</summary>

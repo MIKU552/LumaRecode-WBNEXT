@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 21] = [
+const OPERATIONS: [&str; 22] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -62,6 +62,7 @@ const OPERATIONS: [&str; 21] = [
     "plan.encoder_args",
     "plan.parameter_string",
     "plan.filter_chain",
+    "plan.gop",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -173,6 +174,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.encoder_args" => plan_encoder_args(&payload),
         "plan.parameter_string" => plan_parameter_string(&payload),
         "plan.filter_chain" => plan_filter_chain(&payload),
+        "plan.gop" => plan_gop(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -655,6 +657,23 @@ fn plan_filter_chain(payload: &Value) -> CoreResult<Value> {
     Ok(json!({ "text": luma_core::render::filter_chain(&request.filters) }))
 }
 
+#[derive(Deserialize)]
+struct GopRequest {
+    /// Nominal frame rate, already resolved from the probe's rational form.
+    frame_rate: f64,
+    share: bool,
+    #[serde(default)]
+    motion_photo: bool,
+}
+
+fn plan_gop(payload: &Value) -> CoreResult<Value> {
+    let request: GopRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    Ok(json!({
+        "frames": luma_core::render::gop(request.frame_rate, request.share, request.motion_photo),
+    }))
+}
+
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {
     let request: PresetDocument = serde_json::from_value(payload.clone())
         .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "probe"))?;
@@ -824,4 +843,35 @@ fn plan_build(payload: &Value) -> CoreResult<Value> {
         })).collect::<Vec<_>>(),
         "notes": plan.notes,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dispatch;
+
+    /// JSON hosts write `30.0` as `30`, so the request must accept an integer token.
+    #[test]
+    fn gop_accepts_an_integer_frame_rate() {
+        let data = dispatch("plan.gop", r#"{"frame_rate":30,"share":true}"#).expect("gop");
+
+        assert_eq!(data["frames"], serde_json::json!(60));
+    }
+
+    #[test]
+    fn gop_accepts_a_fractional_frame_rate() {
+        let data = dispatch(
+            "plan.gop",
+            r#"{"frame_rate":29.97,"share":false,"motion_photo":false}"#,
+        )
+        .expect("gop");
+
+        assert_eq!(data["frames"], serde_json::json!(240));
+    }
+
+    #[test]
+    fn gop_reports_a_missing_rate() {
+        let error = dispatch("plan.gop", r#"{"share":true}"#).expect_err("missing rate");
+
+        assert_eq!(error.code(), "ffi.envelope");
+    }
 }

@@ -37,6 +37,7 @@ public static class SharedCoreBridge
         SharedCore.EncoderBuilder = BuildEncoderArguments;
         SharedCore.ParameterBuilder = BuildParameterString;
         SharedCore.FilterBuilder = BuildFilterChain;
+        SharedCore.Gop = ComputeGop;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -169,6 +170,17 @@ public static class SharedCoreBridge
         JsonObject payload = new();
         payload["filters"] = items;
         return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
+    }
+
+    /// <summary>Computes the GOP length through the core.</summary>
+    private static long? ComputeGop(GopRequest request)
+    {
+        JsonObject payload = new();
+        payload["frame_rate"] = request.FrameRate;
+        payload["share"] = request.Share;
+        payload["motion_photo"] = request.MotionPhoto;
+        JsonNode? frames = LumaCoreNative.Call("plan.gop", payload)?["frames"];
+        return frames is null ? null : frames.GetValue<long>();
     }
 
     /// <summary>Restores the managed rules.</summary>

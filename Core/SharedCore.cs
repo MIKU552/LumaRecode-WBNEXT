@@ -27,6 +27,12 @@ public sealed record ColorTagRequest(string? Primaries, string? Transfer, string
 public sealed record EncoderRequest(string Encoder, string Preset, string Quality, bool Share, string Codec,
     int Depth, long Gop, bool AutoLowPower, bool TimingCompatibility, string AsyncDepth, string PixelFormat);
 
+/// <summary>The inputs of one GOP decision: rate, purpose and clip length.</summary>
+/// <param name="FrameRate">Nominal frame rate, already resolved from the probe's rational form.</param>
+/// <param name="Share">Quick share keeps the interval short; archive uses the long cadence.</param>
+/// <param name="MotionPhoto">Motion photos are seconds long and use the short cadence too.</param>
+public sealed record GopRequest(double FrameRate, bool Share, bool MotionPhoto);
+
 /// <summary>One encoder parameter, in insertion order.</summary>
 public sealed record ParameterPair(string Key, string Value);
 
@@ -60,6 +66,9 @@ public static class SharedCore
     /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
 
+    /// <summary>Computes the GOP length through the shared core; null means "use the managed formula".</summary>
+    public static Func<GopRequest, long?>? Gop { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -76,6 +85,7 @@ public static class SharedCore
         EncoderBuilder = null;
         ParameterBuilder = null;
         FilterBuilder = null;
+        Gop = null;
         CoreVersion = "";
     }
 

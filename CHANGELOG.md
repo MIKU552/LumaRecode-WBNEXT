@@ -13,6 +13,7 @@
 - `presets` 与预设面板显示编码后端；`doctor` 增加核心状态、后端统计与只读缓存报告。
 - 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
 - 新增 `cache` 命令：查看缓存清单与回收计划，`--purge` 在范围保护下真正删除。
+- 编码器的 GOP 间隔改由共享核心计算（`plan.gop`）；托管回退沿用同一规则，两条路径的 `-g` 由对照检查逐帧率比较。
 
 ### 4.4.3
 
@@ -291,6 +292,7 @@
 - Presets and the preset panel name the encoder backend; `doctor` reports the core state, backend counts and a read-only cache inventory.
 - The pipeline now builds the ARM64 application and verifies the x64 single-file publish.
 - New `cache` command: inspect the inventory and retention plan; `--purge` deletes inside the guarded root.
+- The encoder GOP interval is computed by the shared core (`plan.gop`); the managed fallback keeps the same rule and the harness compares the `-g` value both paths produce for every frame rate.
 
 ### 4.4.3
 

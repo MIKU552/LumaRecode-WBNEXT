@@ -59,17 +59,39 @@ void LUMA_CALL luma_string_free(char *value);
 /*
  * Operations (request -> data):
  *
- *   core.info           {} -> {abi, core_version, target_arch, target_os, operations}
- *   policy.describe     {source, options?} -> {source, choices, audio}
- *   policy.resolve      {source, options?} -> {sampling, color_range, bit_depth, ...}
- *   policy.validate     {source, options?} -> same shape, after full validation
- *   timeline.resolve    {frames, time_base, packet_indexed?, range?} -> {count, duration, window}
- *   presets.resolve     {document, purpose, codec, variant?} -> preset + audio default
- *   presets.validate    {document} -> {count, presets}
- *   capability.select   {devices, requirement} -> {device_id, backend, score, reasons, fallback}
- *   capability.summary  {devices, codec} -> {backends, max_depth, samplings, hdr, dynamic_hdr}
- *   plan.build          {source, options?, backend?, frame_window?, motion_photo?, preview_size?}
- *                       -> {resolved, decode, transport, steps, notes}
+ *   core.info            {} -> {abi, core_version, target_arch, target_os, operations}
+ *   policy.describe      {source, options?} -> {source, choices, audio}
+ *   policy.resolve       {source, options?} -> {sampling, color_range, bit_depth, ...}
+ *   policy.validate      {source, options?} -> same shape, after full validation
+ *   timeline.resolve     {frames, time_base, packet_indexed?, range?}
+ *                        -> {count, duration, packet_indexed, window}
+ *   presets.resolve      {document, purpose, codec, variant?} -> preset + audio default
+ *   presets.validate     {document} -> {count, presets}
+ *   capability.select    {devices, requirement}
+ *                        -> {device_id, device_name, backend, score, reasons, fallback}
+ *   capability.summary   {devices, codec}
+ *                        -> {backends, max_depth, samplings, hdr, dynamic_hdr}
+ *   plan.build           {source, options?, backend?, frame_window?, motion_photo?,
+ *                        preview_size?} -> {resolved, decode, transport, steps, notes}
+ *   probe.summarize      {document}
+ *                        -> {width, height, rotation, kind, pixel_format, depth,
+ *                            dolby_vision, hdr10_plus, audio}
+ *   capability.backend   {encoder} -> {backend}, null when the name is unknown
+ *   capability.supports  {backend, codec, depth, sampling} -> {supported}
+ *   cache.plan           {entries, current?, policy}
+ *                        -> {decisions, kept_bytes, reclaimable_bytes}
+ *   capability.detect    {encoders} -> {backends: [{backend, availability, encoders}]}
+ *   capability.parameters {backend, codec} -> {parameters: [{name, kind, choices}]}
+ *   plan.input_map       {input, video_index, audio_map, preserve_metadata,
+ *                        preserve_chapters} -> {arguments}
+ *   plan.color_args      {primaries?, transfer?, space?, range?, suppress_dv5_tags?}
+ *                        -> {arguments}
+ *   plan.encoder_args    {encoder, preset, quality, share, codec, depth, gop,
+ *                        auto_low_power, timing_compatibility, async_depth,
+ *                        pixel_format} -> {arguments}
+ *   plan.parameter_string {values, appended?} -> {text}
+ *   plan.filter_chain    {filters} -> {text}
+ *   plan.gop             {frame_rate, share, motion_photo?} -> {frames}
  *
  * Frames never cross this boundary: the host keeps decoded images and passes
  * only timestamps, sizes and identifiers.

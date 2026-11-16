@@ -55,6 +55,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.encoder_args` | `encoder`、`preset`、`quality`、`share`、`codec`、`depth`、`gop`、`auto_low_power`、`timing_compatibility`、`async_depth`、`pixel_format` | `-c:v` 起至 profile 段的参数 |
 | `plan.parameter_string` | `values`、`appended` | 冒号连接的参数串 |
 | `plan.filter_chain` | `filters` | 逗号连接的滤镜链 |
+| `plan.gop` | `frame_rate`、`share`、`motion_photo` | GOP 帧数 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -128,6 +129,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.encoder_args` | `encoder`, `preset`, `quality`, `share`, `codec`, `depth`, `gop`, `auto_low_power`, `timing_compatibility`, `async_depth`, `pixel_format` | Arguments from `-c:v` through the profile |
 | `plan.parameter_string` | `values`, `appended` | Colon-separated parameter string |
 | `plan.filter_chain` | `filters` | Comma-separated filter chain |
+| `plan.gop` | `frame_rate`, `share`, `motion_photo` | GOP length in frames |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.

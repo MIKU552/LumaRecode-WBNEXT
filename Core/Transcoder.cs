@@ -190,6 +190,13 @@ public sealed partial class Transcoder
         return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={p.File}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
     }
     private static double Fps(JsonObject v) => new[] { v.Text("avg_frame_rate"), v.Text("r_frame_rate") }.Select(s => JsonFields.Number(s)).FirstOrDefault(n => n > 0, 30);
+    // Fallback for a machine without the native library: keep high-frame-rate inputs
+    // below the long-GOP range associated with device failures on some Arc drivers
+    // (Intel article 000095403). Halves round away from zero, as the core does; the
+    // default banker's rounding would answer one frame differently on an exact tie.
+    private static long ManagedGop(double frameRate, bool share, bool motionPhoto) => share
+        ? (long)Math.Clamp(Math.Round(2 * frameRate, MidpointRounding.AwayFromZero), 1, 240)
+        : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate, MidpointRounding.AwayFromZero));
     // ffprobe reports rational SI values. x265 expects chromaticity in
     // 1/50000 and luminance in 1/10000 cd/m²; SVT-AV1 accepts decimal values.
     private static string[] HdrMetadata(IEnumerable<JsonObject> side, string codec)
@@ -443,12 +450,10 @@ public sealed partial class Transcoder
         string filterChain = SharedCore.FilterBuilder?.Invoke(filters) ?? string.Join(',', filters);
         args.AddRange(["-vf", filterChain]);
         bool share = options.Purpose == "share";
-        // Keep high-frame-rate inputs below the long-GOP range associated with device
-        // failures on some Arc drivers (Intel article 000095403).
         double frameRate = Fps(video);
-        long gop = share
-            ? (long)Math.Clamp(Math.Round(2 * frameRate), 1, 240)
-            : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate));
+        // The rule itself lives in the shared core; this file only supplies the rate.
+        long gop = SharedCore.Gop?.Invoke(new GopRequest(frameRate, share, motionPhoto))
+            ?? ManagedGop(frameRate, share, motionPhoto);
         var encoderRequest = new EncoderRequest(config.Text("encoder"), config.Text("preset"), config.Text("quality"), share,
             options.Codec, options.Depth, gop, autoLowPower, timingCompatibility, config.Text("async_depth", "4"), options.PixelFormat);
         var sharedEncoder = SharedCore.EncoderBuilder?.Invoke(encoderRequest);
