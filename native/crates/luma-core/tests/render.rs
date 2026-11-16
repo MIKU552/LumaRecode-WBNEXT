@@ -122,3 +122,24 @@ fn archive_encodes_with_crf_and_the_pixel_format() {
         "-c:v libx265 -preset slow -crf 18 -pix_fmt yuv420p10le -g 240"
     );
 }
+
+#[test]
+fn parameters_keep_order_and_append_bare_tokens() {
+    use luma_core::render::parameter_string;
+
+    let values = vec![
+        ("pools".to_owned(), "16".to_owned()),
+        ("log-level".to_owned(), "warning".to_owned()),
+    ];
+    let appended = vec!["hdr10=1".to_owned()];
+
+    assert_eq!(
+        parameter_string(&values, &appended),
+        "pools=16:log-level=warning:hdr10=1"
+    );
+}
+
+#[test]
+fn an_empty_parameter_list_produces_an_empty_string() {
+    assert!(luma_core::render::parameter_string(&[], &[]).is_empty());
+}

@@ -134,3 +134,19 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
 
     arguments
 }
+
+/// Joins encoder-specific parameters the way FFmpeg expects them.
+///
+/// Values are rendered as `key=value` in insertion order, then the appended tokens (dynamic
+/// HDR metadata, for example) keep their own form. An empty list yields an empty string, which
+/// the caller uses to decide whether the flag is worth emitting.
+pub fn parameter_string(values: &[(String, String)], appended: &[String]) -> String {
+    let mut parts = Vec::with_capacity(values.len() + appended.len());
+    parts.extend(
+        values
+            .iter()
+            .map(|(key, value)| format!("{key}={value}")),
+    );
+    parts.extend(appended.iter().cloned());
+    parts.join(":")
+}

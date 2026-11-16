@@ -35,6 +35,7 @@ public static class SharedCoreBridge
         SharedCore.InputBuilder = BuildInputMap;
         SharedCore.ColorBuilder = BuildColorArguments;
         SharedCore.EncoderBuilder = BuildEncoderArguments;
+        SharedCore.ParameterBuilder = BuildParameterString;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -129,6 +130,30 @@ public static class SharedCoreBridge
         }
 
         return result;
+    }
+
+    /// <summary>Formats encoder parameters through the core.</summary>
+    private static string? BuildParameterString(IReadOnlyList<ParameterPair> values, IReadOnlyList<string> appended)
+    {
+        JsonArray pairs = new();
+        foreach (ParameterPair pair in values)
+        {
+            JsonObject item = new();
+            item["key"] = pair.Key;
+            item["value"] = pair.Value;
+            pairs.Add((JsonNode)item);
+        }
+
+        JsonArray tokens = new();
+        foreach (string token in appended)
+        {
+            tokens.Add((JsonNode)token);
+        }
+
+        JsonObject payload = new();
+        payload["values"] = pairs;
+        payload["appended"] = tokens;
+        return LumaCoreNative.Call("plan.parameter_string", payload)?["text"]?.ToString();
     }
 
     /// <summary>Restores the managed rules.</summary>

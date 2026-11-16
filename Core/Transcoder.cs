@@ -516,8 +516,10 @@ public sealed partial class Transcoder
             }
             if (extra.Count > 0 || options.Codec is "hevc" or "av1")
             {
-                args.AddRange([options.Codec switch { "hevc" => "-x265-params", "av1" => "-svtav1-params", _ => "-x264-params" },
-                    string.Join(':', extra.Select(p => p.Key + "=" + p.Value).Concat(metadata))]);
+                var pairs = extra.Select(p => new ParameterPair(p.Key, p.Value?.ToString() ?? "")).ToList();
+                string joined = SharedCore.ParameterBuilder?.Invoke(pairs, metadata)
+                    ?? string.Join(':', extra.Select(p => p.Key + "=" + p.Value).Concat(metadata));
+                args.AddRange([options.Codec switch { "hevc" => "-x265-params", "av1" => "-svtav1-params", _ => "-x264-params" }, joined]);
             }
         }
         if (media.DolbyVision is not null && options.Purpose == "archive" && options.Codec is "hevc" or "av1")

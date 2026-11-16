@@ -27,6 +27,9 @@ public sealed record ColorTagRequest(string? Primaries, string? Transfer, string
 public sealed record EncoderRequest(string Encoder, string Preset, string Quality, bool Share, string Codec,
     int Depth, long Gop, bool AutoLowPower, bool TimingCompatibility, string AsyncDepth, string PixelFormat);
 
+/// <summary>One encoder parameter, in insertion order.</summary>
+public sealed record ParameterPair(string Key, string Value);
+
 /// <summary>Optional bridge from the managed rules to the shared native core.</summary>
 /// <remarks>
 /// The host installs the bridge after loading the native library. When a delegate is null the
@@ -51,6 +54,9 @@ public static class SharedCore
     /// <summary>Builds the encoder arguments through the shared core; null means "use the managed builder".</summary>
     public static Func<EncoderRequest, IReadOnlyList<string>?>? EncoderBuilder { get; set; }
 
+    /// <summary>Formats encoder parameters through the shared core; null means "use the managed join".</summary>
+    public static Func<IReadOnlyList<ParameterPair>, IReadOnlyList<string>, string?>? ParameterBuilder { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -65,6 +71,7 @@ public static class SharedCore
         InputBuilder = null;
         ColorBuilder = null;
         EncoderBuilder = null;
+        ParameterBuilder = null;
         CoreVersion = "";
     }
 
