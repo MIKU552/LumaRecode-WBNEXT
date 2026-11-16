@@ -122,3 +122,16 @@ fn reads_a_document_captured_from_ffprobe() {
     assert!(!summary.hdr10_plus);
     assert_eq!(summary.rotation, 0);
 }
+
+#[test]
+fn reads_a_ten_bit_document_with_audio() {
+    // Matroska keeps the range but not the transfer function here, so the kind stays
+    // unknown while depth, range and the audio track must still be read correctly.
+    let summary = summarize(include_str!("fixtures/ffprobe-tenbit.json")).unwrap();
+    assert_eq!(summary.source.bits_per_raw_sample, Some(10));
+    assert_eq!(summary.source.pixel_format.as_deref(), Some("yuv420p10le"));
+    assert_eq!(summary.source.color_range.as_deref(), Some("tv"));
+    assert_eq!(summary.source.kind.as_deref(), Some("unknown"));
+    assert_eq!(summary.source.audio.len(), 1);
+    assert_eq!(summary.source.audio[0].codec_name.as_deref(), Some("pcm_s16le"));
+}

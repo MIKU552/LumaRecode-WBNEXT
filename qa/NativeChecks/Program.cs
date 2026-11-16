@@ -150,20 +150,24 @@ foreach ((string fixtureName, string label, EncodeOptions options) in edgeCases)
     Compare(label, "edge", ManagedFormat(transcoder, options, media), NativeFormat(ProbeAdapter.Describe(media), options), ref failures, ref comparisons);
 }
 
-// Probe parity on the document CI captured from ffprobe: the shared summary and
+// Probe parity on the documents CI captured from ffprobe: the shared summary and
 // the managed classification must agree about the same file.
-string probeFixture = Path.Combine(Path.GetDirectoryName(assets)!, "native", "crates", "luma-core", "tests", "fixtures", "ffprobe-testsrc.json");
-string probeDocument = File.ReadAllText(probeFixture);
-JsonNode? summary = LumaCoreNative.Call("probe.summarize", new JsonObject { ["document"] = probeDocument });
-JsonObject probe = JsonNode.Parse(probeDocument)!.AsObject();
-JsonObject video = probe["streams"]!.AsArray().Objects().First(stream => stream.Text("codec_type") == "video");
-JsonObject formatTags = probe["format"]?["tags"] as JsonObject ?? new JsonObject();
-string managedKind = MediaProbe.Classify(video, formatTags).Kind;
-Compare("probe/testsrc", "kind", managedKind, summary?["kind"]?.ToString() ?? "", ref failures, ref comparisons);
-Compare("probe/testsrc", "width", video.Text("width"), summary?["width"]?.ToString() ?? "", ref failures, ref comparisons);
-Compare("probe/testsrc", "height", video.Text("height"), summary?["height"]?.ToString() ?? "", ref failures, ref comparisons);
-Compare("probe/testsrc", "depth", video.Text("bits_per_raw_sample"), summary?["depth"]?.ToString() ?? "", ref failures, ref comparisons);
-Compare("probe/testsrc", "audio", "0", summary?["audio"]?.ToString() ?? "", ref failures, ref comparisons);
+foreach (string name in new[] { "ffprobe-testsrc.json", "ffprobe-tenbit.json" })
+{
+    string path = Path.Combine(Path.GetDirectoryName(assets)!, "native", "crates", "luma-core", "tests", "fixtures", name);
+    string doc = File.ReadAllText(path);
+    JsonNode? summary = LumaCoreNative.Call("probe.summarize", new JsonObject { ["document"] = doc });
+    JsonObject root = JsonNode.Parse(doc)!.AsObject();
+    JsonObject video = root["streams"]!.AsArray().Objects().First(stream => stream.Text("codec_type") == "video");
+    JsonObject tags = root["format"]?["tags"] as JsonObject ?? new JsonObject();
+    string label = $"probe/{name}";
+    Compare(label, "kind", MediaProbe.Classify(video, tags).Kind, summary?["kind"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "width", video.Text("width"), summary?["width"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "height", video.Text("height"), summary?["height"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "depth", video.Text("bits_per_raw_sample"), summary?["depth"]?.ToString() ?? "", ref failures, ref comparisons);
+    int audio = root["streams"]!.AsArray().Objects().Count(stream => stream.Text("codec_type") == "audio");
+    Compare(label, "audio", $"{audio}", summary?["audio"]?.ToString() ?? "", ref failures, ref comparisons);
+}
 
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
