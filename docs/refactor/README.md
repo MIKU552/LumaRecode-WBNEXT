@@ -71,7 +71,8 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
   构建托管层并运行对照检查（1300 次比较，含预设、拒绝路径与桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
   再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p，
-  并用 `doctor --json` 确认 `core.mode` 为 `shared`；最后以 `LUMARECODE_CORE=managed` 重跑一次，
+  把 `probe` 与 `plan` 的 JSON 存入构建产物，并用 `doctor --json` 确认 `core.mode` 为 `shared`；
+  最后以 `LUMARECODE_CORE=managed` 重跑一次，
   确认原生库被忽略时 CLI 仍可用（回退路径）。
 - 工具链：Rust 1.100.0（Windows 与 macOS 共用同一 `rust-toolchain.toml`）、
   .NET 11.0.100、Swift 6.4.2 与 Xcode 27.2（镜像内最新安装版本）。
@@ -203,7 +204,8 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   comparisons including presets, rejection paths and the bridge replay, no mismatch), runs
   `--cli --version` to confirm the host loaded the shared core, converts a
   two-second synthetic clip and checks the output is HEVC / yuv420p, and finally
-  asserts `doctor --json` reports `core.mode` as `shared`, and reruns with
+  captures the `probe` and `plan` documents as build artifacts, asserts
+  `doctor --json` reports `core.mode` as `shared`, and reruns with
   `LUMARECODE_CORE=managed` to prove the fallback path stays usable.
 - Toolchain: Rust 1.100.0 (one `rust-toolchain.toml` shared by both hosts),
   .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).

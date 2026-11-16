@@ -163,6 +163,23 @@ jobs:
           $report.core
           if ($report.core.mode -ne 'shared') { throw "doctor did not report the shared core." }
 
+          # Capture real probe and plan documents. They feed the shared probe parser
+          # and the planning parity work, and they prove both commands run headless.
+          foreach ($command in @('probe', 'plan')) {
+            $out = Join-Path $env:RUNNER_TEMP "$command.json"
+            $err = Join-Path $env:RUNNER_TEMP "$command-err.txt"
+            $arguments = @($command, $source, '--json', '--no-settings', '--accept-terms')
+            if ($command -eq 'plan') {
+              $arguments += @('--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'sdr')
+            }
+            $run = Start-Process -FilePath $exe.FullName -ArgumentList $arguments `
+              -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+            if ($run.ExitCode -ne 0) { Get-Content $err; throw "$command failed with $($run.ExitCode)." }
+            $null = Get-Content $out -Raw | ConvertFrom-Json
+            Copy-Item $out "build-info/$command.json"
+            "$command ok"
+          }
+
       - name: Record hashes
         shell: pwsh
         run: |

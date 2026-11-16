@@ -132,6 +132,8 @@ pub mod codes {
     pub const OUTPUT_SYMLINK: &str = "output.symlink";
     pub const OUTPUT_SAME_AS_INPUT: &str = "output.same_as_input";
     pub const OUTPUT_EXISTS: &str = "output.exists";
+    pub const PROBE_JSON: &str = "probe.json";
+    pub const PROBE_NO_VIDEO: &str = "probe.no_video";
 
     // Native boundary.
     pub const FFI_NULL: &str = "ffi.null_argument";
