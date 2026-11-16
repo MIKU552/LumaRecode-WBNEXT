@@ -12,7 +12,7 @@ public sealed class CliException(string code, string message, int status = 2) : 
 /// <summary>Parses commands and options without shell reparsing or runtime reflection.</summary>
 public sealed class CliArguments
 {
-    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "license", "convert", "plan", "frames", "image"];
+    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "cache", "license", "convert", "plan", "frames", "image"];
     public static readonly Dictionary<string, string[]> Choices = new()
     {
         ["purpose"] = ["share", "archive"],
