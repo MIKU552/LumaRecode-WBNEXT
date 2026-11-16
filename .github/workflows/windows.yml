@@ -233,6 +233,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Add Rust target
+        shell: pwsh
+        run: rustup target add aarch64-pc-windows-msvc
+
       - name: Build core for ARM64
         shell: pwsh
         run: ./tools/Build-Native.ps1 -Configuration Release -Target Arm64
@@ -273,12 +277,20 @@ jobs:
         shell: pwsh
         run: |
           $files = Get-ChildItem publish -File
-          $files | Select-Object Name, Length
-          if ($files.Count -ne 1) { throw "Expected one published file, found $($files.Count)." }
-          if ($files[0].Name -ne "LumaRecode.exe") { throw "Unexpected published name: $($files[0].Name)" }
+          $files | Select-Object Name, Length | Format-Table -AutoSize | Out-String | Write-Host
+          $exe = $files | Where-Object { $_.Name -eq "LumaRecode.exe" }
+          if ($null -eq $exe) { throw "LumaRecode.exe was not published." }
+          # Debug symbols may sit beside the bundle; any other sidecar means the
+          # single-file claim is not true and has to be fixed, not shipped.
+          $extra = $files | Where-Object { $_.Name -ne "LumaRecode.exe" -and $_.Extension -ne ".pdb" }
+          if ($extra) {
+            $extra | Select-Object Name | Format-Table -AutoSize | Out-String | Write-Host
+            throw "Unexpected published files: $($extra.Name -join ', ')"
+          }
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: windows-x64-publish
           path: publish/
-          if-no-files-found: error
+          if-no-files-found: warn
