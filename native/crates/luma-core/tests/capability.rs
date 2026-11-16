@@ -301,3 +301,22 @@ fn encoder_names_map_to_their_backend() {
     assert_eq!(backend_for_encoder("libsvtav1"), Some(Backend::Software));
     assert_eq!(backend_for_encoder("mystery_encoder"), None);
 }
+
+#[test]
+fn backends_refuse_what_their_family_does_not_support() {
+    use luma_core::capability::{supports, Backend};
+    use luma_core::Codec;
+
+    assert!(supports(Backend::Software, Codec::Hevc, 10, "422"));
+    assert!(supports(Backend::Software, Codec::Av1, 10, "420"));
+    assert!(!supports(Backend::Software, Codec::Av1, 10, "422"));
+
+    assert!(supports(Backend::Qsv, Codec::Hevc, 10, "420"));
+    assert!(!supports(Backend::Qsv, Codec::Hevc, 12, "420"));
+    assert!(!supports(Backend::Qsv, Codec::Hevc, 10, "422"));
+
+    assert!(!supports(Backend::Amf, Codec::Av1, 10, "420"));
+    assert!(!supports(Backend::MediaFoundation, Codec::Hevc, 10, "420"));
+    assert!(supports(Backend::VideoToolbox, Codec::Hevc, 10, "420"));
+    assert!(!supports(Backend::Nvenc, Codec::Avc, 8, "444"));
+}

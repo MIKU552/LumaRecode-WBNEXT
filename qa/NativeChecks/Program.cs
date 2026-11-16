@@ -184,6 +184,59 @@ CompareTimeline(timeline, false, 99, null, "last");
 CompareTimeline(packetTimeline, true, 10, 40, "packet/middle");
 CompareTimeline(packetTimeline, true, 99, null, "packet/last");
 
+bool nativeRejects = NativeRejects(5, 5);
+bool managedRejects = ManagedRejects(5, 5);
+Compare("timeline/reject", "empty", $"{managedRejects}", $"{nativeRejects}", ref failures, ref comparisons);
+nativeRejects = NativeRejects(0, 101);
+managedRejects = ManagedRejects(0, 101);
+Compare("timeline/reject", "beyond_end", $"{managedRejects}", $"{nativeRejects}", ref failures, ref comparisons);
+
+bool ManagedRejects(int start, int? end)
+{
+    try
+    {
+        timeline.Resolve(new FrameRange(start, end));
+        return false;
+    }
+    catch (InvalidDataException)
+    {
+        return true;
+    }
+}
+
+bool NativeRejects(int start, int? end)
+{
+    JsonArray frames = new(timelinePoints.Select(point => (JsonNode?)new JsonObject
+    {
+        ["pts"] = point.Pts,
+        ["duration"] = point.Duration,
+        ["key_frame"] = point.KeyFrame
+    }).ToArray());
+    JsonObject range = new();
+    range["start"] = start;
+    if (end is { } stop)
+    {
+        range["end"] = stop;
+    }
+
+    JsonObject request = new()
+    {
+        ["frames"] = frames,
+        ["time_base"] = "1/1000",
+        ["packet_indexed"] = false,
+        ["range"] = range
+    };
+    try
+    {
+        LumaCoreNative.Call("timeline.resolve", request);
+        return false;
+    }
+    catch (InvalidOperationException)
+    {
+        return true;
+    }
+}
+
 void CompareTimeline(FrameTimeline source, bool packetIndexed, int start, int? end, string label)
 {
     JsonArray frames = new(timelinePoints.Select(point => (JsonNode?)new JsonObject
@@ -215,6 +268,30 @@ void CompareTimeline(FrameTimeline source, bool packetIndexed, int start, int? e
     Compare(id, "seek_seconds", Seconds(window.SeekSeconds), NativeSeconds(native?["window"], "seek_seconds"), ref failures, ref comparisons);
     Compare(id, "start_seconds", Seconds(window.StartSeconds), NativeSeconds(native?["window"], "start_seconds"), ref failures, ref comparisons);
     Compare(id, "end_seconds", Seconds(window.EndSeconds), NativeSeconds(native?["window"], "end_seconds"), ref failures, ref comparisons);
+}
+
+// Static capability matrix: each family's depth and sampling limits must match.
+foreach (string family in new[] { "software", "qsv", "nvenc", "amf", "media_foundation", "videotoolbox" })
+{
+    foreach (string codec in new[] { "hevc", "av1", "avc" })
+    {
+        foreach (int depth in new[] { 8, 10, 12 })
+        {
+            foreach (string sampling in new[] { "420", "422", "444", "gray" })
+            {
+                JsonNode? native = LumaCoreNative.Call("capability.supports", new JsonObject
+                {
+                    ["backend"] = family,
+                    ["codec"] = codec,
+                    ["depth"] = depth,
+                    ["sampling"] = sampling
+                });
+                bool expected = EncoderBackends.Supports(family, codec, depth, sampling);
+                bool actual = native?["supported"]?.GetValue<bool>() ?? false;
+                Compare($"support/{family}/{codec}/{depth}/{sampling}", "supported", $"{expected}", $"{actual}", ref failures, ref comparisons);
+            }
+        }
+    }
 }
 
 // Behaviour preservation through the public API: install the bridge, replay every

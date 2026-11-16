@@ -69,7 +69,7 @@ macOS 统一使用 `xcode-27` 镜像）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
-  构建托管层并运行对照检查（1352 次比较，含预设、探测、时间轴、拒绝路径与桥接回放，无差异），随后以
+  构建托管层并运行对照检查（1570 次比较，含预设、探测、时间轴、拒绝路径与桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
   再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p，
   把 `probe` 与 `plan` 的 JSON 存入构建产物，并用 `doctor --json` 确认 `core.mode` 为 `shared`；
@@ -203,7 +203,7 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
   applies the ad-hoc signature and checks the terminal entry with `--version`.
 - `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
-  application, builds the managed layers and runs the parity check (1352
+  application, builds the managed layers and runs the parity check (1570
   comparisons including presets, probe, timeline, rejection paths and the bridge replay, no mismatch), runs
   `--cli --version` to confirm the host loaded the shared core, converts a
   two-second synthetic clip and checks the output is HEVC / yuv420p, and finally

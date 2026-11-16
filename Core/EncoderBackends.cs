@@ -20,6 +20,30 @@ public static class EncoderBackends
         _ => null
     };
 
+    /// <summary>Whether a backend can encode one codec at a depth and chroma sampling.</summary>
+    /// <remarks>The shared core owns this table; the harness compares both, so a family's limits
+    /// cannot be relaxed on one side. A true result means "not refused by the family", not
+    /// "available on this machine" — runtime probing still decides that.</remarks>
+    public static bool Supports(string? backend, string codec, int depth, string sampling)
+    {
+        if (sampling is not ("420" or "422" or "444" or "gray"))
+        {
+            return false;
+        }
+
+        return backend switch
+        {
+            "software" => codec == "av1"
+                ? sampling is "420" or "gray" && depth is 8 or 10
+                : depth is 8 or 10 or 12,
+            "qsv" or "nvenc" => sampling == "420" && depth is 8 or 10,
+            "amf" => sampling == "420" && depth is 8 or 10 && codec != "av1",
+            "media_foundation" => sampling == "420" && depth == 8 && codec != "av1",
+            "videotoolbox" => sampling == "420" && depth is 8 or 10 && codec != "av1",
+            _ => false
+        };
+    }
+
     /// <summary>Short product name for display; brand names are not localized.</summary>
     public static string Label(string? backend) => backend switch
     {

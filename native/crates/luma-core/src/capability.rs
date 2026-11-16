@@ -440,3 +440,35 @@ pub fn backend_for_encoder(encoder: &str) -> Option<Backend> {
         _ => None,
     }
 }
+
+/// Whether a backend can encode one codec at a given depth and chroma sampling.
+///
+/// This is the static part of the capability question: it encodes what each family
+/// supports by design, not what the installed driver happens to expose. Runtime probing
+/// still decides whether a device is present and healthy, so a `true` here means "not
+/// refused by the family", not "available on this machine".
+pub fn supports(backend: Backend, codec: Codec, depth: u8, sampling: &str) -> bool {
+    let layout = matches!(sampling, "420" | "422" | "444" | "gray");
+    if !layout {
+        return false;
+    }
+
+    match backend {
+        Backend::Software => match codec {
+            Codec::Av1 => matches!(sampling, "420" | "gray") && matches!(depth, 8 | 10),
+            Codec::Hevc | Codec::Avc => matches!(depth, 8 | 10 | 12),
+        },
+        Backend::Qsv | Backend::Nvenc => {
+            sampling == "420" && matches!(depth, 8 | 10)
+        }
+        Backend::Amf => {
+            sampling == "420" && matches!(depth, 8 | 10) && !matches!(codec, Codec::Av1)
+        }
+        Backend::MediaFoundation => {
+            sampling == "420" && depth == 8 && !matches!(codec, Codec::Av1)
+        }
+        Backend::VideoToolbox => {
+            sampling == "420" && matches!(depth, 8 | 10) && !matches!(codec, Codec::Av1)
+        }
+    }
+}

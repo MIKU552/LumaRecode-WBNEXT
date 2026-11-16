@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 12] = [
+const OPERATIONS: [&str; 13] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -53,6 +53,7 @@ const OPERATIONS: [&str; 12] = [
     "plan.build",
     "probe.summarize",
     "capability.backend",
+    "capability.supports",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -155,6 +156,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "capability.select" => capability_select(&payload),
         "capability.summary" => capability_summary(&payload),
         "capability.backend" => capability_backend(&payload),
+        "capability.supports" => capability_supports(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -381,6 +383,25 @@ fn capability_backend(payload: &Value) -> CoreResult<Value> {
         .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "capability"))?;
     Ok(json!({
         "backend": luma_core::capability::backend_for_encoder(&request.encoder).map(|value| value.as_str()),
+    }))
+}
+
+#[derive(Deserialize)]
+struct SupportRequest {
+    backend: String,
+    codec: String,
+    depth: u8,
+    sampling: String,
+}
+
+fn capability_supports(payload: &Value) -> CoreResult<Value> {
+    let request: SupportRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "capability"))?;
+    let backend = luma_core::capability::Backend::parse(&request.backend)
+        .ok_or_else(|| CoreError::with_detail(codes::FFI_ENVELOPE, "backend"))?;
+    let codec = luma_core::Codec::parse(&request.codec)?;
+    Ok(json!({
+        "supported": luma_core::capability::supports(backend, codec, request.depth, &request.sampling),
     }))
 }
 
