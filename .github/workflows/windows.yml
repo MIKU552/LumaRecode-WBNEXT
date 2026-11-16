@@ -184,6 +184,23 @@ jobs:
           $probe
           if ($probe -notmatch '^hevc,yuv420p') { throw "Unexpected output stream: $probe" }
 
+          # The 10-bit HLG source must stay 10-bit through the HDR path; an 8-bit
+          # result would mean the depth policy was not applied.
+          $hlgOut = Join-Path $env:RUNNER_TEMP "hlg-out.mkv"
+          $hlgStdout = Join-Path $env:RUNNER_TEMP "hlg-stdout.txt"
+          $hlgStderr = Join-Path $env:RUNNER_TEMP "hlg-stderr.txt"
+          $hlgRun = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'convert', $hlg, '-o', $hlgOut, '--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'hlg', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $hlgStdout -RedirectStandardError $hlgStderr
+          if ($hlgRun.ExitCode -ne 0) {
+            Get-Content $hlgStdout
+            Get-Content $hlgStderr
+            throw "HDR convert failed with $($hlgRun.ExitCode)."
+          }
+          $hlgProbe = ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 $hlgOut
+          $hlgProbe
+          if ($hlgProbe -notmatch '^hevc,yuv420p10le') { throw "HDR output is not 10-bit HEVC: $hlgProbe" }
+
           $doctorOut = Join-Path $env:RUNNER_TEMP "doctor.json"
           $doctorErr = Join-Path $env:RUNNER_TEMP "doctor-err.txt"
           $doctor = Start-Process -FilePath $exe.FullName -ArgumentList 'doctor', '--json', '--no-settings', '--accept-terms' `

@@ -1,4 +1,4 @@
-{
+﻿{
   " 声道": " canales",
   " 位": " bits",
   "{0}\n{1} 位 {2} · {3}": "{0}\n{1} bits {2} · {3}",
@@ -209,7 +209,7 @@
   "版本": "Versión",
   "面向 Windows 11 的视频转码与色彩转换工具，提供原生 WinUI 3 界面和完整命令行。": "Herramienta de transcodificación de vídeo y conversión de color para Windows 11, con interfaz nativa de WinUI 3 y soporte completo de línea de comandos.",
   "开发与核验": "Desarrollo y verificación",
-  "全部自主代码由 Windows 版 Codex 使用 GPT-6.1 Sol（xhigh）完成，MIKU552 提出需求并进行实机核验。": "Todo el código original se desarrolló con Codex para Windows y GPT-6.1 Sol (xhigh). MIKU552 define los requisitos y verifica la aplicación en equipos reales.",
+  "重构由 WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）协助完成，MIKU552 提出需求并进行实机核验。": "La reescritura cuenta con la asistencia de WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). MIKU552 define los requisitos y verifica la aplicación en equipos reales.",
   "许可与第三方组件": "Licencias y componentes de terceros",
   "项目自主内容采用 MIT License。第三方运行时、字体与 LUT 保留各自许可；FFmpeg 由用户提供。": "El contenido original del proyecto usa la licencia MIT. Los entornos de ejecución, las fuentes y las LUT de terceros conservan sus propias licencias; FFmpeg lo aporta el usuario.",
   "GitHub 项目主页": "Proyecto en GitHub",
