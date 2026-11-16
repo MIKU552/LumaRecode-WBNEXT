@@ -132,6 +132,7 @@ fn depth_from_pixel_format(pixel_format: &str) -> i32 {
 
 fn kind_from_transfer(transfer: Option<&str>) -> String {
     match transfer {
+        None | Some("") | Some("unknown") => "unknown".to_owned(),
         Some("smpte2084") => "pq".to_owned(),
         Some("arib-std-b67") => "hlg".to_owned(),
         _ => "sdr".to_owned(),

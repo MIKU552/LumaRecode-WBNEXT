@@ -131,6 +131,10 @@ jobs:
           ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 `
             -c:v libx264 -pix_fmt yuv420p -y $source
           if ($LASTEXITCODE -ne 0) { throw "Synthetic source generation failed." }
+          # Keep the raw probe document: it is the fixture the shared parser is
+          # written against, including the fields ffprobe omits.
+          ffprobe -v error -print_format json -show_streams -show_format $source > build-info/ffprobe-source.json
+          if ($LASTEXITCODE -ne 0) { throw "Raw probe capture failed." }
 
           $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
             Where-Object { $_.FullName -match '\\Release\\' } |

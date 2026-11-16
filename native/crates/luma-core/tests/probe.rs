@@ -73,15 +73,26 @@ fn depth_falls_back_to_the_pixel_format_suffix() {
 }
 
 #[test]
-fn eight_bit_sdr_is_the_default_when_no_field_says_otherwise() {
+fn a_missing_transfer_function_stays_unknown() {
+    // ffprobe omits the field entirely when the container carries no tag; the
+    // application must ask the user rather than assume SDR.
     let document = r#"{
       "streams": [{ "codec_type": "video", "pix_fmt": "yuv420p" }]
     }"#;
 
     let summary = summarize(document).unwrap();
     assert_eq!(summary.source.bits_per_raw_sample, Some(8));
-    assert_eq!(summary.source.kind.as_deref(), Some("sdr"));
+    assert_eq!(summary.source.kind.as_deref(), Some("unknown"));
     assert!(summary.source.audio.is_empty());
+}
+
+#[test]
+fn a_tagged_transfer_function_becomes_sdr() {
+    let document = r#"{
+      "streams": [{ "codec_type": "video", "pix_fmt": "yuv420p", "color_transfer": "bt709" }]
+    }"#;
+
+    assert_eq!(summarize(document).unwrap().source.kind.as_deref(), Some("sdr"));
 }
 
 #[test]
