@@ -88,9 +88,9 @@ macOS 统一使用 `xcode-27` 镜像）；
 | --- | --- | --- |
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
-| P2 共享核心 | 大部分完成 | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测与元数据解析已迁移；执行层与宿主探测接线待做 |
+| P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
 | P3 Windows 接入 | 首片完成 | `ResolveFormat`/`Validate` 已接原生桥，CLI 双模式与转换冒烟通过；参数生成与 GUI 回归未接 |
-| P4 多厂商适配 | 未开始 | 能力提供器与参数规则表尚未实现 |
+| P4 多厂商适配 | 首片完成 | 后端映射、支持矩阵与检测要求表已有；运行时探测接线、厂商参数表与实机验证未做 |
 | P5 macOS 应用 | 骨架完成 | 工作区布局与规则面板可用，媒体管线未接入 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
 | P7 校准与优化 | 计划完成 | 标识、策略、存储抽象与宿主计划已接线；真实删除、预算测量、预设候选与长任务待做 |
@@ -226,9 +226,9 @@ than folding them into pass or fail.
 | --- | --- | --- |
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
-| P2 Shared core | Mostly done | Model, policy, timeline, presets, capability, planning, cache, safety, probe and metadata parsing; execution and host probe wiring remain |
+| P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
 | P3 Windows integration | First slice | `ResolveFormat` and `Validate` bridged; CLI both modes and a real conversion pass, parameter generation and GUI regression remain |
-| P4 Multi-vendor | Not started | Capability providers and parameter rule tables |
+| P4 Multi-vendor | First slice | Backend mapping, support matrix and detection requirements exist; runtime detection, vendor parameter tables and hardware verification remain |
 | P5 macOS app | Shell only | Layout and rules panel work; media pipeline is not connected |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
 | P7 Calibration | Planning done | Identity, retention, the store seam and the host plan are wired; deletion, budgets, preset candidates and long jobs remain |
