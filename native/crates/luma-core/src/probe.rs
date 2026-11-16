@@ -104,10 +104,7 @@ fn side_type(item: &Value) -> String {
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
-    value
-        .get(key)
-        .and_then(Value::as_str)
-        .map(str::to_owned)
+    value.get(key).and_then(Value::as_str).map(str::to_owned)
 }
 
 fn number(value: &Value, key: &str) -> Option<i64> {
