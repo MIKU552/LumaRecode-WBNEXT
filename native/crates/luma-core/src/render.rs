@@ -113,10 +113,8 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
             arguments.extend(["-bf:v".to_owned(), "0".to_owned()]);
         }
         if request.codec == Codec::Hevc {
-            arguments.extend([
-                "-profile:v".to_owned(),
-                if request.depth == 10 { "main10" } else { "main" }.to_owned(),
-            ]);
+            let profile = if request.depth == 10 { "main10" } else { "main" };
+            arguments.extend(["-profile:v".to_owned(), profile.to_owned()]);
         }
     } else {
         arguments.extend([
