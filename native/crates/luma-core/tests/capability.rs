@@ -284,12 +284,15 @@ fn wire_snapshots_ignore_unknown_backends() {
 
 #[test]
 fn encoder_names_map_to_their_backend() {
-    use luma_core::capability::{backend_for_encoder, Backend};
+    use luma_core::capability::{Backend, backend_for_encoder};
 
     assert_eq!(backend_for_encoder("hevc_qsv"), Some(Backend::Qsv));
     assert_eq!(backend_for_encoder("hevc_amf"), Some(Backend::Amf));
     assert_eq!(backend_for_encoder("av1_nvenc"), Some(Backend::Nvenc));
-    assert_eq!(backend_for_encoder("hevc_mf"), Some(Backend::MediaFoundation));
+    assert_eq!(
+        backend_for_encoder("hevc_mf"),
+        Some(Backend::MediaFoundation)
+    );
     assert_eq!(
         backend_for_encoder("h264_videotoolbox"),
         Some(Backend::VideoToolbox)
