@@ -117,7 +117,13 @@ jobs:
       - name: Integration smoke
         shell: pwsh
         run: |
-          choco install ffmpeg -y --no-progress
+          # The package feed occasionally fails to resolve; a retry is cheaper than
+          # a red build, and an already-installed package succeeds immediately.
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
           if ($LASTEXITCODE -ne 0) { throw "FFmpeg installation failed with $LASTEXITCODE." }
           # Resolve the executable from the package directory instead of trusting the
           # shim: a cached package can report success without refreshing the shim.
