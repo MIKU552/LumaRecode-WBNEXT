@@ -157,3 +157,11 @@ fn filters_join_in_order_and_skip_empty_entries() {
         "trim=start_frame=0:end_frame=10,setpts=PTS-STARTPTS"
     );
 }
+
+#[test]
+fn gop_follows_rate_and_purpose() {
+    assert_eq!(luma_core::render::gop(30.0, true, false), 60);
+    assert_eq!(luma_core::render::gop(120.0, true, false), 240);
+    assert_eq!(luma_core::render::gop(30.0, false, true), 60);
+    assert_eq!(luma_core::render::gop(30.0, false, false), 240);
+}

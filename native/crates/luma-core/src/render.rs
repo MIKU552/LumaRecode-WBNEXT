@@ -159,3 +159,18 @@ pub fn filter_chain(filters: &[String]) -> String {
         .collect::<Vec<_>>()
         .join(",")
 }
+
+/// GOP length for a conversion.
+///
+/// Quick share keeps the interval short so high-frame-rate sources stay below the
+/// long-GOP range associated with some Arc driver failures. Archive follows the usual
+/// eight-second cadence, and motion photos use two because they are short clips.
+pub fn gop(frame_rate: f64, share: bool, motion_photo: bool) -> i64 {
+    let factor = if share || motion_photo { 2.0 } else { 8.0 };
+    let frames = (factor * frame_rate).round();
+    if share {
+        frames.clamp(1.0, 240.0) as i64
+    } else {
+        frames.max(1.0) as i64
+    }
+}
