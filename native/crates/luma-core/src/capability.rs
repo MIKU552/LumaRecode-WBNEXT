@@ -453,22 +453,15 @@ pub fn supports(backend: Backend, codec: Codec, depth: u8, sampling: &str) -> bo
         return false;
     }
 
+    let hardware_420 = sampling == "420" && matches!(depth, 8 | 10);
     match backend {
         Backend::Software => match codec {
             Codec::Av1 => matches!(sampling, "420" | "gray") && matches!(depth, 8 | 10),
             Codec::Hevc | Codec::Avc => matches!(depth, 8 | 10 | 12),
         },
-        Backend::Qsv | Backend::Nvenc => {
-            sampling == "420" && matches!(depth, 8 | 10)
-        }
-        Backend::Amf => {
-            sampling == "420" && matches!(depth, 8 | 10) && !matches!(codec, Codec::Av1)
-        }
-        Backend::MediaFoundation => {
-            sampling == "420" && depth == 8 && !matches!(codec, Codec::Av1)
-        }
-        Backend::VideoToolbox => {
-            sampling == "420" && matches!(depth, 8 | 10) && !matches!(codec, Codec::Av1)
-        }
+        Backend::Amf => hardware_420 && !matches!(codec, Codec::Av1),
+        Backend::MediaFoundation => hardware_420 && depth == 8 && !matches!(codec, Codec::Av1),
+        Backend::VideoToolbox => hardware_420 && !matches!(codec, Codec::Av1),
+        Backend::Qsv | Backend::Nvenc => hardware_420,
     }
 }

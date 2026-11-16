@@ -1,0 +1,54 @@
+# Parity-only gate.
+#
+# The Windows job builds the application, runs conversions and publishes; when the
+# harness fails there, the cause is buried under unrelated work. This workflow builds
+# only the native library and the harness, so a parity regression reports in a couple
+# of minutes and can be debugged in parallel with the full pipeline.
+name: parity
+
+on:
+  push:
+    branches: [next]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  parity:
+    name: harness
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target X64
+
+      - name: Run the harness
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build-info | Out-Null
+          dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64 *> build-info/parity.log
+          $code = $LASTEXITCODE
+          Get-Content build-info/parity.log | Select-Object -Last 30
+          if ($code -ne 0) { throw "Parity check failed with $code." }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: parity-log
+          path: build-info/parity.log
+          if-no-files-found: warn
