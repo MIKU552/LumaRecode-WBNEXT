@@ -304,8 +304,8 @@ fn encoder_names_map_to_their_backend() {
 
 #[test]
 fn backends_refuse_what_their_family_does_not_support() {
-    use luma_core::capability::{Backend, supports};
     use luma_core::Codec;
+    use luma_core::capability::{Backend, supports};
 
     assert!(supports(Backend::Software, Codec::Hevc, 10, "422"));
     assert!(supports(Backend::Software, Codec::Av1, 10, "420"));
