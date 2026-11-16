@@ -31,7 +31,7 @@
 | `Core/CliArguments.cs`、`CliReporter.cs`、`NativeCli*.cs` | 保留在宿主，规则调用核心 | 未开始 | P3 |
 | `Core/InputFiles.cs` | 文件身份与覆盖保护 | 未开始 | P2 后续 |
 | `Core/ToolReportCache.cs` | 能力缓存 | 未开始 | P4 |
-| — | `luma-core/src/capability.rs` | 新增 | 对应方案 §4，无基线 |
+| — | `luma-core/src/capability.rs` | 新增 | 对应方案 §4；`qa/NativeChecks` 对照 C# 后端映射 |
 | — | `luma-core/src/plan.rs` | 新增 | 对应方案 §3.2「任务规划」，无基线 |
 | — | `luma-core/src/cache.rs` | 新增（§10.4 标识与回收策略） | `tests/cache.rs` |
 | — | `luma-core/src/safety.rs` | 新增（§10.3 输出路径安全） | `tests/safety.rs` |
@@ -70,7 +70,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | `Core/CliArguments.cs`, `CliReporter.cs`, `NativeCli*.cs` | Stays in the host, calls the core for rules | Not started | P3 |
 | `Core/InputFiles.cs` | File identity and overwrite protection | Not started | Later in P2 |
 | `Core/ToolReportCache.cs` | Capability cache | Not started | P4 |
-| — | `luma-core/src/capability.rs` | New | Plan §4, no baseline |
+| — | `luma-core/src/capability.rs` | New | Plan §4; `qa/NativeChecks` compares the C# backend table |
 | — | `luma-core/src/plan.rs` | New | Plan §3.2 "task planning", no baseline |
 | — | `luma-core/src/cache.rs` | New (§10.4 identity and retention) | `tests/cache.rs` |
 | — | `luma-core/src/safety.rs` | New (§10.3 output path safety) | `tests/safety.rs` |

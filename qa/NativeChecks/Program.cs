@@ -126,6 +126,9 @@ foreach ((string purpose, string codec, string variant, string selector) in sele
     Compare(label, "encoder", row?["encoder"]?.ToString() ?? "", resolved?["encoder"]?.ToString() ?? "", ref failures, ref comparisons);
     Compare(label, "preset", row?["preset"]?.ToString() ?? "", resolved?["preset"]?.ToString() ?? "", ref failures, ref comparisons);
     Compare(label, "quality", row?["quality"]?.ToString() ?? "", resolved?["quality"]?.ToString() ?? "", ref failures, ref comparisons);
+    string encoder = row?["encoder"]?.ToString() ?? "";
+    JsonNode? backend = LumaCoreNative.Call("capability.backend", new JsonObject { ["encoder"] = encoder });
+    Compare(label, "backend", EncoderBackends.For(encoder) ?? "", backend?["backend"]?.ToString() ?? "", ref failures, ref comparisons);
 }
 
 // Rejection paths the format matrix cannot reach: Log transforms, dynamic HDR and

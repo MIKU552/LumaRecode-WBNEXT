@@ -20,11 +20,11 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         {
             foreach (var item in engine.Config[purpose]!.AsObject())
             {
-                rows.Add((JsonNode)new JsonObject { ["id"] = purpose + "-" + item.Key, ["options"] = new JsonObject { ["purpose"] = purpose, ["codec"] = item.Key, ["variant"] = "standard" }, ["encoder"] = item.Value?.DeepClone() });
+                rows.Add((JsonNode)new JsonObject { ["id"] = purpose + "-" + item.Key, ["options"] = new JsonObject { ["purpose"] = purpose, ["codec"] = item.Key, ["variant"] = "standard" }, ["encoder"] = item.Value?.DeepClone(), ["backend"] = EncoderBackends.For(item.Value.Text("encoder")) ?? "unknown" });
             }
         }
 
-        rows.Add((JsonNode)new JsonObject { ["id"] = "archive-av1-fast", ["options"] = new JsonObject { ["purpose"] = "archive", ["codec"] = "av1", ["variant"] = "fast" }, ["encoder"] = engine.Config["archive_fast_av1"]?.DeepClone() });
+        rows.Add((JsonNode)new JsonObject { ["id"] = "archive-av1-fast", ["options"] = new JsonObject { ["purpose"] = "archive", ["codec"] = "av1", ["variant"] = "fast" }, ["encoder"] = engine.Config["archive_fast_av1"]?.DeepClone(), ["backend"] = EncoderBackends.For(engine.Config["archive_fast_av1"].Text("encoder")) ?? "unknown" });
         return rows;
     }
     private JsonObject Describe(MediaInfo media)

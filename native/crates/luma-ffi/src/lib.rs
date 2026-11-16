@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 11] = [
+const OPERATIONS: [&str; 12] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -52,6 +52,7 @@ const OPERATIONS: [&str; 11] = [
     "capability.summary",
     "plan.build",
     "probe.summarize",
+    "capability.backend",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -153,6 +154,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "probe.summarize" => probe_summarize(&payload),
         "capability.select" => capability_select(&payload),
         "capability.summary" => capability_summary(&payload),
+        "capability.backend" => capability_backend(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -366,6 +368,19 @@ fn presets_resolve(payload: &Value) -> CoreResult<Value> {
             luma_core::AudioDefault::Copy => json!({"mode": "copy"}),
             luma_core::AudioDefault::Encode(name) => json!({"mode": "encode", "preset": name}),
         },
+    }))
+}
+
+#[derive(Deserialize)]
+struct BackendRequest {
+    encoder: String,
+}
+
+fn capability_backend(payload: &Value) -> CoreResult<Value> {
+    let request: BackendRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "capability"))?;
+    Ok(json!({
+        "backend": luma_core::capability::backend_for_encoder(&request.encoder).map(|value| value.as_str()),
     }))
 }
 
