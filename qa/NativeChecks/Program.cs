@@ -172,6 +172,44 @@ foreach (string name in new[] { "ffprobe-testsrc.json", "ffprobe-tenbit.json" })
     Compare(label, "audio", $"{audio}", summary?["audio"]?.ToString() ?? "", ref failures, ref comparisons);
 }
 
+// Timeline parity: identical frames and ranges must produce the same window.
+FramePoint[] timelinePoints = Enumerable.Range(0, 100)
+    .Select(index => new FramePoint(index * 1000L, 1000L, index % 30 == 0))
+    .ToArray();
+FrameTimeline timeline = new(timelinePoints, 1, 1000, false);
+(int Start, int? End, string Label)[] timelineRanges = [(0, null, "full"), (10, 40, "middle"), (99, null, "last")];
+foreach ((int start, int? end, string label) in timelineRanges)
+{
+    JsonArray frames = new(timelinePoints.Select(point => (JsonNode?)new JsonObject
+    {
+        ["pts"] = point.Pts,
+        ["duration"] = point.Duration,
+        ["key_frame"] = point.KeyFrame
+    }).ToArray());
+    JsonObject range = new() { ["start"] = start };
+    if (end is { } stop)
+    {
+        range["end"] = stop;
+    }
+
+    JsonNode? native = LumaCoreNative.Call("timeline.resolve", new JsonObject
+    {
+        ["frames"] = frames,
+        ["time_base"] = "1/1000",
+        ["packet_indexed"] = false,
+        ["range"] = range
+    });
+    FrameWindow window = timeline.Resolve(new FrameRange(start, end));
+    string id = $"timeline/{label}";
+    Compare(id, "start", $"{window.Start}", native?["window"]?["start"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(id, "end", $"{window.End}", native?["window"]?["end"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(id, "count", $"{window.Count}", native?["window"]?["count"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(id, "seek_frame", $"{window.SeekFrame}", native?["window"]?["seek_frame"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(id, "seek_seconds", Seconds(window.SeekSeconds), NativeSeconds(native?["window"], "seek_seconds"), ref failures, ref comparisons);
+    Compare(id, "start_seconds", Seconds(window.StartSeconds), NativeSeconds(native?["window"], "start_seconds"), ref failures, ref comparisons);
+    Compare(id, "end_seconds", Seconds(window.EndSeconds), NativeSeconds(native?["window"], "end_seconds"), ref failures, ref comparisons);
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
@@ -235,6 +273,18 @@ static string ManagedFormat(Transcoder transcoder, EncodeOptions options, MediaI
     {
         return "error";
     }
+}
+
+/// <summary>Formats a timestamp so both sides compare at the same precision.</summary>
+static string Seconds(double value) => Math.Round(value, 6).ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+
+/// <summary>Reads a timestamp from the native window and formats it the same way.</summary>
+static string NativeSeconds(JsonNode? window, string key)
+{
+    string text = window?[key]?.ToString() ?? "";
+    return double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value)
+        ? Seconds(value)
+        : "NaN";
 }
 
 /// <summary>Runs resolve and validate, keeping the rejection message for comparison.</summary>
