@@ -114,6 +114,18 @@ jobs:
           if ($managedText -notmatch 'core: managed') { throw "Managed fallback was not used." }
           Remove-Item Env:LUMARECODE_CORE
 
+          # Presets must carry a backend for every row, otherwise the UI cannot
+          # group them without guessing from the encoder name.
+          $presetOut = Join-Path $env:RUNNER_TEMP "presets.json"
+          $presetErr = Join-Path $env:RUNNER_TEMP "presets-err.txt"
+          $presetsRun = Start-Process -FilePath $exe.FullName -ArgumentList 'presets', '--json', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $presetOut -RedirectStandardError $presetErr
+          if ($presetsRun.ExitCode -ne 0) { Get-Content $presetErr; throw "presets failed with $($presetsRun.ExitCode)." }
+          $presets = Get-Content $presetOut -Raw | ConvertFrom-Json
+          $backends = $presets.presets | ForEach-Object { $_.backend } | Sort-Object -Unique
+          $backends
+          if ($backends -contains 'unknown' -or $backends -contains $null) { throw "A preset has no backend." }
+
       - name: Integration smoke
         shell: pwsh
         run: |
