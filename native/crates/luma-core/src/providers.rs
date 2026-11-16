@@ -32,7 +32,7 @@ pub struct Requirement {
 pub const REQUIREMENTS: [Requirement; 6] = [
     Requirement {
         backend: Backend::Qsv,
-        probe: Probe::EncoderList,
+        probe: Probe::AdapterList,
         note: "Intel graphics or Arc adapter, then the QSV encoders in ffmpeg",
     },
     Requirement {
