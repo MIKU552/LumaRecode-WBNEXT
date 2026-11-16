@@ -847,7 +847,7 @@ fn plan_build(payload: &Value) -> CoreResult<Value> {
 
 #[cfg(test)]
 mod tests {
-    use super::dispatch;
+    use super::{codes, dispatch};
 
     /// JSON hosts write `30.0` as `30`, so the request must accept an integer token.
     #[test]
@@ -872,6 +872,6 @@ mod tests {
     fn gop_reports_a_missing_rate() {
         let error = dispatch("plan.gop", r#"{"share":true}"#).expect_err("missing rate");
 
-        assert_eq!(error.code(), "ffi.envelope");
+        assert_eq!(error.code(), codes::FFI_ENVELOPE);
     }
 }
