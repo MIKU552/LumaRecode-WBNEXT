@@ -151,12 +151,10 @@ const SOFTWARE_PARAMETERS: &[Parameter] = &[
         kind: ParameterKind::Integer,
     },
 ];
-const MEDIA_FOUNDATION_PARAMETERS: &[Parameter] = &[
-    Parameter {
-        name: "rate_control",
-        kind: ParameterKind::Choice(&["cbr", "vbr"]),
-    },
-];
+const MEDIA_FOUNDATION_PARAMETERS: &[Parameter] = &[Parameter {
+    name: "rate_control",
+    kind: ParameterKind::Choice(&["cbr", "vbr"]),
+}];
 
 /// Parameters a backend accepts for one codec.
 ///
