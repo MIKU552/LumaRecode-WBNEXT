@@ -506,11 +506,25 @@ public sealed partial class Transcoder
         {
             args.AddRange(["-strict", "unofficial"]);
         }
-        foreach (var (key, flag) in colorFlags)
+        bool suppressDv5 = preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5;
+        ColorTagRequest tags = new(
+            JsonFields.Unspecified(colors.Text("color_primaries")) ? null : colors.Text("color_primaries"),
+            JsonFields.Unspecified(colors.Text("color_transfer")) ? null : colors.Text("color_transfer"),
+            JsonFields.Unspecified(colors.Text("color_space")) ? null : colors.Text("color_space"),
+            JsonFields.Unspecified(colors.Text("color_range")) ? null : colors.Text("color_range"),
+            suppressDv5);
+        if (SharedCore.ColorBuilder?.Invoke(tags) is { } sharedColorArguments)
         {
-            if (!JsonFields.Unspecified(colors.Text(key)) && !(preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5))
+            args.AddRange(sharedColorArguments);
+        }
+        else
+        {
+            foreach (var (key, flag) in colorFlags)
             {
-                args.AddRange([flag, colors.Text(key)]);
+                if (!JsonFields.Unspecified(colors.Text(key)) && !suppressDv5)
+                {
+                    args.AddRange([flag, colors.Text(key)]);
+                }
             }
         }
 

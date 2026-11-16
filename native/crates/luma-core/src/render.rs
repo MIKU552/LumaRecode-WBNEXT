@@ -32,3 +32,38 @@ pub fn input_map(request: &InputMap<'_>) -> Vec<String> {
         "-dn".to_owned(),
     ]
 }
+
+/// Color tags a host may pass to the encoder.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ColorTags {
+    pub primaries: Option<String>,
+    pub transfer: Option<String>,
+    pub space: Option<String>,
+    pub range: Option<String>,
+}
+
+/// Arguments for the four color tags, in the order FFmpeg expects them.
+///
+/// Dolby Vision profile 5 carries its own color description, so the tags are suppressed for
+/// that case; writing them again makes some decoders treat the stream as a different profile.
+pub fn color_arguments(tags: &ColorTags, suppress_dv5_tags: bool) -> Vec<String> {
+    if suppress_dv5_tags {
+        return Vec::new();
+    }
+
+    let mut arguments = Vec::with_capacity(8);
+    let pairs = [
+        ("-color_primaries", &tags.primaries),
+        ("-color_trc", &tags.transfer),
+        ("-colorspace", &tags.space),
+        ("-color_range", &tags.range),
+    ];
+    for (flag, value) in pairs {
+        if let Some(value) = value.as_ref().filter(|text| !text.is_empty()) {
+            arguments.push(flag.to_owned());
+            arguments.push(value.clone());
+        }
+    }
+
+    arguments
+}

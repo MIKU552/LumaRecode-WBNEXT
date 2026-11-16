@@ -33,6 +33,7 @@ public static class SharedCoreBridge
         SharedCore.Resolver = Resolve;
         SharedCore.Validator = Validate;
         SharedCore.InputBuilder = BuildInputMap;
+        SharedCore.ColorBuilder = BuildColorArguments;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -48,6 +49,45 @@ public static class SharedCoreBridge
         payload["preserve_metadata"] = request.PreserveMetadata;
         payload["preserve_chapters"] = request.PreserveChapters;
         if (LumaCoreNative.Call("plan.input_map", payload)?["arguments"] is not JsonArray arguments)
+        {
+            return null;
+        }
+
+        List<string> result = new(arguments.Count);
+        foreach (JsonNode? node in arguments)
+        {
+            result.Add(node?.ToString() ?? "");
+        }
+
+        return result;
+    }
+
+    /// <summary>Builds the color-tag block through the core.</summary>
+    private static IReadOnlyList<string>? BuildColorArguments(ColorTagRequest request)
+    {
+        JsonObject payload = new();
+        if (request.Primaries is not null)
+        {
+            payload["primaries"] = request.Primaries;
+        }
+
+        if (request.Transfer is not null)
+        {
+            payload["transfer"] = request.Transfer;
+        }
+
+        if (request.Space is not null)
+        {
+            payload["space"] = request.Space;
+        }
+
+        if (request.Range is not null)
+        {
+            payload["range"] = request.Range;
+        }
+
+        payload["suppress_dv5_tags"] = request.SuppressDv5Tags;
+        if (LumaCoreNative.Call("plan.color_args", payload)?["arguments"] is not JsonArray arguments)
         {
             return null;
         }

@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 17] = [
+const OPERATIONS: [&str; 18] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -58,6 +58,7 @@ const OPERATIONS: [&str; 17] = [
     "capability.detect",
     "capability.parameters",
     "plan.input_map",
+    "plan.color_args",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -165,6 +166,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "capability.detect" => capability_detect(&payload),
         "capability.parameters" => capability_parameters(&payload),
         "plan.input_map" => plan_input_map(&payload),
+        "plan.color_args" => plan_color_args(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -543,6 +545,35 @@ fn plan_input_map(payload: &Value) -> CoreResult<Value> {
         preserve_metadata: request.preserve_metadata,
         preserve_chapters: request.preserve_chapters,
     });
+    Ok(json!({ "arguments": arguments }))
+}
+
+#[derive(Deserialize)]
+struct ColorRequest {
+    #[serde(default)]
+    primaries: Option<String>,
+    #[serde(default)]
+    transfer: Option<String>,
+    #[serde(default)]
+    space: Option<String>,
+    #[serde(default)]
+    range: Option<String>,
+    #[serde(default)]
+    suppress_dv5_tags: bool,
+}
+
+fn plan_color_args(payload: &Value) -> CoreResult<Value> {
+    let request: ColorRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let arguments = luma_core::render::color_arguments(
+        &luma_core::render::ColorTags {
+            primaries: request.primaries,
+            transfer: request.transfer,
+            space: request.space,
+            range: request.range,
+        },
+        request.suppress_dv5_tags,
+    );
     Ok(json!({ "arguments": arguments }))
 }
 

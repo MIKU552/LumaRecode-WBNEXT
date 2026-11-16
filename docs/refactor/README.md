@@ -89,7 +89,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
-| P3 Windows 接入 | 参数迁移开始 | 判定、校验与输入映射已走原生桥，转换冒烟通过；编码器参数与滤镜链仍在宿主 |
+| P3 Windows 接入 | 参数迁移进行中 | 判定、校验、输入映射与色彩标签已走原生桥，转换冒烟通过；编码器参数与滤镜链仍在宿主 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
 | P5 macOS 应用 | 媒体入口已接 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；预览、转换与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
@@ -227,7 +227,7 @@ than folding them into pass or fail.
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
-| P3 Windows integration | Parameter migration started | Decisions, validation and input mapping bridged; encoder parameters and the filter chain stay in the host |
+| P3 Windows integration | Parameter migration in progress | Decisions, validation, input mapping and color tags bridged; encoder parameters and the filter chain stay in the host |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
 | P5 macOS app | Media intake wired | Open, ffprobe probe, core normalization and real stream display work; preview, conversion and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |

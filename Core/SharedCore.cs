@@ -20,6 +20,9 @@ public readonly record struct SharedValidation(string? Kind, string? Code, strin
 /// <param name="PreserveChapters">Whether chapters are copied.</param>
 public sealed record InputMapRequest(string Input, int VideoIndex, string AudioMap, bool PreserveMetadata, bool PreserveChapters);
 
+/// <summary>Color tags passed to the encoder, with empty values meaning "unspecified".</summary>
+public sealed record ColorTagRequest(string? Primaries, string? Transfer, string? Space, string? Range, bool SuppressDv5Tags);
+
 /// <summary>Optional bridge from the managed rules to the shared native core.</summary>
 /// <remarks>
 /// The host installs the bridge after loading the native library. When a delegate is null the
@@ -38,6 +41,9 @@ public static class SharedCore
     /// <summary>Builds the input/mapping arguments through the shared core; null means "use the managed builder".</summary>
     public static Func<InputMapRequest, IReadOnlyList<string>?>? InputBuilder { get; set; }
 
+    /// <summary>Builds the color-tag arguments through the shared core; null means "use the managed builder".</summary>
+    public static Func<ColorTagRequest, IReadOnlyList<string>?>? ColorBuilder { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -50,6 +56,7 @@ public static class SharedCore
         Resolver = null;
         Validator = null;
         InputBuilder = null;
+        ColorBuilder = null;
         CoreVersion = "";
     }
 
