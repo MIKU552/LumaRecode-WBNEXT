@@ -83,9 +83,7 @@ pub struct ProcessRunner;
 impl Runner for ProcessRunner {
     fn run(&mut self, command: &Command) -> Outcome {
         let mut process = ProcessCommand::new(&command.program);
-        process
-            .args(&command.arguments)
-            .stdin(Stdio::null());
+        process.args(&command.arguments).stdin(Stdio::null());
         match process.output() {
             Ok(output) => {
                 let code = output.status.code().unwrap_or(-1);

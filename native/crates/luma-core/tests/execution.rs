@@ -1,4 +1,4 @@
-use luma_core::execution::{run, Outcome, ProcessRunner, Runner};
+use luma_core::execution::{Outcome, ProcessRunner, Runner, run};
 use luma_core::process::Command;
 
 struct Fake {
