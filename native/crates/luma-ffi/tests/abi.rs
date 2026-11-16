@@ -129,7 +129,10 @@ fn validate_reports_stable_codes_instead_of_text() {
         "policy.hdr_depth"
     );
     assert_eq!(error_code("plan.build", "{}"), "ffi.invalid_request");
-    assert_eq!(error_code("plan.gop", r#"{"share":true}"#), "ffi.invalid_request");
+    assert_eq!(
+        error_code("plan.gop", r#"{"share":true}"#),
+        "ffi.invalid_request"
+    );
     assert_eq!(error_code("nope.op", "{}"), "ffi.unknown_operation");
     assert_eq!(error_code("core.info", "}"), "ffi.invalid_json");
 }
