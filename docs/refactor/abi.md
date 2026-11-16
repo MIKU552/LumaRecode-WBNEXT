@@ -44,6 +44,17 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `capability.select` | `devices`、`requirement` | 选中的设备、后端、得分、理由、是否回退 |
 | `capability.summary` | `devices`、`codec` | 可用后端、最高位深、采样、HDR 能力 |
 | `plan.build` | `source`、`options`、`backend`、`frame_window`、`motion_photo`、`preview_size` | 解码路径、帧内存位置、有序步骤、诊断标记 |
+| `probe.summarize` | `document` | 宽高、旋转、类型、像素格式、位深、Dolby Vision、HDR10+、音轨数 |
+| `capability.backend` | `encoder` | 后端名，未识别为 null |
+| `capability.supports` | `backend`、`codec`、`depth`、`sampling` | 该家族是否支持 |
+| `capability.detect` | `encoders` | 每个后端的存在状态与匹配到的编码器 |
+| `capability.parameters` | `backend`、`codec` | 参数名、类型与可选值 |
+| `cache.plan` | `entries`、`current`、`policy` | 每项处置、保留与可回收字节 |
+| `plan.input_map` | `input`、`video_index`、`audio_map`、`preserve_metadata`、`preserve_chapters` | `-i` 至流选择参数 |
+| `plan.color_args` | `primaries`、`transfer`、`space`、`range`、`suppress_dv5_tags` | 四个色彩标志 |
+| `plan.encoder_args` | `encoder`、`preset`、`quality`、`share`、`codec`、`depth`、`gop`、`auto_low_power`、`timing_compatibility`、`async_depth`、`pixel_format` | `-c:v` 起至 profile 段的参数 |
+| `plan.parameter_string` | `values`、`appended` | 冒号连接的参数串 |
+| `plan.filter_chain` | `filters` | 逗号连接的滤镜链 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -106,6 +117,17 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `capability.select` | `devices`, `requirement` | Chosen device, backend, score, reasons, fallback flag |
 | `capability.summary` | `devices`, `codec` | Available backends, maximum depth, samplings, HDR capability |
 | `plan.build` | `source`, `options`, `backend`, `frame_window`, `motion_photo`, `preview_size` | Decode path, frame transport, ordered steps, diagnostic notes |
+| `probe.summarize` | `document` | Size, rotation, kind, pixel format, depth, Dolby Vision, HDR10+, audio count |
+| `capability.backend` | `encoder` | Backend name, or null when unknown |
+| `capability.supports` | `backend`, `codec`, `depth`, `sampling` | Whether the family supports it |
+| `capability.detect` | `encoders` | Presence state and matched encoders per backend |
+| `capability.parameters` | `backend`, `codec` | Parameter names, kinds and choices |
+| `cache.plan` | `entries`, `current`, `policy` | Decision per entry, kept and reclaimable bytes |
+| `plan.input_map` | `input`, `video_index`, `audio_map`, `preserve_metadata`, `preserve_chapters` | Arguments from `-i` through the stream selection |
+| `plan.color_args` | `primaries`, `transfer`, `space`, `range`, `suppress_dv5_tags` | The four color flags |
+| `plan.encoder_args` | `encoder`, `preset`, `quality`, `share`, `codec`, `depth`, `gop`, `auto_low_power`, `timing_compatibility`, `async_depth`, `pixel_format` | Arguments from `-c:v` through the profile |
+| `plan.parameter_string` | `values`, `appended` | Colon-separated parameter string |
+| `plan.filter_chain` | `filters` | Comma-separated filter chain |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.
