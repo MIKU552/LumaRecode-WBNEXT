@@ -117,8 +117,14 @@ jobs:
       - name: Integration smoke
         shell: pwsh
         run: |
-          choco install ffmpeg -y --no-progress | Out-Null
-          $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
+          choco install ffmpeg -y --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "FFmpeg installation failed with $LASTEXITCODE." }
+          # Resolve the executable from the package directory instead of trusting the
+          # shim: a cached package can report success without refreshing the shim.
+          $ffmpeg = Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg" -Recurse -Filter ffmpeg.exe -ErrorAction Stop |
+            Select-Object -First 1
+          if ($null -eq $ffmpeg) { throw "FFmpeg was installed but not found." }
+          $env:PATH = "$($ffmpeg.DirectoryName);$env:PATH"
           ffmpeg -version | Select-Object -First 1
           $source = Join-Path $env:RUNNER_TEMP "source.mp4"
           $target = Join-Path $env:RUNNER_TEMP "out.mkv"

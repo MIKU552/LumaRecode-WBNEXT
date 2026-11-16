@@ -423,3 +423,20 @@ impl EncoderDto {
         })
     }
 }
+
+/// Backend family an FFmpeg encoder name belongs to.
+///
+/// The host uses this to pick a capability provider and to explain which hardware an
+/// encoder needs. Unknown names return `None` so a new encoder is never silently treated
+/// as software: the caller has to classify it first.
+pub fn backend_for_encoder(encoder: &str) -> Option<Backend> {
+    match encoder {
+        "h264_qsv" | "hevc_qsv" | "av1_qsv" => Some(Backend::Qsv),
+        "h264_amf" | "hevc_amf" | "av1_amf" => Some(Backend::Amf),
+        "h264_nvenc" | "hevc_nvenc" | "av1_nvenc" => Some(Backend::Nvenc),
+        "h264_mf" | "hevc_mf" => Some(Backend::MediaFoundation),
+        "h264_videotoolbox" | "hevc_videotoolbox" => Some(Backend::VideoToolbox),
+        _ if encoder.starts_with("lib") => Some(Backend::Software),
+        _ => None,
+    }
+}
