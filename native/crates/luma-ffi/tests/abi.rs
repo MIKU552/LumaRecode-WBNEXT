@@ -62,7 +62,11 @@ fn core_info_lists_every_operation() {
     assert!(operations.iter().any(|value| value == "plan.input_map"));
     assert!(operations.iter().any(|value| value == "plan.color_args"));
     assert!(operations.iter().any(|value| value == "plan.encoder_args"));
-    assert!(operations.iter().any(|value| value == "plan.parameter_string"));
+    assert!(
+        operations
+            .iter()
+            .any(|value| value == "plan.parameter_string")
+    );
     assert!(operations.iter().any(|value| value == "capability.detect"));
     assert!(
         operations

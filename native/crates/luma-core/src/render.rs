@@ -142,11 +142,7 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
 /// the caller uses to decide whether the flag is worth emitting.
 pub fn parameter_string(values: &[(String, String)], appended: &[String]) -> String {
     let mut parts = Vec::with_capacity(values.len() + appended.len());
-    parts.extend(
-        values
-            .iter()
-            .map(|(key, value)| format!("{key}={value}")),
-    );
+    parts.extend(values.iter().map(|(key, value)| format!("{key}={value}")));
     parts.extend(appended.iter().cloned());
     parts.join(":")
 }
