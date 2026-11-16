@@ -142,6 +142,18 @@ jobs:
           ffprobe -v error -print_format json -show_streams -show_format $source > build-info/ffprobe-source.json
           if ($LASTEXITCODE -ne 0) { throw "Raw probe capture failed." }
 
+          # A second, deliberately different source: 10-bit HLG with an audio track.
+          # FFV1 keeps it encoder-independent, so the fixture does not depend on
+          # which codecs the installed FFmpeg happens to ship.
+          $hlg = Join-Path $env:RUNNER_TEMP "hlg.mkv"
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 `
+            -f lavfi -i sine=frequency=440:duration=1 `
+            -c:v ffv1 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc `
+            -c:a pcm_s16le -shortest -y $hlg
+          if ($LASTEXITCODE -ne 0) { throw "HLG source generation failed." }
+          ffprobe -v error -print_format json -show_streams -show_format $hlg > build-info/ffprobe-hlg.json
+          if ($LASTEXITCODE -ne 0) { throw "HLG probe capture failed." }
+
           $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
             Where-Object { $_.FullName -match '\\Release\\' } |
             Select-Object -First 1
