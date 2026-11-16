@@ -189,7 +189,8 @@ void CompareTimeline(int start, int? end, string label)
         ["duration"] = point.Duration,
         ["key_frame"] = point.KeyFrame
     }).ToArray());
-    JsonObject range = new() { ["start"] = start };
+    JsonObject range = new();
+    range["start"] = start;
     if (end is { } stop)
     {
         range["end"] = stop;
