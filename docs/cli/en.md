@@ -37,11 +37,12 @@ Dynamic HDR sources default to software HEVC with metadata preservation. Use `--
 | `frames INPUT` | Display-frame count, duration and time base |
 | `image INPUT` | Export an HDR / SDR still or Motion Photo |
 | `doctor` | Tool versions and encoder/filter lists; hardware modes depend on the GPU and driver |
+| `cache [--purge]` | Cache inventory and retention plan; `--purge` deletes inside the program cache root only |
 | `license [--text]` | MIT project license, component terms, full notice directory and manifest |
 | `plan INPUT...` | Preview conversion options, FFmpeg arguments, working directory, and output colors |
 | `convert INPUT...` | Convert one file, a directory or wildcard matches sequentially, then verify output |
 
-Every command supports `--help`. Probe/catalog/doctor/license results are JSON. Text progress goes to stderr; results go to stdout.
+Every command supports `--help`. Probe/catalog/doctor/cache/license results are JSON. Text progress goes to stderr; results go to stdout.
 
 ## Encoding and color options
 

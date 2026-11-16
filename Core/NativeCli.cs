@@ -144,7 +144,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         {
             Console.Out.WriteLine(T("同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。"));
             Console.Out.WriteLine("\n" + T("位置参数") + ":");
-            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码", "读取逐帧时间轴信息", "导出图片或 Android 动态照片"];
+            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "查看缓存清单与回收计划（--purge 执行删除）", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码", "读取逐帧时间轴信息", "导出图片或 Android 动态照片"];
             for (int i = 0; i < CliArguments.Commands.Length; i++)
             {
                 Console.Out.WriteLine("  " + CliArguments.Commands[i].PadRight(12) + T(descriptions[i]));
