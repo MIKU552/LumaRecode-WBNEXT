@@ -34,6 +34,7 @@ public static class SharedCoreBridge
         SharedCore.Validator = Validate;
         SharedCore.InputBuilder = BuildInputMap;
         SharedCore.ColorBuilder = BuildColorArguments;
+        SharedCore.EncoderBuilder = BuildEncoderArguments;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -88,6 +89,35 @@ public static class SharedCoreBridge
 
         payload["suppress_dv5_tags"] = request.SuppressDv5Tags;
         if (LumaCoreNative.Call("plan.color_args", payload)?["arguments"] is not JsonArray arguments)
+        {
+            return null;
+        }
+
+        List<string> result = new(arguments.Count);
+        foreach (JsonNode? node in arguments)
+        {
+            result.Add(node?.ToString() ?? "");
+        }
+
+        return result;
+    }
+
+    /// <summary>Builds the encoder block through the core.</summary>
+    private static IReadOnlyList<string>? BuildEncoderArguments(EncoderRequest request)
+    {
+        JsonObject payload = new();
+        payload["encoder"] = request.Encoder;
+        payload["preset"] = request.Preset;
+        payload["quality"] = request.Quality;
+        payload["share"] = request.Share;
+        payload["codec"] = request.Codec;
+        payload["depth"] = request.Depth;
+        payload["gop"] = request.Gop;
+        payload["auto_low_power"] = request.AutoLowPower;
+        payload["timing_compatibility"] = request.TimingCompatibility;
+        payload["async_depth"] = request.AsyncDepth;
+        payload["pixel_format"] = request.PixelFormat;
+        if (LumaCoreNative.Call("plan.encoder_args", payload)?["arguments"] is not JsonArray arguments)
         {
             return null;
         }

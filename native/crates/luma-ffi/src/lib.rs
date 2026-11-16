@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 18] = [
+const OPERATIONS: [&str; 19] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -59,6 +59,7 @@ const OPERATIONS: [&str; 18] = [
     "capability.parameters",
     "plan.input_map",
     "plan.color_args",
+    "plan.encoder_args",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -167,6 +168,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "capability.parameters" => capability_parameters(&payload),
         "plan.input_map" => plan_input_map(&payload),
         "plan.color_args" => plan_color_args(&payload),
+        "plan.encoder_args" => plan_encoder_args(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -574,6 +576,41 @@ fn plan_color_args(payload: &Value) -> CoreResult<Value> {
         },
         request.suppress_dv5_tags,
     );
+    Ok(json!({ "arguments": arguments }))
+}
+
+#[derive(Deserialize)]
+struct EncoderRequestDto {
+    encoder: String,
+    preset: String,
+    quality: String,
+    share: bool,
+    codec: String,
+    depth: u8,
+    gop: i64,
+    auto_low_power: bool,
+    timing_compatibility: bool,
+    async_depth: String,
+    pixel_format: String,
+}
+
+fn plan_encoder_args(payload: &Value) -> CoreResult<Value> {
+    let request: EncoderRequestDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let codec = luma_core::Codec::parse(&request.codec)?;
+    let arguments = luma_core::render::encoder_arguments(&luma_core::render::EncoderRequest {
+        encoder: request.encoder,
+        preset: request.preset,
+        quality: request.quality,
+        share: request.share,
+        codec,
+        depth: request.depth,
+        gop: request.gop,
+        auto_low_power: request.auto_low_power,
+        timing_compatibility: request.timing_compatibility,
+        async_depth: request.async_depth,
+        pixel_format: request.pixel_format,
+    });
     Ok(json!({ "arguments": arguments }))
 }
 

@@ -72,3 +72,53 @@ fn dolby_vision_profile_five_suppresses_the_tags() {
 
     assert!(luma_core::render::color_arguments(&tags, true).is_empty());
 }
+
+#[test]
+fn share_encodes_with_global_quality_and_a_low_power_flag() {
+    use luma_core::domain::Codec;
+    use luma_core::render::{EncoderRequest, encoder_arguments};
+
+    let arguments = encoder_arguments(&EncoderRequest {
+        encoder: "hevc_qsv".to_owned(),
+        preset: "medium".to_owned(),
+        quality: "26".to_owned(),
+        share: true,
+        codec: Codec::Hevc,
+        depth: 10,
+        gop: 60,
+        auto_low_power: false,
+        timing_compatibility: true,
+        async_depth: "4".to_owned(),
+        pixel_format: "p010le".to_owned(),
+    });
+
+    assert_eq!(
+        arguments.join(" "),
+        "-c:v hevc_qsv -preset medium -global_quality:v 26 -low_power 1 -async_depth 4 -g 60 -bf:v 0 -profile:v main10"
+    );
+}
+
+#[test]
+fn archive_encodes_with_crf_and_the_pixel_format() {
+    use luma_core::domain::Codec;
+    use luma_core::render::{EncoderRequest, encoder_arguments};
+
+    let arguments = encoder_arguments(&EncoderRequest {
+        encoder: "libx265".to_owned(),
+        preset: "slow".to_owned(),
+        quality: "18".to_owned(),
+        share: false,
+        codec: Codec::Hevc,
+        depth: 10,
+        gop: 240,
+        auto_low_power: true,
+        timing_compatibility: false,
+        async_depth: "4".to_owned(),
+        pixel_format: "yuv420p10le".to_owned(),
+    });
+
+    assert_eq!(
+        arguments.join(" "),
+        "-c:v libx265 -preset slow -crf 18 -pix_fmt yuv420p10le -g 240"
+    );
+}

@@ -67,3 +67,67 @@ pub fn color_arguments(tags: &ColorTags, suppress_dv5_tags: bool) -> Vec<String>
 
     arguments
 }
+
+/// Encoder choice and the values that describe its rate control.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EncoderRequest {
+    pub encoder: String,
+    pub preset: String,
+    pub quality: String,
+    /// Quick share uses the global-quality path; archive uses CRF and a pixel format.
+    pub share: bool,
+    pub codec: crate::domain::Codec,
+    pub depth: u8,
+    pub gop: i64,
+    pub auto_low_power: bool,
+    pub timing_compatibility: bool,
+    pub async_depth: String,
+    pub pixel_format: String,
+}
+
+/// The `-c:v` block, including the options that depend on purpose and codec.
+///
+/// The order matches what the application has always emitted, so logs and support reports
+/// stay comparable while the block moves into the core.
+pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
+    use crate::domain::Codec;
+
+    let mut arguments = vec![
+        "-c:v".to_owned(),
+        request.encoder.clone(),
+        "-preset".to_owned(),
+        request.preset.clone(),
+    ];
+    if request.share {
+        arguments.extend([
+            "-global_quality:v".to_owned(),
+            request.quality.clone(),
+            "-low_power".to_owned(),
+            if request.auto_low_power { "-1" } else { "1" }.to_owned(),
+            "-async_depth".to_owned(),
+            request.async_depth.clone(),
+            "-g".to_owned(),
+            request.gop.to_string(),
+        ]);
+        if request.timing_compatibility && matches!(request.codec, Codec::Avc | Codec::Hevc) {
+            arguments.extend(["-bf:v".to_owned(), "0".to_owned()]);
+        }
+        if request.codec == Codec::Hevc {
+            arguments.extend([
+                "-profile:v".to_owned(),
+                if request.depth == 10 { "main10" } else { "main" }.to_owned(),
+            ]);
+        }
+    } else {
+        arguments.extend([
+            "-crf".to_owned(),
+            request.quality.clone(),
+            "-pix_fmt".to_owned(),
+            request.pixel_format.clone(),
+            "-g".to_owned(),
+            request.gop.to_string(),
+        ]);
+    }
+
+    arguments
+}

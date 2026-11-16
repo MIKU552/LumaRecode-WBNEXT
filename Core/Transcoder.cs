@@ -440,26 +440,48 @@ public sealed partial class Transcoder
         {
             filters.Add("setpts=PTS-STARTPTS");
         }
-        args.AddRange(["-vf", string.Join(',', filters), "-c:v", config.Text("encoder"), "-preset", config.Text("preset")]);
-        if (options.Purpose == "share")
+        args.AddRange(["-vf", string.Join(',', filters)]);
+        bool share = options.Purpose == "share";
+        // Keep high-frame-rate inputs below the long-GOP range associated with device
+        // failures on some Arc drivers (Intel article 000095403).
+        double frameRate = Fps(video);
+        long gop = share
+            ? (long)Math.Clamp(Math.Round(2 * frameRate), 1, 240)
+            : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate));
+        var encoderRequest = new EncoderRequest(config.Text("encoder"), config.Text("preset"), config.Text("quality"), share,
+            options.Codec, options.Depth, gop, autoLowPower, timingCompatibility, config.Text("async_depth", "4"), options.PixelFormat);
+        var sharedEncoder = SharedCore.EncoderBuilder?.Invoke(encoderRequest);
+        if (share)
         {
-            // Keep high-frame-rate inputs below the long-GOP range associated
-            // with device failures on some Arc drivers (Intel article 000095403).
-            args.AddRange(["-global_quality:v", config.Text("quality"), "-low_power", autoLowPower ? "-1" : "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(Math.Clamp(Math.Round(2 * Fps(video)), 1, 240))]);
-            if (timingCompatibility && options.Codec is "avc" or "hevc")
+            if (sharedEncoder is { Count: > 0 } shareArguments)
             {
-                // Some QSV runtimes derive reordered DTS from a fixed cadence.
-                // I/P-only encoding preserves VFR PTS without that reordering.
-                args.AddRange(["-bf:v", "0"]);
+                args.AddRange(shareArguments);
             }
-            if (options.Codec == "hevc")
+            else
             {
-                args.AddRange(["-profile:v", options.Depth == 10 ? "main10" : "main"]);
+                args.AddRange(["-c:v", config.Text("encoder"), "-preset", config.Text("preset"), "-global_quality:v", config.Text("quality"), "-low_power", autoLowPower ? "-1" : "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(gop)]);
+                if (timingCompatibility && options.Codec is "avc" or "hevc")
+                {
+                    // Some QSV runtimes derive reordered DTS from a fixed cadence.
+                    // I/P-only encoding preserves VFR PTS without that reordering.
+                    args.AddRange(["-bf:v", "0"]);
+                }
+                if (options.Codec == "hevc")
+                {
+                    args.AddRange(["-profile:v", options.Depth == 10 ? "main10" : "main"]);
+                }
             }
         }
         else
         {
-            args.AddRange(["-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * Fps(video))))]);
+            if (sharedEncoder is { Count: > 0 } archiveArguments)
+            {
+                args.AddRange(archiveArguments);
+            }
+            else
+            {
+                args.AddRange(["-c:v", config.Text("encoder"), "-preset", config.Text("preset"), "-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(gop)]);
+            }
             var extra = new JsonObject();
             if (options.Codec == "hevc")
             {

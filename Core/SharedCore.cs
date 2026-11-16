@@ -23,6 +23,10 @@ public sealed record InputMapRequest(string Input, int VideoIndex, string AudioM
 /// <summary>Color tags passed to the encoder, with empty values meaning "unspecified".</summary>
 public sealed record ColorTagRequest(string? Primaries, string? Transfer, string? Space, string? Range, bool SuppressDv5Tags);
 
+/// <summary>Encoder choice and rate-control values for one conversion.</summary>
+public sealed record EncoderRequest(string Encoder, string Preset, string Quality, bool Share, string Codec,
+    int Depth, long Gop, bool AutoLowPower, bool TimingCompatibility, string AsyncDepth, string PixelFormat);
+
 /// <summary>Optional bridge from the managed rules to the shared native core.</summary>
 /// <remarks>
 /// The host installs the bridge after loading the native library. When a delegate is null the
@@ -44,6 +48,9 @@ public static class SharedCore
     /// <summary>Builds the color-tag arguments through the shared core; null means "use the managed builder".</summary>
     public static Func<ColorTagRequest, IReadOnlyList<string>?>? ColorBuilder { get; set; }
 
+    /// <summary>Builds the encoder arguments through the shared core; null means "use the managed builder".</summary>
+    public static Func<EncoderRequest, IReadOnlyList<string>?>? EncoderBuilder { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -57,6 +64,7 @@ public static class SharedCore
         Validator = null;
         InputBuilder = null;
         ColorBuilder = null;
+        EncoderBuilder = null;
         CoreVersion = "";
     }
 
