@@ -410,7 +410,10 @@ static MediaInfo AtRate(MediaInfo media, double rate)
     string text = rate.ToString("R", CultureInfo.InvariantCulture);
     video["avg_frame_rate"] = text;
     video["r_frame_rate"] = text;
-    return media with { Video = video };
+    return media with
+    {
+        Video = video
+    };
 }
 
 /// <summary>Builds a plan and returns the `-g` value the encoder would receive.</summary>
