@@ -99,11 +99,7 @@ pub fn encoder_arguments(request: &EncoderRequest) -> Vec<String> {
         request.preset.clone(),
     ];
     if request.share {
-        let low_power = if request.auto_low_power {
-            "-1"
-        } else {
-            "1"
-        };
+        let low_power = if request.auto_low_power { "-1" } else { "1" };
         arguments.extend([
             "-global_quality:v".to_owned(),
             request.quality.clone(),
