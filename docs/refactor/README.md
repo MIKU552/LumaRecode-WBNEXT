@@ -273,3 +273,5 @@ than folding them into pass or fail.
 3. Extend the parity harness to `Validate` rejection paths and FLAC decisions.
 4. Add a probe adapter that turns `MediaProbe` output into `SourceDto`, so no
    rule reads ffprobe JSON directly.
+
+文档专用流程：仅修改 Markdown 或 `docs/` 时，构建工作流会被路径过滤跳过，只运行结构检查。
