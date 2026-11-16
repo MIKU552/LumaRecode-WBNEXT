@@ -64,7 +64,8 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
 **验证方式**：本机不再编译或测试，结论全部来自 GitHub Actions（提交 `5d93e26`）。
 
 - `native` 工作流：格式与 Clippy 在 Linux 作业单独执行（一项检查只有一个答案），
-  Linux / Windows / macOS 三平台分别运行全部单元测试（含缓存、探测与安全用例）；
+  Linux / Windows / macOS 三平台分别运行全部单元测试（含缓存、探测与安全用例，
+macOS 统一使用 `xcode-27` 镜像）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
@@ -197,7 +198,7 @@ every result below comes from GitHub Actions at commit `5d93e26`.
 
 - `native`: format and Clippy run once on Linux (one answer per check), while Linux,
   Windows and macOS each run the unit tests, including the cache, probe and safety
-  cases; the
+  cases (macOS always on the `xcode-27` image); the
   Windows x64 and ARM64 libraries build and stage; macOS 27 builds the Swift
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
   applies the ad-hoc signature and checks the terminal entry with `--version`.

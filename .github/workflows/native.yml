@@ -42,8 +42,9 @@ jobs:
         run: cargo clippy --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 
   # Tests run on every host because behaviour, path handling and process spawning
-  # differ between them. macOS runs on the stable image: the core is plain Rust, and
-  # the macOS 27 target is exercised by the application job below.
+  # differ between them. macOS uses the same xcode-27 image as the application job:
+  # "macos-latest" queues heavily, and running the core on the target OS is the
+  # better trade anyway.
   core:
     name: core (${{ matrix.label }})
     needs: lint
@@ -56,8 +57,8 @@ jobs:
             label: linux
           - os: windows-latest
             label: windows
-          - os: macos-latest
-            label: macOS 26 (cargo)
+          - os: xcode-27
+            label: macOS 27 (cargo)
     steps:
       - uses: actions/checkout@v4
 
