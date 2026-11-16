@@ -189,6 +189,26 @@ public struct ResolvedFormat: Decodable, Sendable {
 /// operation while the typed structs for progress events are still being
 /// designed. Nothing here throws on a rejected request: the core's stable code
 /// is surfaced through `CoreError`.
+/// Video and audio facts the core read from an ffprobe document.
+public struct ProbeSummary: Decodable, Sendable, Equatable {
+    public let width: Int
+    public let height: Int
+    public let rotation: Int
+    public let kind: String?
+    public let pixelFormat: String?
+    public let depth: Int?
+    public let dolbyVision: Int?
+    public let hdr10Plus: Bool
+    public let audio: Int
+
+    enum CodingKeys: String, CodingKey {
+        case width, height, rotation, kind, depth, audio
+        case pixelFormat = "pixel_format"
+        case dolbyVision = "dolby_vision"
+        case hdr10Plus = "hdr10_plus"
+    }
+}
+
 public struct CoreClient: Sendable {
     public init() {}
 
@@ -219,6 +239,12 @@ public struct CoreClient: Sendable {
 
     public func validate(source: SourceDescription, options: OutputOptions) throws -> ResolvedFormat {
         try decode("policy.validate", source: source, options: options)
+    }
+
+    /// Normalizes an ffprobe document through the shared probe reader.
+    public func summarize(probeDocument: String) throws -> ProbeSummary {
+        let payload = try call("probe.summarize", request: ["document": probeDocument])
+        return try JSONDecoder().decode(ProbeSummary.self, from: payload)
     }
 
     private func decode<T: Decodable>(_ operation: String, source: SourceDescription, options: OutputOptions) throws -> T {

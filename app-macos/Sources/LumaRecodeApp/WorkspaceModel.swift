@@ -79,6 +79,15 @@ final class WorkspaceModel {
     var rejection: String?
     var connectionFailure: String?
 
+    /// A file the user opened, with the facts the shared probe returned.
+    struct OpenedSource: Equatable {
+        let url: URL
+        let summary: ProbeSummary
+    }
+
+    var opened: OpenedSource?
+    var probeError: String?
+
     var selectedReference: Reference? {
         references.first { $0.id == selectedID }
     }
@@ -99,6 +108,25 @@ final class WorkspaceModel {
         } catch {
             identity = nil
             connectionFailure = "ffi.unavailable"
+        }
+    }
+
+    /// Reads one file with ffprobe and normalizes it through the shared core.
+    ///
+    /// ffprobe runs off the main actor because it blocks on the child process; the core
+    /// call stays on the main actor, which is where every other core call happens.
+    func open(url: URL) {
+        probeError = nil
+        Task {
+            do {
+                let document = try await Task.detached(priority: .userInitiated) {
+                    try ProbeRunner.document(path: url.path)
+                }.value
+                opened = OpenedSource(url: url, summary: try CoreClient().summarize(probeDocument: document))
+            } catch {
+                opened = nil
+                probeError = error.localizedDescription
+            }
         }
     }
 

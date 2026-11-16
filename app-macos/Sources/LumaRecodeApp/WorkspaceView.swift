@@ -1,11 +1,13 @@
 import AppKit
 import LumaKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Main window: sources on the left, preview and timeline in the middle,
 /// output inspector on the right.
 struct WorkspaceView: View {
     @State private var model = WorkspaceModel()
+    @State private var importing = false
 
     var body: some View {
         NavigationSplitView {
@@ -28,6 +30,17 @@ struct WorkspaceView: View {
             .frame(minWidth: 820, minHeight: 540)
         }
         .navigationTitle("LumaRecode")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Open…") { importing = true }
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.movie], allowsMultipleSelection: false) { result in
+            guard case .success(let urls) = result, let url = urls.first else { return }
+            Task { @MainActor in
+                model.open(url: url)
+            }
+        }
     }
 }
 
@@ -51,8 +64,19 @@ private struct Sidebar: View {
             }
 
             Section("Media") {
-                Label("Open a clip to inspect it", systemImage: "film")
-                    .foregroundStyle(.secondary)
+                if let opened = model.opened {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(opened.url.lastPathComponent)
+                            .font(.callout)
+                        Text("\(opened.summary.width) × \(opened.summary.height)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 2)
+                } else {
+                    Label("Open a clip to inspect it", systemImage: "film")
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .listStyle(.sidebar)
@@ -68,17 +92,33 @@ private struct PreviewCanvas: View {
     var body: some View {
         ZStack {
             Color(nsColor: .underPageBackgroundColor)
-            VStack(spacing: 10) {
-                Image(systemName: "film.stack")
-                    .font(.system(size: 40, weight: .light))
-                    .foregroundStyle(.tertiary)
-                Text(model.selectedReference?.title ?? "No source")
-                    .font(.title3)
-                Text("Preview, frame stepping and trimming arrive with the AVFoundation adapter.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 380)
+            if let opened = model.opened {
+                VStack(spacing: 8) {
+                    Image(systemName: "film")
+                        .font(.system(size: 40, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text(opened.url.lastPathComponent)
+                        .font(.title3)
+                    Text("\(opened.summary.width) × \(opened.summary.height) · \(opened.summary.kind ?? "unknown") · \(opened.summary.depth ?? 0)-bit")
+                        .font(.callout)
+                        .monospaced()
+                    Text("\(opened.summary.audio) audio track(s)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                VStack(spacing: 10) {
+                    Image(systemName: "film.stack")
+                        .font(.system(size: 40, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text(model.selectedReference?.title ?? "No source")
+                        .font(.title3)
+                    Text("Preview, frame stepping and trimming arrive with the AVFoundation adapter.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 380)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -124,6 +164,12 @@ private struct StatusBar: View {
                 Text(failure)
                     .monospaced()
                     .foregroundStyle(.secondary)
+            }
+            if let probeError = model.probeError {
+                Text(probeError)
+                    .monospaced()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer()
             Text(model.resolved?.pixelFormat ?? "—")

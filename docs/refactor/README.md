@@ -91,7 +91,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
 | P3 Windows 接入 | 首片完成 | `ResolveFormat`/`Validate` 已接原生桥，CLI 双模式与转换冒烟通过；参数生成与 GUI 回归未接 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
-| P5 macOS 应用 | 骨架完成 | 工作区布局与规则面板可用，媒体管线未接入 |
+| P5 macOS 应用 | 媒体入口已接 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；预览、转换与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
 | P7 校准与优化 | 回收闭环完成 | 标识、策略、存储抽象、计划与带范围保护的删除已接线；预算测量、预设候选与长任务待做 |
 | P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
@@ -229,7 +229,7 @@ than folding them into pass or fail.
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
 | P3 Windows integration | First slice | `ResolveFormat` and `Validate` bridged; CLI both modes and a real conversion pass, parameter generation and GUI regression remain |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
-| P5 macOS app | Shell only | Layout and rules panel work; media pipeline is not connected |
+| P5 macOS app | Media intake wired | Open, ffprobe probe, core normalization and real stream display work; preview, conversion and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
 | P7 Calibration | Reclamation closed | Identity, retention, the store seam, the plan and guarded deletion are wired; budgets, preset candidates and long jobs remain |
 | P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |
