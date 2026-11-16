@@ -10,6 +10,8 @@
 - 共享核心迁移到 Rust，Windows 与 macOS 使用同一 Rust 1.100.0 工具链；新增 `native`、`windows` 两条 Actions 工作流。
 - 开发协助：WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）；此后的提交不再添加协作者记录。
 - 补充 Windows / macOS 签名政策与隐私说明，为免费签名申请准备公开条款。
+- `presets` 与预设面板显示编码后端；`doctor` 增加核心状态、后端统计与只读缓存报告。
+- 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
 
 ### 4.4.3
 
@@ -285,6 +287,8 @@
 - The shared core moves to Rust; Windows and macOS use the same Rust 1.100.0 toolchain, with new `native` and `windows` Actions workflows.
 - Development assistance: WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context); later commits carry no co-author trailer.
 - Add the Windows / macOS code signing policy and privacy statement for the free signing application.
+- Presets and the preset panel name the encoder backend; `doctor` reports the core state, backend counts and a read-only cache inventory.
+- The pipeline now builds the ARM64 application and verifies the x64 single-file publish.
 
 ### 4.4.3
 
