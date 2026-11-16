@@ -242,6 +242,23 @@ jobs:
           $report.backends
           $report.cache
           if ($report.backends.software -lt 1) { throw "doctor reported no software encoder." }
+          # Purge through the CLI and require the old build gone while the fresh one stays.
+          $cacheOut = Join-Path $env:RUNNER_TEMP "cache-purge.json"
+          $cacheErr = Join-Path $env:RUNNER_TEMP "cache-purge-err.txt"
+          $purgeRun = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'cache', '--json', '--purge', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $cacheOut -RedirectStandardError $cacheErr
+          if ($purgeRun.ExitCode -ne 0) {
+            Get-Content $cacheOut
+            Get-Content $cacheErr
+            throw "cache purge failed with $($purgeRun.ExitCode)."
+          }
+          $purged = Get-Content $cacheOut -Raw | ConvertFrom-Json
+          $purged.purge
+          if ($purged.purge.removed.Count -lt 1) { throw "cache purge removed nothing." }
+          if (Test-Path -LiteralPath $oldCache) { throw "old build survived the purge." }
+          if (-not (Test-Path -LiteralPath $freshCache)) { throw "purge removed the fresh build." }
+
           $report.capability.backends | Select-Object backend, availability | Format-Table -AutoSize | Out-String | Write-Host
           if ($report.capability.backends.Count -ne 6) { throw "capability detection did not report six backends." }
           $softwareStatus = $report.capability.backends | Where-Object { $_.backend -eq 'software' }

@@ -272,6 +272,23 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             }
 
             var tools = new MediaTools(Tool("ffmpeg", args.Get("ffmpeg"), context.SavedTools.Ffmpeg), Tool("ffprobe", args.Get("ffprobe"), context.SavedTools.Ffprobe));
+            if (args.Command == "cache")
+            {
+                JsonObject inventory = CacheReport.Read();
+                if (context.CachePlan is { } planner)
+                {
+                    inventory["plan"] = planner(inventory);
+                }
+
+                if (args.Has("purge") && inventory["plan"] is JsonObject plan)
+                {
+                    inventory["purge"] = CacheReport.Purge(plan);
+                }
+
+                inventory["schema_version"] = 1;
+                Output(inventory);
+                return 0;
+            }
             if (args.Command == "doctor")
             {
                 var values = new JsonObject { ["schema_version"] = 1, ["backend"] = "native-dotnet", ["tools"] = new JsonObject { ["ffmpeg"] = tools.Ffmpeg, ["ffprobe"] = tools.Ffprobe }, ["encoders"] = new JsonObject(), ["filters"] = new JsonObject(), ["core"] = new JsonObject { ["mode"] = SharedCore.CoreActive ? "shared" : "managed", ["version"] = SharedCore.CoreVersion } };

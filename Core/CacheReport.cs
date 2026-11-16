@@ -70,4 +70,54 @@ public static class CacheReport
 
         return result;
     }
+
+    /// <summary>Deletes the directories a plan marked for removal.</summary>
+    /// <remarks>
+    /// Only paths that resolve inside <see cref="Root"/> are touched. Each deletion is
+    /// independent: a busy or protected directory stays on disk and is reported, which matches
+    /// §10.4 rather than forcing the removal.
+    /// </remarks>
+    /// <param name="plan">Output of the core's cache plan.</param>
+    public static JsonObject Purge(JsonObject plan)
+    {
+        JsonArray removed = new();
+        JsonArray failed = new();
+        long bytes = 0;
+        string root = Path.GetFullPath(Root) + Path.DirectorySeparatorChar;
+        JsonArray decisions = plan["decisions"] as JsonArray ?? new JsonArray();
+        foreach (JsonObject decision in decisions.Objects())
+        {
+            string name = decision.Text("key");
+            if (!decision.Text("decision").StartsWith("remove_", StringComparison.Ordinal) || string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            string path = Path.GetFullPath(Path.Combine(Root, name));
+            if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !Directory.Exists(path))
+            {
+                failed.Add((JsonNode)new JsonObject { ["key"] = name, ["reason"] = "outside_root" });
+                continue;
+            }
+
+            try
+            {
+                long size = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
+                    .Sum(file => new FileInfo(file).Length);
+                Directory.Delete(path, recursive: true);
+                removed.Add((JsonNode)new JsonObject { ["key"] = name, ["bytes"] = size });
+                bytes += size;
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                failed.Add((JsonNode)new JsonObject { ["key"] = name, ["reason"] = error.GetType().Name });
+            }
+        }
+
+        JsonObject result = new();
+        result["removed"] = removed;
+        result["failed"] = failed;
+        result["bytes"] = bytes;
+        return result;
+    }
 }

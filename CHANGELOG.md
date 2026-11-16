@@ -12,6 +12,7 @@
 - 补充 Windows / macOS 签名政策与隐私说明，为免费签名申请准备公开条款。
 - `presets` 与预设面板显示编码后端；`doctor` 增加核心状态、后端统计与只读缓存报告。
 - 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
+- 新增 `cache` 命令：查看缓存清单与回收计划，`--purge` 在范围保护下真正删除。
 
 ### 4.4.3
 
@@ -289,6 +290,7 @@
 - Add the Windows / macOS code signing policy and privacy statement for the free signing application.
 - Presets and the preset panel name the encoder backend; `doctor` reports the core state, backend counts and a read-only cache inventory.
 - The pipeline now builds the ARM64 application and verifies the x64 single-file publish.
+- New `cache` command: inspect the inventory and retention plan; `--purge` deletes inside the guarded root.
 
 ### 4.4.3
 
