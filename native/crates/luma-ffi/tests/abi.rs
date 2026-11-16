@@ -80,11 +80,7 @@ fn core_info_lists_every_operation() {
             .any(|value| value == "capability.parameters")
     );
     assert!(operations.iter().any(|value| value == "plan.gop"));
-    assert!(
-        operations
-            .iter()
-            .any(|value| value == "plan.hdr_metadata")
-    );
+    assert!(operations.iter().any(|value| value == "plan.hdr_metadata"));
 }
 
 #[test]
@@ -276,9 +272,8 @@ fn plan_hdr_metadata_spells_the_tokens_the_encoder_expects() {
         "white_point_x":"15635/50000","white_point_y":"16450/50000",
         "max_luminance":"10000000/10000","min_luminance":"50/10000"},
         {"side_data_type":"Content light level metadata","max_content":1000,"max_average":400}]"#;
-    let request = format!(
-        r#"{{"codec":"hevc","output":"hdr","source_kind":"pq","side_data":{side}}}"#
-    );
+    let request =
+        format!(r#"{{"codec":"hevc","output":"hdr","source_kind":"pq","side_data":{side}}}"#);
     let arguments = data("plan.hdr_metadata", &request);
 
     assert_eq!(
@@ -288,7 +283,13 @@ fn plan_hdr_metadata_spells_the_tokens_the_encoder_expects() {
     assert_eq!(arguments["appended"][1], "max-cll=1000,400");
     assert_eq!(arguments["parameters"][0]["key"], "hdr10");
     assert_eq!(arguments["parameters"][0]["value"], "1");
-    assert_eq!(arguments["parameters"].as_array().expect("parameters").len(), 3);
+    assert_eq!(
+        arguments["parameters"]
+            .as_array()
+            .expect("parameters")
+            .len(),
+        3
+    );
 }
 
 #[test]

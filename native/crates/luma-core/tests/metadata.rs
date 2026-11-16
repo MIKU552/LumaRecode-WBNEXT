@@ -97,7 +97,8 @@ fn x265_receives_integer_mastering_values() {
     let side = [display(), light()];
     let arguments = encoder_metadata(&request(Codec::Hevc, &side));
 
-    let master = "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50)";
+    let master =
+        "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50)";
     let flags = "hdr10=1:hdr10-opt=1:repeat-headers=1";
     assert_eq!(arguments.appended.len(), 2);
     assert_eq!(arguments.appended[0], master);
@@ -150,7 +151,11 @@ fn an_incomplete_display_is_skipped_rather_than_zeroed() {
         "green_x": "13250/50000"
     })];
 
-    assert!(encoder_metadata(&request(Codec::Hevc, &side)).appended.is_empty());
+    assert!(
+        encoder_metadata(&request(Codec::Hevc, &side))
+            .appended
+            .is_empty()
+    );
 }
 
 #[test]

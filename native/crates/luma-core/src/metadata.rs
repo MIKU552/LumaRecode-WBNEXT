@@ -220,7 +220,10 @@ pub fn encoder_metadata(request: &HdrMetadataRequest<'_>) -> HdrMetadataArgument
         parameters.push(("repeat-headers".to_owned(), "1".to_owned()));
     }
 
-    HdrMetadataArguments { parameters, appended }
+    HdrMetadataArguments {
+        parameters,
+        appended,
+    }
 }
 
 /// Master-display and content-light tokens in the encoder's own spelling.
@@ -249,7 +252,10 @@ fn static_tokens(side_data: &[Value], codec: Codec) -> Vec<String> {
         } else {
             "content-light"
         };
-        tokens.push(format!("{flag}={},{}", light.max_content, light.max_average));
+        tokens.push(format!(
+            "{flag}={},{}",
+            light.max_content, light.max_average
+        ));
     }
 
     tokens
