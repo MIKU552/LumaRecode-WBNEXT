@@ -9,6 +9,11 @@ name: windows
 on:
   push:
     branches: [next]
+    # A documentation-only push cannot change the binaries; the docs workflow
+    # checks the Markdown instead of rebuilding everything.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
