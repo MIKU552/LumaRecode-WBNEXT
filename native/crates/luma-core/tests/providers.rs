@@ -1,5 +1,5 @@
 use luma_core::capability::Backend;
-use luma_core::providers::{requirement, REQUIREMENTS};
+use luma_core::providers::{REQUIREMENTS, requirement};
 
 #[test]
 fn every_backend_has_exactly_one_requirement() {
@@ -16,7 +16,11 @@ fn every_backend_has_exactly_one_requirement() {
 #[test]
 fn requirements_explain_what_to_check() {
     for requirement in REQUIREMENTS {
-        assert!(!requirement.note.trim().is_empty(), "{:?}", requirement.backend);
+        assert!(
+            !requirement.note.trim().is_empty(),
+            "{:?}",
+            requirement.backend
+        );
     }
 }
 

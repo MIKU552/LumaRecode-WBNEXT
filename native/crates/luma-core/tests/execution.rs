@@ -51,11 +51,7 @@ fn the_first_failure_stops_the_sequence() {
         script: vec![ok(), failed("encoder missing"), ok()],
         calls: 0,
     };
-    let steps = [
-        Command::new("a"),
-        Command::new("b"),
-        Command::new("c"),
-    ];
+    let steps = [Command::new("a"), Command::new("b"), Command::new("c")];
     let report = run(&mut fake, &steps);
 
     assert!(!report.succeeded());
