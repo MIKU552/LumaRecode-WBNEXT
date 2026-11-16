@@ -177,13 +177,11 @@ FramePoint[] timelinePoints = Enumerable.Range(0, 100)
     .Select(index => new FramePoint(index * 1000L, 1000L, index % 30 == 0))
     .ToArray();
 FrameTimeline timeline = new(timelinePoints, 1, 1000, false);
-(int Start, int? End, string Label)[] timelineRanges =
-[
-    (0, null, "full"),
-    (10, 40, "middle"),
-    (99, null, "last")
-];
-foreach ((int start, int? end, string label) in timelineRanges)
+CompareTimeline(0, null, "full");
+CompareTimeline(10, 40, "middle");
+CompareTimeline(99, null, "last");
+
+void CompareTimeline(int start, int? end, string label)
 {
     JsonArray frames = new(timelinePoints.Select(point => (JsonNode?)new JsonObject
     {
