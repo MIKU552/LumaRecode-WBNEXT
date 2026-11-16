@@ -216,3 +216,69 @@ jobs:
             artifacts/native/x64/
             build-info/
           if-no-files-found: warn
+
+  # The release ships x64 and ARM64 from the same project; build ARM64 on every
+  # push so architecture-specific assets and XAML problems surface early.
+  arm64:
+    name: build (arm64)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build core for ARM64
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target Arm64
+
+      - name: Restore application (locked)
+        shell: pwsh
+        run: dotnet restore App/VideoConverter.WinUI.csproj --locked-mode -p:Platform=ARM64
+
+      - name: Build application
+        shell: pwsh
+        run: dotnet build App/VideoConverter.WinUI.csproj -c Release -p:Platform=ARM64 --no-restore
+
+  # Publishing is the shipping mode: one self-contained EXE. Verify it produces
+  # exactly one file and that the file is the expected executable.
+  publish:
+    name: publish (x64, single file)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build core and stage the native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target X64
+
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish App/VideoConverter.WinUI.csproj -c Release -p:Platform=x64 -o publish
+
+      - name: Check the single file
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem publish -File
+          $files | Select-Object Name, Length
+          if ($files.Count -ne 1) { throw "Expected one published file, found $($files.Count)." }
+          if ($files[0].Name -ne "LumaRecode.exe") { throw "Unexpected published name: $($files[0].Name)" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-publish
+          path: publish/
+          if-no-files-found: error

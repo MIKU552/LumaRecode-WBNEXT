@@ -103,7 +103,6 @@ private struct TimelineStrip: View {
                 }
             }
             .frame(height: 56)
-            .background(Color(nsColor: .underPageBackgroundColor))
         }
     }
 }
@@ -134,6 +133,5 @@ private struct StatusBar: View {
         .font(.caption)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.bar)
     }
 }
