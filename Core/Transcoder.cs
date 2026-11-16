@@ -324,7 +324,18 @@ public sealed partial class Transcoder
         {
             args.AddRange(["-seek_timestamp", "1", "-ss", FormatNumber(window.SeekSeconds)]);
         }
-        args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", motionPhoto ? "0:a:0?" : "0:a?", "-map_metadata", motionPhoto || options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", motionPhoto || window is not null ? "-1" : "0", "-sn", "-dn"]);
+        string audioMap = motionPhoto ? "0:a:0?" : "0:a?";
+        bool keepMetadata = !(motionPhoto || options.Transform.StartsWith("log-"));
+        bool keepChapters = !(motionPhoto || window is not null);
+        var mapping = new InputMapRequest(media.Path, video.Integer("index"), audioMap, keepMetadata, keepChapters);
+        if (SharedCore.InputBuilder?.Invoke(mapping) is { Count: > 0 } shared)
+        {
+            args.AddRange(shared);
+        }
+        else
+        {
+            args.AddRange(["-i", media.Path, "-map", "0:" + video.Integer("index"), "-map", audioMap, "-map_metadata", keepMetadata ? "0" : "-1", "-map_chapters", keepChapters ? "0" : "-1", "-sn", "-dn"]);
+        }
         var filters = new List<string>();
         if (window is not null)
         {

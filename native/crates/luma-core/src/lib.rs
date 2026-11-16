@@ -29,6 +29,7 @@ pub mod presets;
 pub mod probe;
 pub mod process;
 pub mod providers;
+pub mod render;
 pub mod safety;
 pub mod source;
 pub mod timeline;

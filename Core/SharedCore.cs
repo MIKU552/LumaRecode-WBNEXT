@@ -12,6 +12,14 @@ public readonly record struct SharedResolution(EncodeOptions? Options, string? C
 /// <param name="Detail">Rejected value, if the code carries one.</param>
 public readonly record struct SharedValidation(string? Kind, string? Code, string? Detail);
 
+/// <summary>One input and the flags that decide what survives into the output.</summary>
+/// <param name="Input">Absolute path of the source file.</param>
+/// <param name="VideoIndex">Stream index of the selected video track.</param>
+/// <param name="AudioMap">`0:a?` for all audio, `0:a:0?` for a motion photo.</param>
+/// <param name="PreserveMetadata">Whether container metadata is copied.</param>
+/// <param name="PreserveChapters">Whether chapters are copied.</param>
+public sealed record InputMapRequest(string Input, int VideoIndex, string AudioMap, bool PreserveMetadata, bool PreserveChapters);
+
 /// <summary>Optional bridge from the managed rules to the shared native core.</summary>
 /// <remarks>
 /// The host installs the bridge after loading the native library. When a delegate is null the
@@ -27,6 +35,9 @@ public static class SharedCore
     /// <summary>Validates a request through the shared core; null means "use the managed rules".</summary>
     public static Func<EncodeOptions, MediaInfo, SharedValidation>? Validator { get; set; }
 
+    /// <summary>Builds the input/mapping arguments through the shared core; null means "use the managed builder".</summary>
+    public static Func<InputMapRequest, IReadOnlyList<string>?>? InputBuilder { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -38,6 +49,7 @@ public static class SharedCore
     {
         Resolver = null;
         Validator = null;
+        InputBuilder = null;
         CoreVersion = "";
     }
 

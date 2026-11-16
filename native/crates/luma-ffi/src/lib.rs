@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 16] = [
+const OPERATIONS: [&str; 17] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -57,6 +57,7 @@ const OPERATIONS: [&str; 16] = [
     "cache.plan",
     "capability.detect",
     "capability.parameters",
+    "plan.input_map",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -163,6 +164,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "cache.plan" => cache_plan(&payload),
         "capability.detect" => capability_detect(&payload),
         "capability.parameters" => capability_parameters(&payload),
+        "plan.input_map" => plan_input_map(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -520,6 +522,28 @@ fn capability_parameters(payload: &Value) -> CoreResult<Value> {
         })
         .collect::<Vec<_>>();
     Ok(json!({ "parameters": parameters }))
+}
+
+#[derive(Deserialize)]
+struct InputMapRequest {
+    input: String,
+    video_index: i32,
+    audio_map: String,
+    preserve_metadata: bool,
+    preserve_chapters: bool,
+}
+
+fn plan_input_map(payload: &Value) -> CoreResult<Value> {
+    let request: InputMapRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let arguments = luma_core::render::input_map(&luma_core::render::InputMap {
+        input: &request.input,
+        video_index: request.video_index,
+        audio_map: &request.audio_map,
+        preserve_metadata: request.preserve_metadata,
+        preserve_chapters: request.preserve_chapters,
+    });
+    Ok(json!({ "arguments": arguments }))
 }
 
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {

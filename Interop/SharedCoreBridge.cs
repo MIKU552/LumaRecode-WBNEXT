@@ -32,9 +32,33 @@ public static class SharedCoreBridge
 
         SharedCore.Resolver = Resolve;
         SharedCore.Validator = Validate;
+        SharedCore.InputBuilder = BuildInputMap;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
+    }
+
+    /// <summary>Builds the input/mapping block through the core.</summary>
+    private static IReadOnlyList<string>? BuildInputMap(InputMapRequest request)
+    {
+        JsonObject payload = new();
+        payload["input"] = request.Input;
+        payload["video_index"] = request.VideoIndex;
+        payload["audio_map"] = request.AudioMap;
+        payload["preserve_metadata"] = request.PreserveMetadata;
+        payload["preserve_chapters"] = request.PreserveChapters;
+        if (LumaCoreNative.Call("plan.input_map", payload)?["arguments"] is not JsonArray arguments)
+        {
+            return null;
+        }
+
+        List<string> result = new(arguments.Count);
+        foreach (JsonNode? node in arguments)
+        {
+            result.Add(node?.ToString() ?? "");
+        }
+
+        return result;
     }
 
     /// <summary>Restores the managed rules.</summary>
