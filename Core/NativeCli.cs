@@ -297,6 +297,20 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
                         values[key]![name] = Regex.IsMatch(result.Output, @"\b" + Regex.Escape(name) + @"\b");
                     }
                 }
+                var backends = new JsonObject();
+                foreach (var pair in values["encoders"]!.AsObject())
+                {
+                    if (pair.Value?.GetValue<bool>() != true)
+                    {
+                        continue;
+                    }
+
+                    var family = EncoderBackends.For(pair.Key) ?? "unknown";
+                    backends[family] = (backends[family]?.GetValue<int>() ?? 0) + 1;
+                }
+
+                values["backends"] = backends;
+                values["cache"] = CacheReport.Read();
                 values["note"] = T("硬件编码模式取决于显卡与驱动。");
                 Output(values);
                 return 0;

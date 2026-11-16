@@ -196,6 +196,10 @@ jobs:
           $report = Get-Content $doctorOut -Raw | ConvertFrom-Json
           $report.core
           if ($report.core.mode -ne 'shared') { throw "doctor did not report the shared core." }
+          $report.backends
+          $report.cache
+          if ($report.backends.software -lt 1) { throw "doctor reported no software encoder." }
+          if (-not $report.cache.root) { throw "doctor reported no cache root." }
 
           # Capture real probe and plan documents. They feed the shared probe parser
           # and the planning parity work, and they prove both commands run headless.
