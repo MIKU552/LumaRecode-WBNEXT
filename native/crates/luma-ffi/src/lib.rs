@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 14] = [
+const OPERATIONS: [&str; 16] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -55,6 +55,8 @@ const OPERATIONS: [&str; 14] = [
     "capability.backend",
     "capability.supports",
     "cache.plan",
+    "capability.detect",
+    "capability.parameters",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -159,6 +161,8 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "capability.backend" => capability_backend(&payload),
         "capability.supports" => capability_supports(&payload),
         "cache.plan" => cache_plan(&payload),
+        "capability.detect" => capability_detect(&payload),
+        "capability.parameters" => capability_parameters(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -469,6 +473,53 @@ fn decision_name(decision: luma_core::cache::Decision) -> &'static str {
         luma_core::cache::Decision::RemoveOverCount => "remove_over_count",
         luma_core::cache::Decision::RemoveOverBudget => "remove_over_budget",
     }
+}
+
+#[derive(Deserialize)]
+struct DetectRequest {
+    encoders: Vec<String>,
+}
+
+fn capability_detect(payload: &Value) -> CoreResult<Value> {
+    let request: DetectRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "capability"))?;
+    let statuses = luma_core::providers::detect(&request.encoders);
+    Ok(json!({
+        "backends": statuses
+            .iter()
+            .map(|status| json!({
+                "backend": status.backend.as_str(),
+                "availability": status.availability.as_str(),
+                "encoders": &status.encoders,
+            }))
+            .collect::<Vec<_>>(),
+    }))
+}
+
+#[derive(Deserialize)]
+struct ParametersRequest {
+    backend: String,
+    codec: String,
+}
+
+fn capability_parameters(payload: &Value) -> CoreResult<Value> {
+    let request: ParametersRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "capability"))?;
+    let backend = luma_core::capability::Backend::parse(&request.backend)
+        .ok_or_else(|| CoreError::with_detail(codes::FFI_ENVELOPE, "backend"))?;
+    let codec = luma_core::Codec::parse(&request.codec)?;
+    let parameters = luma_core::providers::video_parameters(backend, codec)
+        .iter()
+        .map(|parameter| {
+            let (kind, choices) = match parameter.kind {
+                luma_core::providers::ParameterKind::Integer => ("integer", Vec::new()),
+                luma_core::providers::ParameterKind::Flag => ("flag", Vec::new()),
+                luma_core::providers::ParameterKind::Choice(values) => ("choice", values.to_vec()),
+            };
+            json!({ "name": parameter.name, "kind": kind, "choices": choices })
+        })
+        .collect::<Vec<_>>();
+    Ok(json!({ "parameters": parameters }))
 }
 
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {

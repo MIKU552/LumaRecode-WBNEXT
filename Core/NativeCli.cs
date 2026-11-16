@@ -6,7 +6,8 @@ namespace VideoConverter.Core;
 
 /// <summary>Host-owned version, preferences and localization; Core does not depend on WinUI or user settings files.</summary>
 public sealed record CliContext(string Version, string LicenseFolder, bool TermsAccepted, MediaTools SavedTools,
-    Func<string, string> Translate, string Language = "en", Func<JsonObject, JsonObject>? CachePlan = null);
+    Func<string, string> Translate, string Language = "en", Func<JsonObject, JsonObject>? CachePlan = null,
+    Func<IEnumerable<string>, JsonObject>? CapabilityProbe = null);
 
 /// <summary>Headless command orchestration with deterministic plans, batch conflict checks and stable exit codes.</summary>
 public sealed partial class NativeCli(Transcoder engine, CliContext context)
@@ -310,6 +311,13 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
                 }
 
                 values["backends"] = backends;
+                if (context.CapabilityProbe is { } probe)
+                {
+                    values["capability"] = probe(values["encoders"]!.AsObject()
+                        .Where(pair => pair.Value?.GetValue<bool>() == true)
+                        .Select(pair => pair.Key));
+                }
+
                 JsonObject cache = CacheReport.Read();
                 if (context.CachePlan is { } planner)
                 {

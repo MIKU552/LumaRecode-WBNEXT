@@ -34,7 +34,7 @@ internal static class CommandLineHost
         {
             var context = new CliContext(version, LegalNotices.Folder, settings.AcceptedThirdPartyTerms == LegalNotices.Revision,
                 new MediaTools(settings.Ffmpeg, settings.Ffprobe), text => L.Translate(text, language), language,
-                cache => CacheBridge.Plan(cache));
+                cache => CacheBridge.Plan(cache), names => CapabilityBridge.Detect(names));
             var code = await new NativeCli(ConversionClient.Engine, context).RunAsync(args, cancellation.Token);
             if (!noSettings && code == 0 && args.TakeWhile(a => a != "--").Contains("--accept-terms") && settings.AcceptedThirdPartyTerms != LegalNotices.Revision)
             {

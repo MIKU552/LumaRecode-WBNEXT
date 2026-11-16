@@ -242,6 +242,10 @@ jobs:
           $report.backends
           $report.cache
           if ($report.backends.software -lt 1) { throw "doctor reported no software encoder." }
+          $report.capability.backends | Select-Object backend, availability | Format-Table -AutoSize | Out-String | Write-Host
+          if ($report.capability.backends.Count -ne 6) { throw "capability detection did not report six backends." }
+          $softwareStatus = $report.capability.backends | Where-Object { $_.backend -eq 'software' }
+          if ($softwareStatus.availability -ne 'available') { throw "software backend is not available." }
           if (-not $report.cache.root) { throw "doctor reported no cache root." }
           if ($report.cache.plan.reclaimable_bytes -lt 2048) { throw "cache plan did not reclaim the old build." }
           $decision = $report.cache.plan.decisions | Where-Object { $_.key -eq 'old-build' } | Select-Object -First 1

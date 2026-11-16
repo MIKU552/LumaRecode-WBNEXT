@@ -39,7 +39,7 @@
 | — | `luma-core/src/metadata.rs` | 新增（DOVI / HDR10+ 解析） | `tests/metadata.rs` |
 | — | `luma-core/src/process.rs` | 新增（命令描述与引用规则） | `tests/process.rs` |
 | — | `luma-core/src/execution.rs` | 新增（顺序执行与结果报告） | `tests/execution.rs` |
-| — | `luma-core/src/providers.rs` | 新增（后端检测要求表） | `tests/providers.rs` |
+| — | `luma-core/src/providers.rs` | 新增（检测要求、运行时探测、厂商参数表） | `tests/providers.rs`；`doctor` 输出探测结果 |
 
 规则层的“完成”指该文件中的格式决策已逐条迁移并有测试，不代表整个管线可用。
 执行、探测与元数据仍在 C# 侧，P3 之前 Windows 应用继续使用现有实现。
@@ -82,7 +82,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | — | `luma-core/src/metadata.rs` | New (DOVI / HDR10+ parsing) | `tests/metadata.rs` |
 | — | `luma-core/src/process.rs` | New (command description and quoting) | `tests/process.rs` |
 | — | `luma-core/src/execution.rs` | New (sequential execution and reporting) | `tests/execution.rs` |
-| — | `luma-core/src/providers.rs` | New (backend detection requirements) | `tests/providers.rs` |
+| — | `luma-core/src/providers.rs` | New (requirements, runtime detection, vendor parameters) | `tests/providers.rs`; `doctor` reports the result |
 
 "Done" for a rule file means its format decisions are migrated and tested, not
 that the pipeline works end to end. Probing, execution and metadata are still in
