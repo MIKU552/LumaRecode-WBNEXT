@@ -150,6 +150,21 @@ foreach ((string fixtureName, string label, EncodeOptions options) in edgeCases)
     Compare(label, "edge", ManagedFormat(transcoder, options, media), NativeFormat(ProbeAdapter.Describe(media), options), ref failures, ref comparisons);
 }
 
+// Probe parity on the document CI captured from ffprobe: the shared summary and
+// the managed classification must agree about the same file.
+string fixture = Path.Combine(Path.GetDirectoryName(assets)!, "native", "crates", "luma-core", "tests", "fixtures", "ffprobe-testsrc.json");
+string document = File.ReadAllText(fixture);
+JsonNode? summary = LumaCoreNative.Call("probe.summarize", new JsonObject { ["document"] = document });
+JsonObject probe = JsonNode.Parse(document)!.AsObject();
+JsonObject video = probe["streams"]!.AsArray().Objects().First(stream => stream.Text("codec_type") == "video");
+JsonObject formatTags = probe["format"]?["tags"] as JsonObject ?? new JsonObject();
+string managedKind = MediaProbe.Classify(video, formatTags).Kind;
+Compare("probe/testsrc", "kind", managedKind, summary?["kind"]?.ToString() ?? "", ref failures, ref comparisons);
+Compare("probe/testsrc", "width", video.Text("width"), summary?["width"]?.ToString() ?? "", ref failures, ref comparisons);
+Compare("probe/testsrc", "height", video.Text("height"), summary?["height"]?.ToString() ?? "", ref failures, ref comparisons);
+Compare("probe/testsrc", "depth", video.Text("bits_per_raw_sample"), summary?["depth"]?.ToString() ?? "", ref failures, ref comparisons);
+Compare("probe/testsrc", "audio", "0", summary?["audio"]?.ToString() ?? "", ref failures, ref comparisons);
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();

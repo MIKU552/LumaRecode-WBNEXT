@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 10] = [
+const OPERATIONS: [&str; 11] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -51,6 +51,7 @@ const OPERATIONS: [&str; 10] = [
     "capability.select",
     "capability.summary",
     "plan.build",
+    "probe.summarize",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -149,6 +150,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "timeline.resolve" => timeline_resolve(&payload),
         "presets.resolve" => presets_resolve(&payload),
         "presets.validate" => presets_validate(&payload),
+        "probe.summarize" => probe_summarize(&payload),
         "capability.select" => capability_select(&payload),
         "capability.summary" => capability_summary(&payload),
         "plan.build" => plan_build(&payload),
@@ -364,6 +366,23 @@ fn presets_resolve(payload: &Value) -> CoreResult<Value> {
             luma_core::AudioDefault::Copy => json!({"mode": "copy"}),
             luma_core::AudioDefault::Encode(name) => json!({"mode": "encode", "preset": name}),
         },
+    }))
+}
+
+fn probe_summarize(payload: &Value) -> CoreResult<Value> {
+    let request: PresetDocument = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "probe"))?;
+    let summary = luma_core::probe::summarize(&request.document)?;
+    Ok(json!({
+        "width": summary.width,
+        "height": summary.height,
+        "rotation": summary.rotation,
+        "kind": summary.source.kind,
+        "pixel_format": summary.source.pixel_format,
+        "depth": summary.source.bits_per_raw_sample,
+        "dolby_vision": summary.dolby_vision_profile,
+        "hdr10_plus": summary.hdr10_plus,
+        "audio": summary.source.audio.len(),
     }))
 }
 
