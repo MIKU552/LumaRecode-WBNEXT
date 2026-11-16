@@ -108,3 +108,17 @@ fn a_document_without_a_video_stream_is_refused() {
 fn invalid_json_is_reported_as_a_probe_error() {
     assert_eq!(summarize("{").unwrap_err().code(), "probe.json");
 }
+
+#[test]
+fn reads_a_document_captured_from_ffprobe() {
+    // Captured in CI from the synthetic clip: the container carries no colour tags,
+    // so the transfer function is absent rather than "bt709".
+    let summary = summarize(include_str!("fixtures/ffprobe-testsrc.json")).unwrap();
+    assert_eq!(summary.width, 320);
+    assert_eq!(summary.height, 240);
+    assert_eq!(summary.source.bits_per_raw_sample, Some(8));
+    assert_eq!(summary.source.kind.as_deref(), Some("unknown"));
+    assert!(summary.source.audio.is_empty());
+    assert!(!summary.hdr10_plus);
+    assert_eq!(summary.rotation, 0);
+}
