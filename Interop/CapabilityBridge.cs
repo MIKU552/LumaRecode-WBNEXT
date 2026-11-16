@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using VideoConverter.Core;
 
 namespace VideoConverter.Native;
 
@@ -17,7 +16,7 @@ public static class CapabilityBridge
         JsonArray names = new();
         foreach (string encoder in encoders)
         {
-            names.Add(JsonValue.Create(encoder));
+            names.Add((JsonNode)encoder);
         }
 
         JsonObject request = new();
