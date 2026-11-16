@@ -1,4 +1,4 @@
-use luma_core::render::{input_map, InputMap};
+use luma_core::render::{InputMap, input_map};
 
 #[test]
 fn keeps_metadata_and_chapters_for_a_plain_conversion() {
