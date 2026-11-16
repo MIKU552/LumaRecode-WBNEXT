@@ -844,34 +844,3 @@ fn plan_build(payload: &Value) -> CoreResult<Value> {
         "notes": plan.notes,
     }))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{codes, dispatch};
-
-    /// JSON hosts write `30.0` as `30`, so the request must accept an integer token.
-    #[test]
-    fn gop_accepts_an_integer_frame_rate() {
-        let data = dispatch("plan.gop", r#"{"frame_rate":30,"share":true}"#).expect("gop");
-
-        assert_eq!(data["frames"], serde_json::json!(60));
-    }
-
-    #[test]
-    fn gop_accepts_a_fractional_frame_rate() {
-        let data = dispatch(
-            "plan.gop",
-            r#"{"frame_rate":29.97,"share":false,"motion_photo":false}"#,
-        )
-        .expect("gop");
-
-        assert_eq!(data["frames"], serde_json::json!(240));
-    }
-
-    #[test]
-    fn gop_reports_a_missing_rate() {
-        let error = dispatch("plan.gop", r#"{"share":true}"#).expect_err("missing rate");
-
-        assert_eq!(error.code(), codes::FFI_ENVELOPE);
-    }
-}

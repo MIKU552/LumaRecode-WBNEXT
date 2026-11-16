@@ -36,6 +36,11 @@ fn error_code(op: &str, request: &str) -> String {
         .to_owned()
 }
 
+/// The GOP length the core answers for one request.
+fn gop(request: &str) -> Value {
+    data("plan.gop", request)["frames"].clone()
+}
+
 #[test]
 fn version_pointers_are_stable() {
     assert_eq!(luma_abi_version(), 1);
@@ -49,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 21);
+    assert_eq!(operations.len(), 22);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -74,6 +79,7 @@ fn core_info_lists_every_operation() {
             .iter()
             .any(|value| value == "capability.parameters")
     );
+    assert!(operations.iter().any(|value| value == "plan.gop"));
 }
 
 #[test]
@@ -123,6 +129,7 @@ fn validate_reports_stable_codes_instead_of_text() {
         "policy.hdr_depth"
     );
     assert_eq!(error_code("plan.build", "{}"), "ffi.invalid_request");
+    assert_eq!(error_code("plan.gop", r#"{"share":true}"#), "ffi.invalid_request");
     assert_eq!(error_code("nope.op", "{}"), "ffi.unknown_operation");
     assert_eq!(error_code("core.info", "}"), "ffi.invalid_json");
 }
@@ -227,4 +234,27 @@ fn plan_describes_transport_and_steps_without_ffmpeg_flags() {
     );
     // The plan carries no command line: that belongs to the backend.
     assert!(!plan.to_string().contains("-vf"));
+}
+
+#[test]
+fn plan_gop_accepts_every_rate_a_probe_can_report() {
+    // JSON hosts write 30.0 as 30, so the request accepts an integer token.
+    let stream = r#"{"frame_rate":30,"share":true}"#;
+    assert_eq!(gop(stream), Value::from(60));
+
+    // Archive uses the eight-second cadence; motion photos use two.
+    let archive = r#"{"frame_rate":29.97,"share":false}"#;
+    assert_eq!(gop(archive), Value::from(240));
+    let motion = r#"{"frame_rate":30,"share":false,"motion_photo":true}"#;
+    assert_eq!(gop(motion), Value::from(60));
+
+    // A half frame rounds away from zero, which is what the managed fallback does.
+    let tie = r#"{"frame_rate":30.25,"share":true}"#;
+    assert_eq!(gop(tie), Value::from(61));
+
+    // Quick share stops at 240 frames; archive has no upper bound.
+    let fast = r#"{"frame_rate":1000,"share":true}"#;
+    assert_eq!(gop(fast), Value::from(240));
+    let long = r#"{"frame_rate":1000,"share":false}"#;
+    assert_eq!(gop(long), Value::from(8000));
 }
