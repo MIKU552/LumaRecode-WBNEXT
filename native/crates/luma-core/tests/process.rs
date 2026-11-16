@@ -1,4 +1,4 @@
-use luma_core::process::{quote, Command};
+use luma_core::process::{Command, quote};
 
 #[test]
 fn plain_paths_render_without_quotes() {
@@ -8,7 +8,9 @@ fn plain_paths_render_without_quotes() {
 
 #[test]
 fn arguments_with_spaces_are_quoted() {
-    let command = Command::new("/opt/my tools/ffmpeg").arg("-i").arg("my clip.mov");
+    let command = Command::new("/opt/my tools/ffmpeg")
+        .arg("-i")
+        .arg("my clip.mov");
     assert_eq!(
         command.render(),
         "\"/opt/my tools/ffmpeg\" -i \"my clip.mov\""

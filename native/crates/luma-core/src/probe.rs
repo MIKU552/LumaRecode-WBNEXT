@@ -8,6 +8,7 @@
 use serde_json::Value;
 
 use crate::error::{CoreError, CoreResult, codes};
+use crate::metadata;
 use crate::source::{AudioDto, SourceDto};
 
 /// Video and audio facts taken from one probe response.
@@ -45,6 +46,7 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         .filter(|value| *value > 0)
         .unwrap_or_else(|| depth_from_pixel_format(&pixel_format));
     let side_data = side_data(video);
+    let dynamic = metadata::parse(side_data);
     let source = SourceDto {
         pixel_format: Some(pixel_format.clone()),
         monochrome: pixel_format.starts_with("gray"),
@@ -65,13 +67,8 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
             .find(|item| side_type(item).contains("Display Matrix"))
             .and_then(|item| number(item, "rotation"))
             .unwrap_or(0),
-        dolby_vision_profile: side_data
-            .iter()
-            .find(|item| side_type(item).contains("DOVI configuration record"))
-            .and_then(|item| number(item, "dv_profile")),
-        hdr10_plus: side_data
-            .iter()
-            .any(|item| side_type(item).contains("HDR Dynamic Metadata SMPTE2094-40")),
+        dolby_vision_profile: dynamic.dolby_vision.map(|config| i64::from(config.profile)),
+        hdr10_plus: dynamic.hdr10_plus,
     })
 }
 

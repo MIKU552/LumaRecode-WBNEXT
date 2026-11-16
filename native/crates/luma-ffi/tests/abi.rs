@@ -53,7 +53,11 @@ fn core_info_lists_every_operation() {
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
-    assert!(operations.iter().any(|value| value == "capability.supports"));
+    assert!(
+        operations
+            .iter()
+            .any(|value| value == "capability.supports")
+    );
 }
 
 #[test]

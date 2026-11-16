@@ -88,7 +88,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | --- | --- | --- |
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
-| P2 共享核心 | 首片完成 | 模型、输出规则、时间轴、预设、能力、规划已迁移；探测、执行、元数据未迁移 |
+| P2 共享核心 | 大部分完成 | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测与元数据解析已迁移；执行层与宿主探测接线待做 |
 | P3 Windows 接入 | 首片完成 | `ResolveFormat`/`Validate` 已接原生桥，CLI 双模式与转换冒烟通过；参数生成与 GUI 回归未接 |
 | P4 多厂商适配 | 未开始 | 能力提供器与参数规则表尚未实现 |
 | P5 macOS 应用 | 骨架完成 | 工作区布局与规则面板可用，媒体管线未接入 |
@@ -226,7 +226,7 @@ than folding them into pass or fail.
 | --- | --- | --- |
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
-| P2 Shared core | First slice | Model, policy, timeline, presets, capability, planning; probe, execution and metadata remain |
+| P2 Shared core | Mostly done | Model, policy, timeline, presets, capability, planning, cache, safety, probe and metadata parsing; execution and host probe wiring remain |
 | P3 Windows integration | First slice | `ResolveFormat` and `Validate` bridged; CLI both modes and a real conversion pass, parameter generation and GUI regression remain |
 | P4 Multi-vendor | Not started | Capability providers and parameter rule tables |
 | P5 macOS app | Shell only | Layout and rules panel work; media pipeline is not connected |

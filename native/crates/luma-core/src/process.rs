@@ -32,8 +32,7 @@ impl Command {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.arguments
-            .extend(arguments.into_iter().map(Into::into));
+        self.arguments.extend(arguments.into_iter().map(Into::into));
         self
     }
 
