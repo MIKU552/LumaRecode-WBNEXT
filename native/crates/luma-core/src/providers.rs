@@ -98,28 +98,64 @@ const AMF_QUALITY: &[&str] = &["speed", "balanced", "quality"];
 const AMF_USAGE: &[&str] = &["transcoding", "lowlatency", "ultralowlatency", "webcam"];
 
 const QSV_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "preset", kind: ParameterKind::Choice(PRESETS) },
-    Parameter { name: "async_depth", kind: ParameterKind::Integer },
+    Parameter {
+        name: "preset",
+        kind: ParameterKind::Choice(PRESETS),
+    },
+    Parameter {
+        name: "async_depth",
+        kind: ParameterKind::Integer,
+    },
 ];
 const NVENC_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "preset", kind: ParameterKind::Choice(NVENC_PRESETS) },
-    Parameter { name: "tune", kind: ParameterKind::Choice(NVENC_TUNING) },
-    Parameter { name: "rc", kind: ParameterKind::Choice(NVENC_RATES) },
+    Parameter {
+        name: "preset",
+        kind: ParameterKind::Choice(NVENC_PRESETS),
+    },
+    Parameter {
+        name: "tune",
+        kind: ParameterKind::Choice(NVENC_TUNING),
+    },
+    Parameter {
+        name: "rc",
+        kind: ParameterKind::Choice(NVENC_RATES),
+    },
 ];
 const AMF_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "quality", kind: ParameterKind::Choice(AMF_QUALITY) },
-    Parameter { name: "usage", kind: ParameterKind::Choice(AMF_USAGE) },
+    Parameter {
+        name: "quality",
+        kind: ParameterKind::Choice(AMF_QUALITY),
+    },
+    Parameter {
+        name: "usage",
+        kind: ParameterKind::Choice(AMF_USAGE),
+    },
 ];
 const VIDEOTOOLBOX_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "realtime", kind: ParameterKind::Flag },
-    Parameter { name: "allow_sw", kind: ParameterKind::Flag },
+    Parameter {
+        name: "realtime",
+        kind: ParameterKind::Flag,
+    },
+    Parameter {
+        name: "allow_sw",
+        kind: ParameterKind::Flag,
+    },
 ];
 const SOFTWARE_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "preset", kind: ParameterKind::Choice(PRESETS) },
-    Parameter { name: "crf", kind: ParameterKind::Integer },
+    Parameter {
+        name: "preset",
+        kind: ParameterKind::Choice(PRESETS),
+    },
+    Parameter {
+        name: "crf",
+        kind: ParameterKind::Integer,
+    },
 ];
 const MEDIA_FOUNDATION_PARAMETERS: &[Parameter] = &[
-    Parameter { name: "rate_control", kind: ParameterKind::Choice(&["cbr", "vbr"]) },
+    Parameter {
+        name: "rate_control",
+        kind: ParameterKind::Choice(&["cbr", "vbr"]),
+    },
 ];
 
 /// Parameters a backend accepts for one codec.
