@@ -86,7 +86,9 @@ public static class LumaCoreNative
         bool ok = payload["ok"] is JsonValue flag && flag.TryGetValue(out bool value) && value;
         if (ok)
         {
-            data = payload["data"];
+            // Detach the payload: callers may attach it to their own document, and a
+            // node that still belongs to the envelope throws "already has a parent".
+            data = payload["data"]?.DeepClone();
             return true;
         }
 
