@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 20] = [
+const OPERATIONS: [&str; 21] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -61,6 +61,7 @@ const OPERATIONS: [&str; 20] = [
     "plan.color_args",
     "plan.encoder_args",
     "plan.parameter_string",
+    "plan.filter_chain",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -171,6 +172,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.color_args" => plan_color_args(&payload),
         "plan.encoder_args" => plan_encoder_args(&payload),
         "plan.parameter_string" => plan_parameter_string(&payload),
+        "plan.filter_chain" => plan_filter_chain(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -640,6 +642,17 @@ fn plan_parameter_string(payload: &Value) -> CoreResult<Value> {
     Ok(json!({
         "text": luma_core::render::parameter_string(&values, &request.appended),
     }))
+}
+
+#[derive(Deserialize)]
+struct FilterChainRequest {
+    filters: Vec<String>,
+}
+
+fn plan_filter_chain(payload: &Value) -> CoreResult<Value> {
+    let request: FilterChainRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    Ok(json!({ "text": luma_core::render::filter_chain(&request.filters) }))
 }
 
 fn probe_summarize(payload: &Value) -> CoreResult<Value> {

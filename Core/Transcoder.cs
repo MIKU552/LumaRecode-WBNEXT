@@ -440,7 +440,8 @@ public sealed partial class Transcoder
         {
             filters.Add("setpts=PTS-STARTPTS");
         }
-        args.AddRange(["-vf", string.Join(',', filters)]);
+        string filterChain = SharedCore.FilterBuilder?.Invoke(filters) ?? string.Join(',', filters);
+        args.AddRange(["-vf", filterChain]);
         bool share = options.Purpose == "share";
         // Keep high-frame-rate inputs below the long-GOP range associated with device
         // failures on some Arc drivers (Intel article 000095403).

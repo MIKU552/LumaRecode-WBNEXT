@@ -49,7 +49,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 20);
+    assert_eq!(operations.len(), 21);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -66,6 +66,11 @@ fn core_info_lists_every_operation() {
         operations
             .iter()
             .any(|value| value == "plan.parameter_string")
+    );
+    assert!(
+        operations
+            .iter()
+            .any(|value| value == "plan.filter_chain")
     );
     assert!(operations.iter().any(|value| value == "capability.detect"));
     assert!(

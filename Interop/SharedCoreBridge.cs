@@ -36,6 +36,7 @@ public static class SharedCoreBridge
         SharedCore.ColorBuilder = BuildColorArguments;
         SharedCore.EncoderBuilder = BuildEncoderArguments;
         SharedCore.ParameterBuilder = BuildParameterString;
+        SharedCore.FilterBuilder = BuildFilterChain;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
         Active = true;
         return true;
@@ -154,6 +155,20 @@ public static class SharedCoreBridge
         payload["values"] = pairs;
         payload["appended"] = tokens;
         return LumaCoreNative.Call("plan.parameter_string", payload)?["text"]?.ToString();
+    }
+
+    /// <summary>Joins the filter chain through the core.</summary>
+    private static string? BuildFilterChain(IReadOnlyList<string> filters)
+    {
+        JsonArray items = new();
+        foreach (string filter in filters)
+        {
+            items.Add((JsonNode)filter);
+        }
+
+        JsonObject payload = new();
+        payload["filters"] = items;
+        return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
     }
 
     /// <summary>Restores the managed rules.</summary>

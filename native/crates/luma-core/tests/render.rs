@@ -143,3 +143,17 @@ fn parameters_keep_order_and_append_bare_tokens() {
 fn an_empty_parameter_list_produces_an_empty_string() {
     assert!(luma_core::render::parameter_string(&[], &[]).is_empty());
 }
+
+#[test]
+fn filters_join_in_order_and_skip_empty_entries() {
+    let filters = vec![
+        "trim=start_frame=0:end_frame=10".to_owned(),
+        String::new(),
+        "setpts=PTS-STARTPTS".to_owned(),
+    ];
+
+    assert_eq!(
+        luma_core::render::filter_chain(&filters),
+        "trim=start_frame=0:end_frame=10,setpts=PTS-STARTPTS"
+    );
+}

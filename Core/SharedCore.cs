@@ -57,6 +57,9 @@ public static class SharedCore
     /// <summary>Formats encoder parameters through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<ParameterPair>, IReadOnlyList<string>, string?>? ParameterBuilder { get; set; }
 
+    /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
+    public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
+
     /// <summary>Version reported by the loaded core, or an empty string when absent.</summary>
     public static string CoreVersion { get; set; } = "";
 
@@ -72,6 +75,7 @@ public static class SharedCore
         ColorBuilder = null;
         EncoderBuilder = null;
         ParameterBuilder = null;
+        FilterBuilder = null;
         CoreVersion = "";
     }
 

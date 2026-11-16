@@ -146,3 +146,16 @@ pub fn parameter_string(values: &[(String, String)], appended: &[String]) -> Str
     parts.extend(appended.iter().cloned());
     parts.join(":")
 }
+
+/// Joins filter expressions, dropping empty entries.
+///
+/// The order is the caller's; this only decides how the chain is written. Empty entries are
+/// skipped so a disabled stage leaves no stray comma, which FFmpeg rejects.
+pub fn filter_chain(filters: &[String]) -> String {
+    filters
+        .iter()
+        .filter(|filter| !filter.trim().is_empty())
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(",")
+}
