@@ -146,9 +146,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "FFmpeg installation failed with $LASTEXITCODE." }
           # Resolve the executable from the package directory instead of trusting the
           # shim: a cached package can report success without refreshing the shim.
-          $ffmpeg = Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg" -Recurse -Filter ffmpeg.exe -ErrorAction Stop |
+          $ffmpeg = Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue |
             Select-Object -First 1
-          if ($null -eq $ffmpeg) { throw "FFmpeg was installed but not found." }
+          if ($null -eq $ffmpeg) {
+            # The package feed is the flakiest part of this job; fall back to the
+            # official static build so the conversion checks still run.
+            Write-Host "Chocolatey did not provide FFmpeg; downloading a static build."
+            $archive = Join-Path $env:RUNNER_TEMP "ffmpeg.zip"
+            Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $archive
+            Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $env:RUNNER_TEMP "ffmpeg") -Force
+            $ffmpeg = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ffmpeg") -Recurse -Filter ffmpeg.exe |
+              Select-Object -First 1
+          }
+          if ($null -eq $ffmpeg) { throw "FFmpeg is unavailable." }
           $env:PATH = "$($ffmpeg.DirectoryName);$env:PATH"
           ffmpeg -version | Select-Object -First 1
           $source = Join-Path $env:RUNNER_TEMP "source.mp4"

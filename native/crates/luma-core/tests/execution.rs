@@ -33,7 +33,10 @@ fn every_step_runs_when_all_succeed() {
         script: vec![ok(), ok()],
         calls: 0,
     };
-    let steps = [Command::new("ffmpeg").arg("-version"), Command::new("ffprobe")];
+    let steps = [
+        Command::new("ffmpeg").arg("-version"),
+        Command::new("ffprobe"),
+    ];
     let report = run(&mut fake, &steps);
 
     assert!(report.succeeded());
