@@ -139,6 +139,16 @@ docs/      使用说明、开发文档和测试数据
 licenses/  第三方许可、声明与来源清单
 ```
 
+## Code signing policy（代码签名政策）
+
+Windows 发布包目前未签名。接近发布时会申请 SignPath Foundation 的免费开源签名；获批后，安装包由 SignPath.io 构建并签名、证书由 SignPath Foundation 签发，不购买商业证书。未获批或尚未完成时，下载页会标明“未签名”，不转向收费方案。
+
+macOS 版本使用免费 ad-hoc 签名，不使用 Apple Developer ID，也未经过公证。首次打开需在“系统设置 → 隐私与安全性”中选择“仍要打开”，分发说明会写明该步骤，不要求关闭 Gatekeeper。
+
+角色与责任：维护者与发布批准由 MIKU552 承担，提交者与审核者为同一账号（单人项目）；每次正式签名由批准者人工确认。
+
+隐私：程序不包含遥测，不自动上传诊断或素材；仅在你主动打开外部链接或使用系统分享时联网。FFmpeg / ffprobe 由你自行提供，程序不代为下载。
+
 ## 开发与许可
 
 项目自主代码由 **Windows 版 Codex** 使用 **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)**、**极高（xhigh）** 推理设置完成。**[MIKU552](https://github.com/MIKU552)** 负责需求、设备与素材，并进行实机核验。

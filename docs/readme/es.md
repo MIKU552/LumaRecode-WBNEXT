@@ -139,6 +139,16 @@ docs/      Guías, documentación de desarrollo y datos de pruebas
 licenses/  Licencias, avisos y procedencia de componentes de terceros
 ```
 
+## Code signing policy
+
+Las compilaciones de Windows no están firmadas por ahora. Antes de la versión se solicitará la firma gratuita de código abierto de SignPath Foundation; si se aprueba, SignPath.io compila y firma el paquete con un certificado emitido a SignPath Foundation, sin comprar certificados comerciales. Mientras tanto, la página de descarga indica «sin firmar» y el proyecto no cambia a una opción de pago.
+
+La versión de macOS usa una firma ad-hoc gratuita: sin Apple Developer ID y sin notarización. En el primer inicio, elige «Abrir de todos modos» en Ajustes del Sistema → Privacidad y seguridad; las notas de distribución indican ese paso y nunca piden desactivar Gatekeeper.
+
+Roles: MIKU552 mantiene el proyecto y aprueba las versiones; la misma cuenta actúa como committer y revisor (proyecto de un solo mantenedor). Cada firma formal se aprueba manualmente.
+
+Privacidad: el programa no incluye telemetría ni sube diagnósticos o material; solo accede a la red cuando abres un enlace externo o usas una acción de compartir del sistema. FFmpeg / ffprobe los aporta el usuario y nunca se descargan en su nombre.
+
 ## Desarrollo y licencia
 
 El código original del proyecto se desarrolló con **Codex para Windows**, usando **[GPT-6.1 Sol (inglés)](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** y el nivel de razonamiento **Extra high (`xhigh`)**. **[MIKU552](https://github.com/MIKU552)** define los requisitos, aporta el equipo y el material, y verifica la aplicación en dispositivos reales.

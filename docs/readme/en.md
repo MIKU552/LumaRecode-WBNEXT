@@ -139,6 +139,16 @@ docs/      User guides, development notes, and benchmark data
 licenses/  Third-party licenses, notices, and provenance
 ```
 
+## Code signing policy
+
+Windows builds are currently unsigned. Free open-source signing will be requested from SignPath Foundation near release; once approved, the package is built and signed by SignPath.io with a certificate issued to SignPath Foundation, and no commercial certificate is purchased. Until then the download page states "unsigned" and the project does not switch to a paid service.
+
+The macOS build uses a free ad-hoc signature: no Apple Developer ID and no notarization. On first launch, choose "Open Anyway" in System Settings → Privacy & Security; the distribution notes state that step and never ask you to disable Gatekeeper.
+
+Roles: MIKU552 maintains the project and approves releases; committer and reviewer are the same account (single-maintainer project). Every formal signing is approved manually.
+
+Privacy: the program has no telemetry and uploads no diagnostics or footage; it reaches the network only when you open an external link or use a system share action. FFmpeg / ffprobe are supplied by you and are never downloaded on your behalf.
+
 ## Development and license
 
 Original project code was developed with **Codex for Windows**, using **[GPT-6.1 Sol](https://developers.openai.com/api/docs/models/gpt-6.1-sol)** with **Extra high (`xhigh`)** reasoning. **[MIKU552](https://github.com/MIKU552)** defines requirements, supplies hardware and footage, and verifies the application.

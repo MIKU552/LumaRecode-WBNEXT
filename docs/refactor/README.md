@@ -86,12 +86,12 @@ Windows 的 `Transcoder.ResolveFormat` 与 `Validate` 已接入共享核心：�
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 首片完成 | 模型、输出规则、时间轴、预设、能力、规划已迁移；探测、执行、元数据未迁移 |
-| P3 Windows 接入 | 未开始 | 需要 `Transcoder` 规划改为调用核心，并保留 GUI/CLI 行为 |
+| P3 Windows 接入 | 首片完成 | `ResolveFormat`/`Validate` 已接原生桥，CLI 双模式与转换冒烟通过；参数生成与 GUI 回归未接 |
 | P4 多厂商适配 | 未开始 | 能力提供器与参数规则表尚未实现 |
 | P5 macOS 应用 | 骨架完成 | 工作区布局与规则面板可用，媒体管线未接入 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
-| P7 校准与优化 | 未开始 | 预设候选、启动首帧、解包缓存与空间回收、长任务 |
-| P8 发布准备 | 未开始 | 四语文档、签名申请、打包 |
+| P7 校准与优化 | 规则完成 | 缓存标识、回收策略与存储抽象已实现；落盘、清理与预算待测量 |
+| P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
 | P9 合并发布 | 未开始 | 合并 main、标签、正式 Release |
 
 ### 与方案的已知偏差
@@ -220,12 +220,12 @@ than folding them into pass or fail.
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | First slice | Model, policy, timeline, presets, capability, planning; probe, execution and metadata remain |
-| P3 Windows integration | Not started | `Transcoder` planning must call the core while GUI/CLI behaviour is preserved |
+| P3 Windows integration | First slice | `ResolveFormat` and `Validate` bridged; CLI both modes and a real conversion pass, parameter generation and GUI regression remain |
 | P4 Multi-vendor | Not started | Capability providers and parameter rule tables |
 | P5 macOS app | Shell only | Layout and rules panel work; media pipeline is not connected |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
-| P7 Calibration | Not started | Preset candidates, first-frame timing, extraction cache and space reclamation, long jobs |
-| P8 Release prep | Not started | Four-language docs, signing, packaging |
+| P7 Calibration | Rules done | Cache identity, retention and the store seam exist; extraction, deletion and budgets wait for measurement |
+| P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |
 | P9 Merge and release | Not started | Merge to `main`, tag, release |
 
 ### Known deviations
