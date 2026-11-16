@@ -5,6 +5,7 @@
 //! mapped, whether metadata and chapters survive, and the flags that keep the process quiet.
 
 /// One input and its stream mapping.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InputMap<'a> {
     pub input: &'a str,
     pub video_index: i32,
