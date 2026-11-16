@@ -15,28 +15,31 @@ public static class CacheBridge
     /// <param name="inventory">Report produced by <see cref="CacheReport"/>.</param>
     public static JsonObject Plan(JsonObject inventory)
     {
+        JsonArray measured = inventory["entries"] as JsonArray ?? new JsonArray();
         JsonArray entries = new();
-        foreach (JsonObject entry in (inventory["entries"] as JsonArray ?? new JsonArray()).Objects())
+        foreach (JsonObject entry in measured.Objects())
         {
-            entries.Add(new JsonObject
+            JsonObject item = new()
             {
                 ["key"] = entry.Text("key"),
                 ["age_days"] = entry.Integer("age_days"),
                 ["bytes"] = entry["bytes"]?.GetValue<long>() ?? 0,
                 ["in_use"] = false
-            });
+            };
+            entries.Add((JsonNode)item);
         }
 
+        JsonObject policy = new()
+        {
+            ["keep_recent"] = 2,
+            ["max_age_days"] = 30,
+            ["max_bytes"] = 2L * 1024 * 1024 * 1024
+        };
         JsonObject request = new()
         {
             ["entries"] = entries,
             ["current"] = "",
-            ["policy"] = new JsonObject
-            {
-                ["keep_recent"] = 2,
-                ["max_age_days"] = 30,
-                ["max_bytes"] = 2L * 1024 * 1024 * 1024
-            }
+            ["policy"] = policy
         };
         return LumaCoreNative.Call("cache.plan", request) as JsonObject ?? new JsonObject();
     }

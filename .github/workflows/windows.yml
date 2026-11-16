@@ -66,10 +66,17 @@ jobs:
       - name: Check formatting
         shell: pwsh
         run: |
-          dotnet format Interop/LumaRecode.Native.csproj --verify-no-changes --verbosity diagnostic
-          if ($LASTEXITCODE -ne 0) { throw "Interop formatting differs." }
-          dotnet format qa/NativeChecks/NativeChecks.csproj --verify-no-changes --verbosity diagnostic
-          if ($LASTEXITCODE -ne 0) { throw "NativeChecks formatting differs." }
+          # Apply the formatter and print what it changed: a failure then shows the
+          # exact rewrite instead of only "formatting differs".
+          dotnet format Interop/LumaRecode.Native.csproj --verbosity quiet
+          if ($LASTEXITCODE -ne 0) { throw "Interop formatting failed." }
+          dotnet format qa/NativeChecks/NativeChecks.csproj --verbosity quiet
+          if ($LASTEXITCODE -ne 0) { throw "NativeChecks formatting failed." }
+          $diff = git --no-pager diff
+          if ($diff) {
+            $diff | Select-Object -First 200
+            throw "Formatting differs; the diff above is what the formatter expects."
+          }
 
       - name: Parity check
         shell: pwsh
