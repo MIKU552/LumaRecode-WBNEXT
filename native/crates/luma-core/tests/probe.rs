@@ -133,5 +133,8 @@ fn reads_a_ten_bit_document_with_audio() {
     assert_eq!(summary.source.color_range.as_deref(), Some("tv"));
     assert_eq!(summary.source.kind.as_deref(), Some("unknown"));
     assert_eq!(summary.source.audio.len(), 1);
-    assert_eq!(summary.source.audio[0].codec_name.as_deref(), Some("pcm_s16le"));
+    assert_eq!(
+        summary.source.audio[0].codec_name.as_deref(),
+        Some("pcm_s16le")
+    );
 }
