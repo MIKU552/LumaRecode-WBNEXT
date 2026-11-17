@@ -68,11 +68,30 @@ final class CoreClientTests: XCTestCase {
         XCTAssertFalse(described.audio.flac)
     }
 
+    // The registry refuses a partial table, so this fixture carries every selector the
+    // shipped document has. A real conversion reads the shipped file instead.
+    private let presetTable = """
+    {
+      "share": {
+        "avc": {"encoder": "h264_qsv", "preset": "4", "quality": 22},
+        "hevc": {"encoder": "hevc_qsv", "preset": "4", "quality": 24},
+        "av1": {"encoder": "av1_qsv", "preset": "4", "quality": 26}
+      },
+      "archive": {
+        "avc": {"encoder": "libx264", "preset": "medium", "quality": 21},
+        "hevc": {"encoder": "libx265", "preset": "medium", "quality": 23,
+                 "encoder_parameters": {"rdoq-level": 2}},
+        "av1": {"encoder": "libsvtav1", "preset": "4", "quality": 32}
+      },
+      "archive_fast_av1": {"encoder": "libsvtav1", "preset": "6", "quality": 32},
+      "audio": {
+        "archive_default": "copy",
+        "share_default": {"avc": "aac", "hevc": "aac", "av1": "opus"}
+      }
+    }
+    """
+
     func testPlannerBuildsAnArchiveCommandFromCoreDecisions() throws {
-        let presets = """
-        {"archive":{"hevc":{"encoder":"libx265","preset":"medium","quality":23,
-        "encoder_parameters":{"rdoq-level":2}}}}
-        """
         let source: [String: Any] = [
             "pixel_format": "yuv420p",
             "kind": "sdr",
@@ -80,7 +99,7 @@ final class CoreClientTests: XCTestCase {
             "log2_chroma_w": 1,
             "log2_chroma_h": 1,
         ]
-        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presets)
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable)
         let plan = try ConversionPlanner(ffmpeg: "/opt/homebrew/bin/ffmpeg")
             .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
 
@@ -94,11 +113,8 @@ final class CoreClientTests: XCTestCase {
     }
 
     func testPlannerSurfacesTheCoreRejection() {
-        let presets = """
-        {"archive":{"hevc":{"encoder":"libx265","preset":"medium","quality":23}}}
-        """
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
-        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presets, outputKind: "hdr")
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable, outputKind: "hdr")
 
         XCTAssertThrowsError(
             try ConversionPlanner(ffmpeg: "/usr/bin/false")
@@ -110,7 +126,7 @@ final class CoreClientTests: XCTestCase {
 
     func testPlannerOnlyRunsArchivePresets() {
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
-        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mp4", presets: "{}", purpose: "share")
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mp4", presets: presetTable, purpose: "share")
 
         XCTAssertThrowsError(
             try ConversionPlanner(ffmpeg: "/usr/bin/false")
