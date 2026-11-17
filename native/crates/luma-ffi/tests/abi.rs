@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 24);
+    assert_eq!(operations.len(), 25);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -82,6 +82,7 @@ fn core_info_lists_every_operation() {
     assert!(operations.iter().any(|value| value == "plan.gop"));
     assert!(operations.iter().any(|value| value == "plan.hdr_metadata"));
     assert!(operations.iter().any(|value| value == "plan.color_filters"));
+    assert!(operations.iter().any(|value| value == "plan.render_filters"));
 }
 
 #[test]
@@ -352,4 +353,27 @@ fn plan_color_filters_writes_the_software_tail() {
         list[2],
         "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited"
     );
+}
+
+#[test]
+fn plan_render_filters_returns_only_the_entries_that_apply() {
+    let request = serde_json::json!({
+        "log": {
+            "file": "Samsung_Log_to_Rec2100_HLG.cube",
+            "matrix": "2020_ncl",
+            "range": "limited",
+            "source_space": "bt709"
+        },
+        "tone_map": {"range": "pc", "apply_dolby_vision": true},
+        "drop_dynamic_metadata": true
+    })
+    .to_string();
+    let content = data("plan.render_filters", &request);
+
+    let log = content["log"].as_str().expect("log chain");
+    assert!(log.starts_with("zscale=matrixin=709:rangein=limited:range=full"));
+    assert!(content["tone_map"].as_str().expect("tone map").contains("apply_dolbyvision=1"));
+    assert!(content["dropped_metadata"].as_str().expect("drop").starts_with("sidedata=delete"));
+    // A request without a VPP section must not invent a hardware entry.
+    assert_eq!(content["vpp"], Value::Null);
 }

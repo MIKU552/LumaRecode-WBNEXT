@@ -17,6 +17,7 @@
 - HDR 元数据参数组合改由共享核心生成（`plan.hdr_metadata`）：Dolby Vision 码率下限、HDR10+ 负载与 x265 / SVT-AV1 的静态元数据 token 统一在核心拼装。
 - macOS 新增 `convert` 命令：编码器、GOP、流映射与参数串全部由共享核心决定，流水线里真实转出 SDR 与 10 位 HDR 各一条。
 - 软件色彩转换段（zscale / format / setparams）改由共享核心拼装（`plan.color_filters`）；对照检查比较 5 种素材的完整滤镜串。
+- 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
 
@@ -299,6 +300,7 @@
 - HDR metadata parameters are composed by the shared core (`plan.hdr_metadata`): the Dolby Vision rate-control floor, the HDR10+ payload and the x265 / SVT-AV1 static tokens are spelled in one place.
 - macOS gains a `convert` command: encoder, GOP, stream mapping and the parameter string all come from the shared core, and the pipeline converts one SDR and one 10-bit HDR clip for real.
 - The software colour tail (zscale / format / setparams) is composed by the shared core (`plan.color_filters`); the harness compares the whole filter chain for five sources.
+- Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3
 

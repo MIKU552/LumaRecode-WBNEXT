@@ -99,6 +99,8 @@ void LUMA_CALL luma_string_free(char *value);
  *                        hdr10_plus?, side_data?} -> {parameters, appended}
  *   plan.color_filters   {primaries?, transfer?, space?, range?, conversion_range, pixel_format,
  *                        purpose, depth, preserve_dynamic?} -> {filters}
+ *   plan.render_filters  {log?, tone_map?, dolby_render?, drop_dynamic_metadata?, vpp?}
+ *                        -> {log, tone_map, dolby_render, dropped_metadata, vpp}
  *
  * Frames never cross this boundary: the host keeps decoded images and passes
  * only timestamps, sizes and identifiers.

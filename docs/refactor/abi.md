@@ -58,6 +58,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.gop` | `frame_rate`、`share`、`motion_photo` | GOP 帧数 |
 | `plan.hdr_metadata` | `codec`、`output`、`source_kind`、`preserve_dynamic`、`dolby_vision_profile`、`hdr10_plus`、`side_data` | 编码器参数条目与静态元数据 token |
 | `plan.color_filters` | `primaries`、`transfer`、`space`、`range`、`conversion_range`、`pixel_format`、`purpose`、`depth`、`preserve_dynamic` | zscale、format 与 setparams 三条滤镜 |
+| `plan.render_filters` | `log`、`tone_map`、`dolby_render`、`drop_dynamic_metadata`、`vpp` | 曲线 LUT、色调映射、Dolby 渲染、元数据删除与 VPP，按需返回 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -134,6 +135,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.gop` | `frame_rate`, `share`, `motion_photo` | GOP length in frames |
 | `plan.hdr_metadata` | `codec`, `output`, `source_kind`, `preserve_dynamic`, `dolby_vision_profile`, `hdr10_plus`, `side_data` | Parameter entries and static metadata tokens |
 | `plan.color_filters` | `primaries`, `transfer`, `space`, `range`, `conversion_range`, `pixel_format`, `purpose`, `depth`, `preserve_dynamic` | The zscale, format and setparams filters |
+| `plan.render_filters` | `log`, `tone_map`, `dolby_render`, `drop_dynamic_metadata`, `vpp` | Curve LUT, tone mapping, Dolby render, metadata drop and VPP, only the ones that apply |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.

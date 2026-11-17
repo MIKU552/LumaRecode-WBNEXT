@@ -4,7 +4,7 @@
 //! choices. The blocks here are the ones that must not drift between hosts: which streams are
 //! mapped, whether metadata and chapters survive, and the flags that keep the process quiet.
 
-use crate::domain::Purpose;
+use crate::domain::{Purpose, SourceKind};
 
 /// One input and its stream mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,3 +264,141 @@ fn specified(value: &Option<String>) -> Option<&str> {
         .as_deref()
         .filter(|text| !matches!(*text, "" | "unknown" | "unspecified" | "reserved"))
 }
+
+/// The camera-curve chain: decode the log transport, apply the LUT, retag for HLG.
+///
+/// The LUT file is named by the host, which ships it; everything else — the matrix and
+/// range the curve was graded in, and the order of the stages — is decided here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LogFilter<'a> {
+    /// LUT file name, resolved by the host against its asset directory.
+    pub file: &'a str,
+    /// Matrix the curve was graded in, used when the source declares none.
+    pub matrix: &'a str,
+    /// Range the curve expects, used when the source declares none.
+    pub range: &'a str,
+    pub source_space: Option<&'a str>,
+    pub source_range: Option<&'a str>,
+}
+
+impl LogFilter<'_> {
+    fn build(&self) -> String {
+        // The source's own tags win: a file that already says what it is needs no guess.
+        let matrix = match self.source_space {
+            Some("gbr") => "gbr",
+            Some("bt709") => "709",
+            Some("bt2020nc") => "2020_ncl",
+            Some("smpte170m") => "170m",
+            Some("bt470bg") => "470bg",
+            _ => self.matrix,
+        };
+        let range = match self.source_range {
+            Some("pc") => "full",
+            Some("tv") => "limited",
+            _ => self.range,
+        };
+        format!(
+            "zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le",
+            self.file
+        )
+    }
+}
+
+/// Tone mapping to BT.709, dropping the metadata the encoder would otherwise copy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ToneMapFilter<'a> {
+    /// Range word libplacebo expects: `pc` or `tv`.
+    pub range: &'a str,
+    pub apply_dolby_vision: bool,
+}
+
+impl ToneMapFilter<'_> {
+    fn build(&self) -> String {
+        let dolby = i32::from(self.apply_dolby_vision);
+        format!(
+            "libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={}:tonemapping=bt.2390:apply_dolbyvision={dolby},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS",
+            self.range
+        )
+    }
+}
+
+/// Dolby Vision rendered as plain HDR, without the RPU.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DolbyRenderFilter<'a> {
+    /// `hlg` keeps HLG output; every other HDR source is treated as PQ.
+    pub kind: SourceKind,
+    pub range: &'a str,
+}
+
+impl DolbyRenderFilter<'_> {
+    fn build(&self) -> String {
+        let trc = if self.kind == SourceKind::Hlg {
+            "arib-std-b67"
+        } else {
+            "smpte2084"
+        };
+        format!(
+            "libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={trc}:range={}:apply_dolbyvision=1",
+            self.range
+        )
+    }
+}
+
+/// Hardware surface conversion for the QSV path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VppFilter<'a> {
+    pub depth: u8,
+    /// Range tag as the source declares it: `pc` or `tv`.
+    pub out_range: &'a str,
+    /// SDR output converts to BT.709 on the same surface.
+    pub sdr: bool,
+}
+
+impl VppFilter<'_> {
+    fn build(&self) -> String {
+        let format = match self.depth {
+            10 => "p010le",
+            _ => "nv12",
+        };
+        let mut options = format!(":out_range={}", self.out_range);
+        if self.sdr {
+            options.push_str(":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709");
+        }
+        format!("vpp_qsv=format={format}{options}")
+    }
+}
+
+/// Everything a conversion may need to drop when it changes the signal.
+pub struct FilterContentRequest<'a> {
+    pub log: Option<LogFilter<'a>>,
+    pub tone_map: Option<ToneMapFilter<'a>>,
+    pub dolby_render: Option<DolbyRenderFilter<'a>>,
+    /// The source carries dynamic metadata that a conversion invalidates.
+    pub drop_dynamic_metadata: bool,
+    pub vpp: Option<VppFilter<'a>>,
+}
+
+/// The entries that apply, each already spelled for FFmpeg.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FilterContent {
+    pub log: Option<String>,
+    pub tone_map: Option<String>,
+    pub dolby_render: Option<String>,
+    pub dropped_metadata: Option<&'static str>,
+    pub vpp: Option<String>,
+}
+
+/// Builds the filter entries that depend on the signal rather than on the frame size.
+pub fn filter_content(request: &FilterContentRequest<'_>) -> FilterContent {
+    FilterContent {
+        log: request.log.map(|filter| filter.build()),
+        tone_map: request.tone_map.map(|filter| filter.build()),
+        dolby_render: request.dolby_render.map(|filter| filter.build()),
+        dropped_metadata: request.drop_dynamic_metadata.then_some(DYNAMIC_METADATA_DROP),
+        vpp: request.vpp.map(|filter| filter.build()),
+    }
+}
+
+/// The metadata a conversion invalidates; keeping it would mislabel the output.
+pub const DYNAMIC_METADATA_DROP: &str =
+    "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";

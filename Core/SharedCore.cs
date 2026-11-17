@@ -51,6 +51,30 @@ public sealed record ParameterPair(string Key, string Value);
 public sealed record ColorFilterRequest(string? Primaries, string? Transfer, string? Space, string? Range,
     string ConversionRange, string PixelFormat, string Purpose, int Depth, bool PreserveDynamic);
 
+/// <summary>The camera-curve chain: the LUT file plus the matrix and range it was graded in.</summary>
+/// <param name="File">LUT file name, resolved by the host against its asset directory.</param>
+/// <param name="Matrix">Matrix the curve was graded in, used when the source declares none.</param>
+/// <param name="Range">Range the curve expects, used when the source declares none.</param>
+/// <param name="SourceSpace">Matrix the source declares, or null.</param>
+/// <param name="SourceRange">Range the source declares, or null.</param>
+public sealed record LogFilterRequest(string File, string Matrix, string Range, string? SourceSpace, string? SourceRange);
+
+/// <summary>Tone mapping to BT.709, with the metadata drop that follows it.</summary>
+public sealed record ToneMapRequest(string Range, bool ApplyDolbyVision);
+
+/// <summary>Dolby Vision rendered as plain HDR, without the RPU.</summary>
+public sealed record DolbyRenderRequest(string Kind, string Range);
+
+/// <summary>Hardware surface conversion for the QSV path.</summary>
+public sealed record VppFilterRequest(int Depth, string OutRange, bool Sdr);
+
+/// <summary>Signal-dependent filters one conversion may need.</summary>
+public sealed record RenderFiltersRequest(LogFilterRequest? Log, ToneMapRequest? ToneMap,
+    DolbyRenderRequest? DolbyRender, bool DropDynamicMetadata, VppFilterRequest? Vpp);
+
+/// <summary>The entries that apply, each already spelled for FFmpeg.</summary>
+public sealed record RenderFilters(string? Log, string? ToneMap, string? DolbyRender, string? DroppedMetadata, string? Vpp);
+
 /// <summary>HDR metadata one encode should carry into the encoder parameters.</summary>
 /// <param name="Codec">Encoder family; the two families spell the tokens differently.</param>
 /// <param name="Output">Target transfer function; an SDR target keeps only the dynamic payload.</param>
@@ -97,6 +121,9 @@ public static class SharedCore
     /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
 
+    /// <summary>Builds the signal-dependent filters through the shared core; null means "use the managed builder".</summary>
+    public static Func<RenderFiltersRequest, RenderFilters?>? RenderFilterBuilder { get; set; }
+
     /// <summary>Builds the software colour conversion filters through the shared core; null means "use the managed builder".</summary>
     public static Func<ColorFilterRequest, IReadOnlyList<string>?>? ColorFilterBuilder { get; set; }
 
@@ -123,6 +150,7 @@ public static class SharedCore
         ParameterBuilder = null;
         FilterBuilder = null;
         ColorFilterBuilder = null;
+        RenderFilterBuilder = null;
         Gop = null;
         HdrMetadata = null;
         CoreVersion = "";

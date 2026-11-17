@@ -349,22 +349,38 @@ foreach ((string fixtureName, string codec) in metadataCases)
     metadataChecks.Add(($"metadata/{fixtureName}/{codec}", media, options, ParameterArgument(transcoder, media, options)));
 }
 
-// Filter parity: the whole chain must be identical whether the software colour
-// conversion comes from the core or from the managed builder.
-(string Fixture, string Purpose, string Output)[] filterCases =
+// Filter parity: the whole chain must be identical whether its entries come from the
+// core or from the managed builder. The cases cover the software tail, the curve chain,
+// tone mapping, the Dolby render pass, the metadata drop and the QSV surface.
+(string Fixture, string Purpose, string Output, string Transform, string? Profile, string? DynamicHdr, bool Qsv)[] filterCases =
 [
-    ("420-8", "share", "sdr"),
-    ("420-8", "archive", "sdr"),
-    ("420-10", "archive", "hdr"),
-    ("yuvj-8", "archive", "sdr"),
-    ("rgb-8", "archive", "sdr"),
+    ("420-8", "share", "sdr", "none", null, null, false),
+    ("420-8", "archive", "sdr", "none", null, null, false),
+    ("420-10", "archive", "hdr", "none", null, null, false),
+    ("yuvj-8", "archive", "sdr", "none", null, null, false),
+    ("rgb-8", "archive", "sdr", "none", null, null, false),
+    ("milog-10", "archive", "hdr", "log-hdr", "milog", null, false),
+    ("420-10", "share", "sdr", "hdr-sdr", null, null, false),
+    ("dovi-10", "archive", "sdr", "hdr-sdr", null, null, false),
+    ("dovi-10", "archive", "hdr", "none", null, "standard", false),
+    ("420-8", "share", "sdr", "none", null, null, true),
 ];
 List<(string Label, MediaInfo Media, EncodeOptions Options, string Managed)> filterChecks = new();
-foreach ((string fixtureName, string purpose, string output) in filterCases)
+foreach ((string fixtureName, string purpose, string output, string transform, string? profile, string? dynamicHdr, bool qsv) in filterCases)
 {
     MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
-    EncodeOptions options = new(purpose, "hevc", output, "none");
-    filterChecks.Add(($"filters/{fixtureName}/{purpose}", media, options, FilterArgument(transcoder, media, options)));
+    if (qsv)
+    {
+        // A share request only stays on the GPU when the probe names a decodable codec.
+        media = WithVideo(media, video =>
+        {
+            video["codec_name"] = "hevc";
+        });
+    }
+
+    EncodeOptions options = new(purpose, "hevc", output, transform, profile, DynamicHdr: dynamicHdr ?? "preserve");
+    string label = $"filters/{fixtureName}/{purpose}/{transform}{(qsv ? "/qsv" : "")}";
+    filterChecks.Add((label, media, options, FilterArgument(transcoder, media, options)));
 }
 
 // Behaviour preservation through the public API: install the bridge, replay every
@@ -460,17 +476,26 @@ static string ManagedFormat(Transcoder transcoder, EncodeOptions options, MediaI
     }
 }
 
-/// <summary>Returns the source with both probe rate fields replaced by one value.</summary>
-static MediaInfo AtRate(MediaInfo media, double rate)
+/// <summary>Returns the source with its video object edited.</summary>
+static MediaInfo WithVideo(MediaInfo media, Action<JsonObject> edit)
 {
     JsonObject video = media.Video.DeepClone().AsObject();
-    string text = rate.ToString("R", CultureInfo.InvariantCulture);
-    video["avg_frame_rate"] = text;
-    video["r_frame_rate"] = text;
+    edit(video);
     return media with
     {
         Video = video
     };
+}
+
+/// <summary>Returns the source with both probe rate fields replaced by one value.</summary>
+static MediaInfo AtRate(MediaInfo media, double rate)
+{
+    string text = rate.ToString("R", CultureInfo.InvariantCulture);
+    return WithVideo(media, video =>
+    {
+        video["avg_frame_rate"] = text;
+        video["r_frame_rate"] = text;
+    });
 }
 
 /// <summary>Builds a plan and returns the `-g` value the encoder would receive.</summary>

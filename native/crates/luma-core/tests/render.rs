@@ -1,6 +1,7 @@
-use luma_core::domain::Purpose;
+use luma_core::domain::{Purpose, SourceKind};
 use luma_core::render::{
-    ColorFilterRequest, ColorTags, InputMap, input_map, software_color_filters,
+    ColorFilterRequest, ColorTags, DolbyRenderFilter, FilterContentRequest, InputMap, LogFilter,
+    ToneMapFilter, VppFilter, filter_content, input_map, software_color_filters,
 };
 
 #[test]
@@ -225,4 +226,109 @@ fn preserving_dynamic_metadata_skips_the_conversion() {
     kept.preserve_dynamic = true;
 
     assert!(software_color_filters(&kept).is_empty());
+}
+
+fn empty_content() -> FilterContentRequest<'static> {
+    FilterContentRequest {
+        log: None,
+        tone_map: None,
+        dolby_render: None,
+        drop_dynamic_metadata: false,
+        vpp: None,
+    }
+}
+
+#[test]
+fn the_log_chain_prefers_the_source_tags_over_the_curve_defaults() {
+    let mut request = empty_content();
+    request.log = Some(LogFilter {
+        file: "REDMI_K90_MiLog_to_Rec2100_HLG.cube",
+        matrix: "2020_ncl",
+        range: "full",
+        source_space: Some("bt709"),
+        source_range: Some("tv"),
+    });
+
+    let log = filter_content(&request).log.expect("log chain");
+    assert!(log.contains("zscale=matrixin=709:rangein=limited:range=full"));
+    assert!(log.contains("lut3d=file=REDMI_K90_MiLog_to_Rec2100_HLG.cube:interp=tetrahedral"));
+}
+
+#[test]
+fn an_untagged_log_source_falls_back_to_the_curve_matrix_and_range() {
+    let mut request = empty_content();
+    request.log = Some(LogFilter {
+        file: "Samsung_Log_to_Rec2100_HLG.cube",
+        matrix: "2020_ncl",
+        range: "limited",
+        source_space: None,
+        source_range: None,
+    });
+
+    let log = filter_content(&request).log.expect("log chain");
+    assert!(log.contains("zscale=matrixin=2020_ncl:rangein=limited:range=full"));
+}
+
+#[test]
+fn tone_mapping_drops_the_metadata_it_invalidates() {
+    let mut request = empty_content();
+    request.tone_map = Some(ToneMapFilter {
+        range: "pc",
+        apply_dolby_vision: true,
+    });
+
+    let tone = filter_content(&request).tone_map.expect("tone map");
+    assert!(tone.starts_with("libplacebo=format=yuv444p16le:colorspace=bt709"));
+    assert!(tone.contains("range=pc:tonemapping=bt.2390:apply_dolbyvision=1"));
+    assert!(tone.ends_with("sidedata=delete:type=DYNAMIC_HDR_PLUS"));
+}
+
+#[test]
+fn dolby_vision_keeps_hlg_or_switches_to_pq() {
+    let mut request = empty_content();
+    request.dolby_render = Some(DolbyRenderFilter {
+        kind: SourceKind::Hlg,
+        range: "tv",
+    });
+    let hlg = filter_content(&request).dolby_render.expect("hlg");
+    assert!(hlg.contains("color_trc=arib-std-b67"));
+
+    request.dolby_render = Some(DolbyRenderFilter {
+        kind: SourceKind::Pq,
+        range: "pc",
+    });
+    let pq = filter_content(&request).dolby_render.expect("pq");
+    assert!(pq.contains("color_trc=smpte2084:range=pc"));
+}
+
+#[test]
+fn the_qsv_surface_converts_to_rec709_only_for_sdr() {
+    let mut request = empty_content();
+    request.vpp = Some(VppFilter {
+        depth: 10,
+        out_range: "tv",
+        sdr: false,
+    });
+    assert_eq!(
+        filter_content(&request).vpp.expect("vpp"),
+        "vpp_qsv=format=p010le:out_range=tv"
+    );
+
+    request.vpp = Some(VppFilter {
+        depth: 8,
+        out_range: "pc",
+        sdr: true,
+    });
+    let vpp = filter_content(&request).vpp.expect("vpp");
+    assert!(vpp.starts_with("vpp_qsv=format=nv12:out_range=pc"));
+    assert!(vpp.contains("out_color_transfer=bt709"));
+}
+
+#[test]
+fn dropped_metadata_is_only_emitted_when_a_conversion_invalidates_it() {
+    let mut request = empty_content();
+    assert!(filter_content(&request).dropped_metadata.is_none());
+
+    request.drop_dynamic_metadata = true;
+    assert!(filter_content(&request).dropped_metadata.is_some());
 }

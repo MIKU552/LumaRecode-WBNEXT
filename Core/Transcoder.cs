@@ -166,29 +166,6 @@ public sealed partial class Transcoder
     private static string FrameTags(JsonObject colors) => "setparams=" + string.Join(':',
         new[] { ("color_primaries", "color_primaries"), ("color_transfer", "color_trc"), ("color_space", "colorspace"), ("color_range", "range") }
         .Where(p => !JsonFields.Unspecified(colors.Text(p.Item1))).Select(p => p.Item2 + "=" + (p.Item1 == "color_range" ? colors.Text(p.Item1) switch { "pc" => "full", "tv" => "limited", var v => v } : colors.Text(p.Item1))));
-    private static string ToneMap(string range, bool dolby = false) => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={range}:tonemapping=bt.2390:apply_dolbyvision={(dolby ? 1 : 0)},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
-    // Expand sample range before the RGB LUT, retain float intermediates,
-    // then convert the HLG RGB result to BT.2020 YCbCr. Quantize only at output.
-    private static string LogFilter(JsonObject video, string profile)
-    {
-        var p = Profiles[profile];
-        var matrix = video.Text("color_space") switch
-        {
-            "gbr" => "gbr",
-            "bt709" => "709",
-            "bt2020nc" => "2020_ncl",
-            "smpte170m" => "170m",
-            "bt470bg" => "470bg",
-            _ => p.Matrix
-        };
-        var range = video.Text("color_range") switch
-        {
-            "pc" => "full",
-            "tv" => "limited",
-            _ => p.Range
-        };
-        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={p.File}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
-    }
     private static double Fps(JsonObject v) => new[] { v.Text("avg_frame_rate"), v.Text("r_frame_rate") }.Select(s => JsonFields.Number(s)).FirstOrDefault(n => n > 0, 30);
     // Fallback for a machine without the native library: keep high-frame-rate inputs
     // below the long-GOP range associated with device failures on some Arc drivers
@@ -226,6 +203,69 @@ public sealed partial class Transcoder
         string format = request.Purpose == "share" && request.Depth == 10 ? "p010le" : request.PixelFormat;
         return ["zscale=" + string.Join(':', conversion), "format=" + format, FrameTags(tags)];
     }
+    // Fallback for a machine without the native library. These strings are the interface
+    // between the hosts, so they are spelled exactly the way the core spells them.
+    private static RenderFilters ManagedRenderFilters(RenderFiltersRequest request)
+    {
+        return new RenderFilters(
+            request.Log is { } curve ? ManagedLogFilter(curve) : null,
+            request.ToneMap is { } tone ? ManagedToneMap(tone) : null,
+            request.DolbyRender is { } dolby ? ManagedDolbyRender(dolby) : null,
+            request.DropDynamicMetadata ? ManagedDynamicMetadataDrop : null,
+            request.Vpp is { } vpp ? ManagedVpp(vpp) : null);
+    }
+
+    private static string ManagedLogFilter(LogFilterRequest request)
+    {
+        string matrix = request.SourceSpace switch
+        {
+            "gbr" => "gbr",
+            "bt709" => "709",
+            "bt2020nc" => "2020_ncl",
+            "smpte170m" => "170m",
+            "bt470bg" => "470bg",
+            _ => request.Matrix
+        };
+        string range = request.SourceRange switch
+        {
+            "pc" => "full",
+            "tv" => "limited",
+            _ => request.Range
+        };
+        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={request.File}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
+    }
+
+    private static string ManagedToneMap(ToneMapRequest request)
+        => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={request.Range}:tonemapping=bt.2390:apply_dolbyvision={(request.ApplyDolbyVision ? 1 : 0)},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+
+    private static string ManagedDolbyRender(DolbyRenderRequest request)
+    {
+        string trc = request.Kind == "hlg" ? "arib-std-b67" : "smpte2084";
+        return $"libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={trc}:range={request.Range}:apply_dolbyvision=1";
+    }
+
+    private static string ManagedVpp(VppFilterRequest request)
+    {
+        string surface = request.Depth == 10 ? "p010le" : "nv12";
+        string colorOptions = ":out_range=" + request.OutRange;
+        if (request.Sdr)
+        {
+            colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
+        }
+
+        return "vpp_qsv=format=" + surface + colorOptions;
+    }
+
+    private const string ManagedDynamicMetadataDrop = "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+
+    private static void AddIfAny(List<string> filters, string? entry)
+    {
+        if (!string.IsNullOrEmpty(entry))
+        {
+            filters.Add(entry);
+        }
+    }
+
     // Fallback for a machine without the native library. Static tokens are only re-declared
     // for PQ output, and only for encoders that can carry them; an SDR target keeps the
     // dynamic payload but drops the mastering declaration.
@@ -401,6 +441,22 @@ public sealed partial class Transcoder
             args.AddRange(["-i", media.Path, "-map", "0:" + video.Integer("index"), "-map", audioMap, "-map_metadata", keepMetadata ? "0" : "-1", "-map_chapters", keepChapters ? "0" : "-1", "-sn", "-dn"]);
         }
         var filters = new List<string>();
+        LogFilterRequest? curve = null;
+        if (kind == "log" && Profiles.TryGetValue(options.Profile ?? "", out var profile))
+        {
+            curve = new LogFilterRequest(profile.File, profile.Matrix, profile.Range,
+                JsonFields.Unspecified(video.Text("color_space")) ? null : video.Text("color_space"),
+                JsonFields.Unspecified(video.Text("color_range")) ? null : video.Text("color_range"));
+        }
+
+        bool toneMapping = options.Transform is "hdr-sdr" or "log-sdr" || developRaw && options.Output == "sdr";
+        RenderFiltersRequest contentRequest = new(
+            curve,
+            toneMapping ? new ToneMapRequest(options.ColorRange == "full" ? "pc" : "tv", renderDolby) : null,
+            renderDolby && options.Output == "hdr" ? new DolbyRenderRequest(kind, options.ColorRange == "full" ? "pc" : "tv") : null,
+            media.DynamicHdr && !preserveDynamic,
+            gpu && !timingCompatibility ? new VppFilterRequest(options.Depth, colors.Text("color_range"), options.Output == "sdr") : null);
+        RenderFilters content = SharedCore.RenderFilterBuilder?.Invoke(contentRequest) ?? ManagedRenderFilters(contentRequest);
         if (window is not null)
         {
             filters.Add($"trim=start_frame={window.Start - window.SeekFrame}:end_frame={window.End - window.SeekFrame}");
@@ -432,10 +488,7 @@ public sealed partial class Transcoder
         }
         else if (renderDolby)
         {
-            if (options.Output == "hdr")
-            {
-                filters.Add($"libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={(kind == "hlg" ? "arib-std-b67" : "smpte2084")}:range={(options.ColorRange == "full" ? "pc" : "tv")}:apply_dolbyvision=1");
-            }
+            AddIfAny(filters, content.DolbyRender);
         }
         else if (kind == "log")
         {
@@ -444,7 +497,7 @@ public sealed partial class Transcoder
                 filters.Add("format=gbrpf32le");
             }
 
-            filters.Add(LogFilter(video, options.Profile!));
+            AddIfAny(filters, content.Log);
         }
         else if (!gpu)
         {
@@ -455,15 +508,8 @@ public sealed partial class Transcoder
 
             filters.Add(FrameTags(video));
         }
-        if (options.Transform is "hdr-sdr" or "log-sdr" || developRaw && options.Output == "sdr")
-        {
-            filters.Add(ToneMap(options.ColorRange == "full" ? "pc" : "tv", renderDolby));
-        }
-
-        if (media.DynamicHdr && !preserveDynamic)
-        {
-            filters.Add("sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS");
-        }
+        AddIfAny(filters, content.ToneMap);
+        AddIfAny(filters, content.DroppedMetadata);
         if (gpu)
         {
             if (timingCompatibility)
@@ -472,13 +518,7 @@ public sealed partial class Transcoder
             }
             else
             {
-                var colorOptions = ":out_range=" + colors.Text("color_range");
-                if (options.Output == "sdr")
-                {
-                    colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
-                }
-
-                filters.Add($"vpp_qsv=format={(options.Depth == 10 ? "p010le" : "nv12")}{colorOptions}");
+                AddIfAny(filters, content.Vpp);
             }
         }
         else if (!preserveDynamic)

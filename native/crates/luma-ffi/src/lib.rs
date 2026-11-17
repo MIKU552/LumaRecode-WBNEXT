@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 24] = [
+const OPERATIONS: [&str; 25] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -65,6 +65,7 @@ const OPERATIONS: [&str; 24] = [
     "plan.gop",
     "plan.hdr_metadata",
     "plan.color_filters",
+    "plan.render_filters",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -179,6 +180,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.gop" => plan_gop(&payload),
         "plan.hdr_metadata" => plan_hdr_metadata(&payload),
         "plan.color_filters" => plan_color_filters(&payload),
+        "plan.render_filters" => plan_render_filters(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -675,6 +677,104 @@ fn plan_gop(payload: &Value) -> CoreResult<Value> {
         .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
     Ok(json!({
         "frames": luma_core::render::gop(request.frame_rate, request.share, request.motion_photo),
+    }))
+}
+
+#[derive(Deserialize)]
+struct LogFilterDto {
+    file: String,
+    matrix: String,
+    range: String,
+    #[serde(default)]
+    source_space: Option<String>,
+    #[serde(default)]
+    source_range: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ToneMapDto {
+    range: String,
+    #[serde(default)]
+    apply_dolby_vision: bool,
+}
+
+#[derive(Deserialize)]
+struct DolbyRenderDto {
+    kind: String,
+    range: String,
+}
+
+#[derive(Deserialize)]
+struct VppDto {
+    depth: u8,
+    out_range: String,
+    #[serde(default)]
+    sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct RenderFilterDto {
+    #[serde(default)]
+    log: Option<LogFilterDto>,
+    #[serde(default)]
+    tone_map: Option<ToneMapDto>,
+    #[serde(default)]
+    dolby_render: Option<DolbyRenderDto>,
+    #[serde(default)]
+    drop_dynamic_metadata: bool,
+    #[serde(default)]
+    vpp: Option<VppDto>,
+}
+
+fn log_filter(dto: &LogFilterDto) -> luma_core::render::LogFilter<'_> {
+    luma_core::render::LogFilter {
+        file: dto.file.as_str(),
+        matrix: dto.matrix.as_str(),
+        range: dto.range.as_str(),
+        source_space: dto.source_space.as_deref(),
+        source_range: dto.source_range.as_deref(),
+    }
+}
+
+fn tone_map(dto: &ToneMapDto) -> luma_core::render::ToneMapFilter<'_> {
+    luma_core::render::ToneMapFilter {
+        range: dto.range.as_str(),
+        apply_dolby_vision: dto.apply_dolby_vision,
+    }
+}
+
+fn dolby_render(dto: &DolbyRenderDto) -> CoreResult<luma_core::render::DolbyRenderFilter<'_>> {
+    Ok(luma_core::render::DolbyRenderFilter {
+        kind: SourceKind::parse(&dto.kind)?,
+        range: dto.range.as_str(),
+    })
+}
+
+fn vpp(dto: &VppDto) -> luma_core::render::VppFilter<'_> {
+    luma_core::render::VppFilter {
+        depth: dto.depth,
+        out_range: dto.out_range.as_str(),
+        sdr: dto.sdr,
+    }
+}
+
+fn plan_render_filters(payload: &Value) -> CoreResult<Value> {
+    let request: RenderFilterDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let dolby = request.dolby_render.as_ref().map(dolby_render).transpose()?;
+    let content = luma_core::render::filter_content(&luma_core::render::FilterContentRequest {
+        log: request.log.as_ref().map(log_filter),
+        tone_map: request.tone_map.as_ref().map(tone_map),
+        dolby_render: dolby,
+        drop_dynamic_metadata: request.drop_dynamic_metadata,
+        vpp: request.vpp.as_ref().map(vpp),
+    });
+    Ok(json!({
+        "log": content.log,
+        "tone_map": content.tone_map,
+        "dolby_render": content.dolby_render,
+        "dropped_metadata": content.dropped_metadata,
+        "vpp": content.vpp,
     }))
 }
 

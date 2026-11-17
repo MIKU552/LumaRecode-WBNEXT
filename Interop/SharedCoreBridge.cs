@@ -38,6 +38,7 @@ public static class SharedCoreBridge
         SharedCore.ParameterBuilder = BuildParameterString;
         SharedCore.FilterBuilder = BuildFilterChain;
         SharedCore.ColorFilterBuilder = BuildColorFilters;
+        SharedCore.RenderFilterBuilder = BuildRenderFilters;
         SharedCore.Gop = ComputeGop;
         SharedCore.HdrMetadata = ComposeHdrMetadata;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
@@ -173,6 +174,80 @@ public static class SharedCoreBridge
         payload["filters"] = items;
         return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
     }
+
+    /// <summary>Builds the signal-dependent filters through the core.</summary>
+    private static RenderFilters? BuildRenderFilters(RenderFiltersRequest request)
+    {
+        JsonObject payload = new();
+        if (request.Log is { } log)
+        {
+            JsonObject entry = new()
+            {
+                ["file"] = log.File,
+                ["matrix"] = log.Matrix,
+                ["range"] = log.Range,
+            };
+            if (log.SourceSpace is not null)
+            {
+                entry["source_space"] = log.SourceSpace;
+            }
+
+            if (log.SourceRange is not null)
+            {
+                entry["source_range"] = log.SourceRange;
+            }
+
+            payload["log"] = entry;
+        }
+
+        if (request.ToneMap is { } tone)
+        {
+            JsonObject entry = new()
+            {
+                ["range"] = tone.Range,
+                ["apply_dolby_vision"] = tone.ApplyDolbyVision,
+            };
+            payload["tone_map"] = entry;
+        }
+
+        if (request.DolbyRender is { } dolby)
+        {
+            JsonObject entry = new()
+            {
+                ["kind"] = dolby.Kind,
+                ["range"] = dolby.Range,
+            };
+            payload["dolby_render"] = entry;
+        }
+
+        if (request.Vpp is { } vpp)
+        {
+            JsonObject entry = new()
+            {
+                ["depth"] = vpp.Depth,
+                ["out_range"] = vpp.OutRange,
+                ["sdr"] = vpp.Sdr,
+            };
+            payload["vpp"] = entry;
+        }
+
+        payload["drop_dynamic_metadata"] = request.DropDynamicMetadata;
+        if (LumaCoreNative.Call("plan.render_filters", payload) is not JsonObject data)
+        {
+            return null;
+        }
+
+        return new RenderFilters(
+            Entry(data, "log"),
+            Entry(data, "tone_map"),
+            Entry(data, "dolby_render"),
+            Entry(data, "dropped_metadata"),
+            Entry(data, "vpp"));
+    }
+
+    /// <summary>Reads a string entry, mapping JSON null and empty values to null.</summary>
+    private static string? Entry(JsonObject data, string key)
+        => data[key]?.ToString() is { Length: > 0 } text ? text : null;
 
     /// <summary>Builds the software colour conversion filters through the core.</summary>
     private static IReadOnlyList<string>? BuildColorFilters(ColorFilterRequest request)
