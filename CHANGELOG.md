@@ -26,6 +26,7 @@
 - macOS 的 `convert` 支持 `--dry-run`：只打印计划不执行，便于支持与流水线断言。
 - macOS 窗口里可以直接转换打开的文件：进度取自 FFmpeg 的 `-progress` 流，可取消，失败与拒绝都有明确文字。
 - 预览画布显示真实画面，时间轴可拖动定位（抽帧走 AVFoundation，时间映射有单测）。
+- 导出面板：可选目标目录、改文件名、覆盖前明确确认；命名与去重规则有单测。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -318,6 +319,7 @@
 - The macOS `convert` command gains `--dry-run`: it prints the plan and stops, which support and pipelines can assert on.
 - The macOS window converts the open file directly: progress comes from FFmpeg's `-progress` stream, the run can be cancelled, and failures arrive as readable text.
 - The preview canvas shows a real frame and the timeline scrubs; stills come from AVFoundation and the time mapping is unit tested.
+- The export sheet picks the folder, edits the name and confirms a replacement; the naming and de-duplication rules are unit tested.
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

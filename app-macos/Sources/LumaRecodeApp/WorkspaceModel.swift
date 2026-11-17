@@ -112,14 +112,61 @@ final class WorkspaceModel {
     private var cancellation: ConversionCancellation?
     private var conversionTask: Task<Void, Never>?
 
-    /// Where a conversion of the open file writes: beside it, with a clear name.
-    var suggestedOutput: URL? {
+    /// The export sheet's state: folder, stem, and whether it is on screen.
+    var isExporting = false
+    var exportDirectory: URL?
+    var exportName = ""
+
+    /// The container the export will carry; the shell follows the inspector's choice.
+    var exportExtension: String {
+        options.container == "mp4" ? "mp4" : "mkv"
+    }
+
+    /// The file a run would write right now.
+    var exportTarget: URL? {
         guard let opened else {
             return nil
         }
-        let base = opened.url.deletingPathExtension().lastPathComponent
-        return opened.url.deletingLastPathComponent()
-            .appendingPathComponent("\(base)-converted.mkv")
+        let directory = exportDirectory ?? opened.url.deletingLastPathComponent()
+        let name = exportName.isEmpty ? ExportDestination.defaultName(for: opened.url) : exportName
+        return ExportDestination.url(directory: directory, name: name, fileExtension: exportExtension)
+    }
+
+    /// Whether the target already exists, so the sheet can ask before replacing it.
+    var exportTargetExists: Bool {
+        guard let target = exportTarget else {
+            return false
+        }
+        return FileManager.default.fileExists(atPath: target.path)
+    }
+
+    /// Fills the sheet with a name that does not collide, then shows it.
+    func prepareExport() {
+        guard let opened else {
+            return
+        }
+        let directory = exportDirectory ?? opened.url.deletingLastPathComponent()
+        exportDirectory = directory
+        let stem = exportName.isEmpty ? ExportDestination.defaultName(for: opened.url) : exportName
+        let unique = ExportDestination.uniqueURL(
+            directory: directory,
+            name: stem,
+            fileExtension: exportExtension
+        ) { FileManager.default.fileExists(atPath: $0.path) }
+        exportName = unique.deletingPathExtension().lastPathComponent
+        isExporting = true
+    }
+
+    /// Asks for the folder the export writes into.
+    func chooseExportFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        if panel.runModal() == .OK, let url = panel.url {
+            exportDirectory = url
+        }
     }
 
     var selectedReference: Reference? {
@@ -201,7 +248,7 @@ final class WorkspaceModel {
     /// back to it. FFmpeg's own progress stream drives the bar, so a stalled encode looks
     /// stalled instead of pretending to move.
     func startConversion() {
-        guard let opened, let destination = suggestedOutput else {
+        guard let opened, let destination = exportTarget else {
             return
         }
         if case .running = conversion {

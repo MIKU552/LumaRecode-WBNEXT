@@ -33,6 +33,9 @@ struct WorkspaceView: View {
             }
             .frame(minWidth: 820, minHeight: 540)
         }
+        .sheet(isPresented: $model.isExporting) {
+            ExportSheet(model: model)
+        }
         .navigationTitle("LumaRecode")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -203,6 +206,59 @@ private struct TimelineStrip: View {
     }
 }
 
+/// Chooses where the conversion writes, and confirms a replacement.
+private struct ExportSheet: View {
+    @Bindable var model: WorkspaceModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Convert \(model.opened?.url.lastPathComponent ?? "")")
+                .font(.headline)
+
+            HStack {
+                Text("Folder")
+                    .frame(width: 56, alignment: .leading)
+                Text(model.exportDirectory?.path ?? "—")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer()
+                Button("Choose…") { model.chooseExportFolder() }
+            }
+
+            HStack {
+                Text("Name")
+                    .frame(width: 56, alignment: .leading)
+                TextField("File name", text: $model.exportName)
+                Text(".\(model.exportExtension)")
+                    .monospaced()
+                    .foregroundStyle(.secondary)
+            }
+
+            if let target = model.exportTarget {
+                Text(model.exportTargetExists ? "Replaces \(target.lastPathComponent)" : target.path)
+                    .font(.caption)
+                    .foregroundStyle(model.exportTargetExists ? .orange : .secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            HStack {
+                Spacer()
+                Button("Cancel") { model.isExporting = false }
+                    .keyboardShortcut(.cancelAction)
+                Button(model.exportTargetExists ? "Replace" : "Convert") {
+                    model.isExporting = false
+                    model.startConversion()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(model.exportTarget == nil)
+            }
+        }
+        .padding(20)
+        .frame(width: 460)
+    }
+}
+
 /// Convert controls for the open file: run, watch, cancel, read the result.
 private struct ConversionPanel: View {
     @Bindable var model: WorkspaceModel
@@ -211,7 +267,7 @@ private struct ConversionPanel: View {
         HStack(spacing: 10) {
             switch model.conversion {
             case .idle:
-                Button("Convert") { model.startConversion() }
+                Button("Convert…") { model.prepareExport() }
             case let .running(progress):
                 ProgressView(value: progress)
                     .frame(width: 140)
@@ -235,7 +291,7 @@ private struct ConversionPanel: View {
                 Button("Retry") { model.startConversion() }
             }
             Spacer()
-            if let destination = model.suggestedOutput {
+            if let destination = model.exportTarget {
                 Text(destination.lastPathComponent)
                     .monospaced()
                     .foregroundStyle(.tertiary)
