@@ -4,7 +4,7 @@
 //! choices. The blocks here are the ones that must not drift between hosts: which streams are
 //! mapped, whether metadata and chapters survive, and the flags that keep the process quiet.
 
-use crate::domain::{Purpose, SourceKind};
+use crate::domain::{Output, Purpose, SourceKind};
 
 /// One input and its stream mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
