@@ -492,11 +492,7 @@ fn ycbcr_space(output: Output) -> &'static str {
 }
 
 fn range_word(range: &str) -> &'static str {
-    if range == "full" {
-        "pc"
-    } else {
-        "tv"
-    }
+    if range == "full" { "pc" } else { "tv" }
 }
 
 /// Fills the tags the source never declared, leaving what it did declare alone.

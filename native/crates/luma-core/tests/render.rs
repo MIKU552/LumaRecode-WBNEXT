@@ -364,7 +364,13 @@ fn an_hdr_interpretation_decides_the_transfer() {
 
 #[test]
 fn the_output_tags_follow_the_target_not_the_source() {
-    let source = source_tags(SourceKind::Pq, false, false, &ColorTags::default(), "limited");
+    let source = source_tags(
+        SourceKind::Pq,
+        false,
+        false,
+        &ColorTags::default(),
+        "limited",
+    );
 
     let sdr = target_tags(SourceKind::Pq, Output::Sdr, &source, "limited");
     assert_eq!(sdr.primaries.as_deref(), Some("bt709"));
@@ -380,7 +386,13 @@ fn the_output_tags_follow_the_target_not_the_source() {
 
 #[test]
 fn a_rgb_output_names_the_matrix_it_becomes() {
-    let source = source_tags(SourceKind::Sdr, true, false, &ColorTags::default(), "limited");
+    let source = source_tags(
+        SourceKind::Sdr,
+        true,
+        false,
+        &ColorTags::default(),
+        "limited",
+    );
     assert_eq!(source.space.as_deref(), Some("gbr"));
 
     let sdr = target_tags(SourceKind::Sdr, Output::Sdr, &source, "limited");
@@ -392,7 +404,13 @@ fn a_rgb_output_names_the_matrix_it_becomes() {
 
 #[test]
 fn a_profile_five_stream_keeps_its_own_surface_name() {
-    let tags = source_tags(SourceKind::Pq, false, true, &ColorTags::default(), "limited");
+    let tags = source_tags(
+        SourceKind::Pq,
+        false,
+        true,
+        &ColorTags::default(),
+        "limited",
+    );
     assert_eq!(tags.space.as_deref(), Some("ipt-c2"));
 
     // The RGB rule is the last word, exactly as the host ordered the two overrides.
