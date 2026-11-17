@@ -409,14 +409,14 @@ public sealed partial class Transcoder
             JsonFields.Unspecified(video.Text("color_primaries")) ? null : video.Text("color_primaries"),
             JsonFields.Unspecified(video.Text("color_transfer")) ? null : video.Text("color_transfer"),
             JsonFields.Unspecified(video.Text("color_space")) ? null : video.Text("color_space"));
-        ColorTagSet tags = SharedCore.ColorTagsBuilder?.Invoke(tagsRequest) ?? ManagedColorTags(tagsRequest);
-        ApplyTags(video, tags.Source);
+        ColorTagSet tagSet = SharedCore.ColorTagsBuilder?.Invoke(tagsRequest) ?? ManagedColorTags(tagsRequest);
+        ApplyTags(video, tagSet.Source);
         JsonObject colors = new()
         {
-            ["color_primaries"] = tags.Target.Primaries,
-            ["color_transfer"] = tags.Target.Transfer,
-            ["color_space"] = tags.Target.Space,
-            ["color_range"] = tags.Target.Range,
+            ["color_primaries"] = tagSet.Target.Primaries,
+            ["color_transfer"] = tagSet.Target.Transfer,
+            ["color_space"] = tagSet.Target.Space,
+            ["color_range"] = tagSet.Target.Range,
         };
 
         var config = (motionPhoto ? MotionConfig[options.Purpose]?[options.Codec] : options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
