@@ -189,12 +189,15 @@ public struct ConversionPlanner: Sendable {
             var curve: LogFilterInput?
             if usesCurve {
                 let profile = try client.logProfile(job.logProfile)
+                // A curve reads frames in the range it was graded in unless the file says
+                // otherwise, so only a declared range is passed on.
+                let declared = probed.source["color_range"] as? String
                 curve = LogFilterInput(
                     file: lutPath(profile.file, directory: job.lutDirectory),
                     matrix: profile.matrix,
                     range: profile.range,
-                    sourceSpace: tags.source.space,
-                    sourceRange: tags.source.range
+                    sourceSpace: probed.source["color_space"] as? String,
+                    sourceRange: (declared?.isEmpty ?? true) ? nil : tags.source.range
                 )
             }
             let entries = try client.renderFilters(
