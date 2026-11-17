@@ -195,8 +195,7 @@ fn color_request(purpose: Purpose, depth: u8, format: &str) -> ColorFilterReques
 fn the_software_tail_converts_range_and_writes_tags() {
     let filters = software_color_filters(&color_request(Purpose::Archive, 8, "yuv420p"));
 
-    let expected =
-        "zscale=range=limited:dither=error_diffusion:primaries=bt709:transfer=bt709:matrix=bt709,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited";
+    let expected = "zscale=range=limited:dither=error_diffusion:primaries=bt709:transfer=bt709:matrix=bt709,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited";
     assert_eq!(filters.join(","), expected);
 }
 

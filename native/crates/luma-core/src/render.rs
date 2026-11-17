@@ -260,5 +260,7 @@ fn frame_tags(tags: &ColorTags) -> String {
 
 /// Treats the probe's placeholder words as "not declared", as the hosts do.
 fn specified(value: &Option<String>) -> Option<&str> {
-    value.as_deref().filter(|text| !matches!(*text, "" | "unknown" | "unspecified" | "reserved"))
+    value
+        .as_deref()
+        .filter(|text| !matches!(*text, "" | "unknown" | "unspecified" | "reserved"))
 }
