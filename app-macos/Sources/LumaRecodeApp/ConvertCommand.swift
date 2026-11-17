@@ -134,4 +134,3 @@ enum ConvertCommand {
         FileHandle.standardError.write(Data((message + "\n").utf8))
     }
 }
-}
