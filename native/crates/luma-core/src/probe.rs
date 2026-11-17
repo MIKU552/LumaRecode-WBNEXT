@@ -51,8 +51,10 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         .map(|value| value as i32)
         .filter(|value| *value > 0)
         .unwrap_or_else(|| depth_from_pixel_format(&pixel_format));
-    let side_data = side_data(video);
-    let dynamic = metadata::parse(side_data);
+    // Encoders put the HDR declaration on the frames, so both places are read.
+    let mut side_data = side_data(video).to_vec();
+    side_data.extend(frame_side_data(&root));
+    let dynamic = metadata::parse(&side_data);
     let source = SourceDto {
         pixel_format: Some(pixel_format.clone()),
         monochrome: pixel_format.starts_with("gray"),
@@ -77,7 +79,7 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
             .unwrap_or(0),
         dolby_vision_profile: dynamic.dolby_vision.map(|config| i64::from(config.profile)),
         hdr10_plus: dynamic.hdr10_plus,
-        side_data: side_data.to_vec(),
+        side_data,
     })
 }
 
@@ -95,6 +97,20 @@ fn audio_tracks(streams: &[Value]) -> Vec<AudioDto> {
             channel_layout: text(stream, "channel_layout"),
         })
         .collect()
+}
+
+/// Side data from the probed frames, where the encoder writes its HDR declaration.
+fn frame_side_data(root: &Value) -> Vec<Value> {
+    let mut entries = Vec::new();
+    let Some(frames) = root.get("frames").and_then(Value::as_array) else {
+        return entries;
+    };
+    for frame in frames {
+        if let Some(list) = frame.get("side_data_list").and_then(Value::as_array) {
+            entries.extend(list.iter().cloned());
+        }
+    }
+    entries
 }
 
 fn side_data(stream: &Value) -> &[Value] {

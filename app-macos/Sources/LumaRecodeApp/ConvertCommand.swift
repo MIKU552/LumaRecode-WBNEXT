@@ -35,7 +35,7 @@ enum ConvertCommand {
             throw ConversionError.toolMissing("ffmpeg")
         }
 
-        let document = try ProbeRunner.document(path: job.input)
+        let document = try ProbeRunner.document(path: job.input, includeFirstFrame: true)
         let probed = try CoreClient().probe(document: document)
         let plan = try ConversionPlanner(ffmpeg: ffmpeg).plan(job, probed: probed)
         print(plan.commandLine)

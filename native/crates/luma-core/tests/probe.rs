@@ -138,3 +138,21 @@ fn reads_a_ten_bit_document_with_audio() {
         Some("pcm_s16le")
     );
 }
+
+#[test]
+fn a_declaration_on_the_frame_is_read_as_well() {
+    // Encoders write mastering display and light levels on the frame, not on the stream.
+    let document = r#"{
+        "streams": [{"codec_type": "video", "index": 0, "pix_fmt": "yuv420p10le",
+                     "width": 320, "height": 240, "color_transfer": "smpte2084"}],
+        "frames": [{"side_data_list": [
+            {"side_data_type": "Mastering display metadata", "green_x": "13250/50000"},
+            {"side_data_type": "HDR Dynamic Metadata SMPTE2094-40"}
+        ]}]
+    }"#;
+
+    let summary = summarize(document).expect("summary");
+    assert_eq!(summary.side_data.len(), 2);
+    assert_eq!(summary.side_data[0]["side_data_type"], "Mastering display metadata");
+    assert!(summary.hdr10_plus);
+}

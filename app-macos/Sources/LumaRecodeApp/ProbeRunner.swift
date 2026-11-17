@@ -39,14 +39,23 @@ enum ProbeRunner {
     }
 
     /// Runs ffprobe and returns its JSON document.
-    static func document(path: String) throws -> String {
+    ///
+    /// `includeFirstFrame` adds one decoded frame, which is where an encoder writes its HDR
+    /// declaration; a conversion needs it, the file browser does not.
+    static func document(path: String, includeFirstFrame: Bool = false) throws -> String {
         guard let tool = locate() else {
             throw Failure.ffprobeMissing
         }
 
+        var arguments = ["-v", "error", "-print_format", "json", "-show_streams", "-show_format"]
+        if includeFirstFrame {
+            arguments += ["-read_intervals", "%+#1", "-show_frames"]
+        }
+        arguments.append(path)
+
         let process = Process()
         process.executableURL = tool
-        process.arguments = ["-v", "error", "-print_format", "json", "-show_streams", "-show_format", path]
+        process.arguments = arguments
         let output = Pipe()
         let errors = Pipe()
         process.standardOutput = output
