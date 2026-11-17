@@ -362,7 +362,9 @@ impl VppFilter<'_> {
         };
         let mut options = format!(":out_range={}", self.out_range);
         if self.sdr {
-            options.push_str(":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709");
+            options.push_str(
+                ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709",
+            );
         }
         format!("vpp_qsv=format={format}{options}")
     }
@@ -394,11 +396,12 @@ pub fn filter_content(request: &FilterContentRequest<'_>) -> FilterContent {
         log: request.log.map(|filter| filter.build()),
         tone_map: request.tone_map.map(|filter| filter.build()),
         dolby_render: request.dolby_render.map(|filter| filter.build()),
-        dropped_metadata: request.drop_dynamic_metadata.then_some(DYNAMIC_METADATA_DROP),
+        dropped_metadata: request
+            .drop_dynamic_metadata
+            .then_some(DYNAMIC_METADATA_DROP),
         vpp: request.vpp.map(|filter| filter.build()),
     }
 }
 
 /// The metadata a conversion invalidates; keeping it would mislabel the output.
-pub const DYNAMIC_METADATA_DROP: &str =
-    "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+pub const DYNAMIC_METADATA_DROP: &str = "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";

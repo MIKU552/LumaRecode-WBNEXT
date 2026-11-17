@@ -761,7 +761,11 @@ fn vpp(dto: &VppDto) -> luma_core::render::VppFilter<'_> {
 fn plan_render_filters(payload: &Value) -> CoreResult<Value> {
     let request: RenderFilterDto = serde_json::from_value(payload.clone())
         .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
-    let dolby = request.dolby_render.as_ref().map(dolby_render).transpose()?;
+    let dolby = request
+        .dolby_render
+        .as_ref()
+        .map(dolby_render)
+        .transpose()?;
     let content = luma_core::render::filter_content(&luma_core::render::FilterContentRequest {
         log: request.log.as_ref().map(log_filter),
         tone_map: request.tone_map.as_ref().map(tone_map),
