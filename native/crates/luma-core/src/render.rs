@@ -371,6 +371,7 @@ impl VppFilter<'_> {
 }
 
 /// Everything a conversion may need to drop when it changes the signal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FilterContentRequest<'a> {
     pub log: Option<LogFilter<'a>>,
     pub tone_map: Option<ToneMapFilter<'a>>,
