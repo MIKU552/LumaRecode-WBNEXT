@@ -213,12 +213,31 @@ public struct ProbeResult {
     public let source: [String: Any]
     public let videoIndex: Int
     public let frameRate: Double
+    /// Video side data, ready to become encoder metadata tokens.
+    public let sideData: [[String: Any]]
 
-    public init(source: [String: Any], videoIndex: Int, frameRate: Double) {
+    public init(
+        source: [String: Any],
+        videoIndex: Int,
+        frameRate: Double,
+        sideData: [[String: Any]] = []
+    ) {
         self.source = source
         self.videoIndex = videoIndex
         self.frameRate = frameRate
+        self.sideData = sideData
     }
+}
+
+/// Encoder parameters and bare tokens that carry HDR metadata.
+public struct HdrMetadata: Decodable, Sendable, Equatable {
+    public struct Parameter: Decodable, Sendable, Equatable {
+        public let key: String
+        public let value: String
+    }
+
+    public let parameters: [Parameter]
+    public let appended: [String]
 }
 
 /// One encoder setting from a shipped preset table.
@@ -330,7 +349,8 @@ public struct CoreClient: Sendable {
         return ProbeResult(
             source: source,
             videoIndex: raw["video_index"] as? Int ?? 0,
-            frameRate: raw["frame_rate"] as? Double ?? 0
+            frameRate: raw["frame_rate"] as? Double ?? 0,
+            sideData: raw["side_data"] as? [[String: Any]] ?? []
         )
     }
 
@@ -404,6 +424,31 @@ public struct CoreClient: Sendable {
     public func filterChain(_ filters: [String]) throws -> String {
         let payload = try call("plan.filter_chain", request: ["filters": filters])
         return try JSONDecoder().decode(TextResult.self, from: payload).text
+    }
+
+    /// Encoder parameters that carry HDR metadata, as the core spells them.
+    public func hdrMetadata(
+        codec: String,
+        output: String,
+        sourceKind: String,
+        preserveDynamic: Bool,
+        dolbyVisionProfile: Int?,
+        hdr10Plus: Bool,
+        sideData: [[String: Any]]
+    ) throws -> HdrMetadata {
+        var request: [String: Any] = [
+            "codec": codec,
+            "output": output,
+            "source_kind": sourceKind,
+            "preserve_dynamic": preserveDynamic,
+            "hdr10_plus": hdr10Plus,
+            "side_data": sideData,
+        ]
+        if let dolbyVisionProfile {
+            request["dolby_vision_profile"] = dolbyVisionProfile
+        }
+        let payload = try call("plan.hdr_metadata", request: request)
+        return try JSONDecoder().decode(HdrMetadata.self, from: payload)
     }
 
     /// Joins encoder parameters into the single string the encoder family expects.

@@ -112,6 +112,35 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(plan.format.sourceKind, "sdr")
     }
 
+    func testPlannerCarriesTheMasteringDisplayThrough() throws {
+        let source: [String: Any] = ["pixel_format": "yuv420p10le", "kind": "pq", "components": [10, 10, 10]]
+        let display: [String: Any] = [
+            "side_data_type": "Mastering display metadata",
+            "green_x": "13250/50000",
+            "green_y": "34500/50000",
+            "blue_x": "7500/50000",
+            "blue_y": "3000/50000",
+            "red_x": "34000/50000",
+            "red_y": "16000/50000",
+            "white_point_x": "15635/50000",
+            "white_point_y": "16450/50000",
+            "max_luminance": "10000000/10000",
+            "min_luminance": "50/10000",
+        ]
+        let job = ConversionJob(
+            input: "/tmp/in.mkv",
+            output: "/tmp/out.mkv",
+            presets: presetTable,
+            outputKind: "hdr"
+        )
+        let probed = ProbeResult(source: source, videoIndex: 0, frameRate: 30, sideData: [display])
+        let plan = try ConversionPlanner(ffmpeg: "/usr/bin/false").plan(job, probed: probed)
+
+        // The tokens come from the probe's side data, spelled by the core.
+        XCTAssertTrue(plan.commandLine.contains("master-display=G(13250,34500)"))
+        XCTAssertTrue(plan.commandLine.contains("hdr10-opt=1"))
+    }
+
     func testPlannerSurfacesTheCoreRejection() {
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
         let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable, outputKind: "hdr")

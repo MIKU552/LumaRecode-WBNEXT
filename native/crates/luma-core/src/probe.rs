@@ -28,6 +28,8 @@ pub struct ProbeSummary {
     pub dolby_vision_profile: Option<i64>,
     /// HDR10+ dynamic metadata is present in the container.
     pub hdr10_plus: bool,
+    /// Video side data as reported, for the hosts that compose metadata tokens.
+    pub side_data: Vec<Value>,
 }
 
 /// Reads the probe document and returns the first video stream's summary.
@@ -75,6 +77,7 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
             .unwrap_or(0),
         dolby_vision_profile: dynamic.dolby_vision.map(|config| i64::from(config.profile)),
         hdr10_plus: dynamic.hdr10_plus,
+        side_data: side_data.to_vec(),
     })
 }
 

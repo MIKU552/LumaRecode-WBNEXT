@@ -230,6 +230,24 @@ jobs:
           printf '%s\n' "$sdr" > build-info/convert-sdr.txt
           printf '%s\n' "$hdr" > build-info/convert-hdr.txt
 
+          # A PQ source that declares its mastering display, in MP4 so the declaration sits
+          # in the container where the probe reads it. The output must keep it.
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 \
+            -c:v libx265 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc smpte2084 \
+            -colorspace bt2020nc \
+            -x265-params "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50):max-cll=1000,400" \
+            -y "$work/pq.mp4"
+          "$binary" convert "$work/pq.mp4" -o "$work/pq-out.mkv" \
+            --purpose archive --codec hevc --output hdr --input-kind pq \
+            | tee build-info/convert-pq.txt
+          # The plan must carry the tokens, not just the pixels.
+          grep -q "master-display=G(13250,34500)" build-info/convert-pq.txt
+          # And the encoder must have written them into the output bitstream.
+          ffprobe -v error -select_streams v:0 -show_streams -show_frames -of json \
+            "$work/pq-out.mkv" > build-info/pq-out.json
+          grep -q "Mastering display metadata" build-info/pq-out.json
+          grep -q '"max_content": 1000' build-info/pq-out.json
+
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
 

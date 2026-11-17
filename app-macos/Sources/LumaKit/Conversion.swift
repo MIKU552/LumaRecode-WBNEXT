@@ -131,10 +131,22 @@ public struct ConversionPlanner: Sendable {
             asyncDepth: "4",
             pixelFormat: format.pixelFormat
         )
-        let parameters = try client.parameterString(values: preset.parameterPairs, appended: [])
-        // Static HDR metadata is not re-declared yet: the probe summary does not carry the
-        // mastering display values, and inventing them would tag the stream wrongly. The
-        // core already composes them (`plan.hdr_metadata`) for the host that has them.
+        // The probe's side data becomes the tokens that keep the stream's HDR declaration:
+        // mastering display, light levels, and the payload a preserved dynamic layer needs.
+        let dynamic = probed.source["dynamic_hdr"] as? [String: Any]
+        let dolbyProfile = (dynamic?["dolby_vision"] as? [String: Any])?["profile"] as? Int
+        let hdr10Plus = dynamic?["hdr10_plus"] as? Bool ?? false
+        let metadata = try client.hdrMetadata(
+            codec: options.codec,
+            output: options.output,
+            sourceKind: format.sourceKind,
+            preserveDynamic: options.output == "hdr" && (dolbyProfile != nil || hdr10Plus),
+            dolbyVisionProfile: dolbyProfile,
+            hdr10Plus: hdr10Plus,
+            sideData: probed.sideData
+        )
+        let values = preset.parameterPairs + metadata.parameters.map { ($0.key, $0.value) }
+        let parameters = try client.parameterString(values: values, appended: metadata.appended)
 
         var arguments = [ffmpeg, "-hide_banner", "-nostdin", "-n", "-xerror", "-loglevel", "warning", "-nostats"]
         arguments += mapping

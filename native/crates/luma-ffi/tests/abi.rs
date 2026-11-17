@@ -391,3 +391,31 @@ fn plan_render_filters_returns_only_the_entries_that_apply() {
     // A request without a VPP section must not invent a hardware entry.
     assert_eq!(content["vpp"], Value::Null);
 }
+
+#[test]
+fn probe_side_data_feeds_the_metadata_tokens() {
+    let document = r#"{"streams":[{"codec_type":"video","index":0,"pix_fmt":"yuv420p10le",
+        "width":320,"height":240,"color_transfer":"smpte2084","avg_frame_rate":"30/1",
+        "side_data_list":[{"side_data_type":"Mastering display metadata",
+        "green_x":"13250/50000","green_y":"34500/50000","blue_x":"7500/50000",
+        "blue_y":"3000/50000","red_x":"34000/50000","red_y":"16000/50000",
+        "white_point_x":"15635/50000","white_point_y":"16450/50000",
+        "max_luminance":"10000000/10000","min_luminance":"50/10000"}]}]}"#;
+    let request = serde_json::json!({ "document": document }).to_string();
+    let summary = data("probe.summarize", &request);
+    assert_eq!(summary["side_data"].as_array().expect("side data").len(), 1);
+
+    // The same side data becomes encoder tokens without reading the probe again.
+    let metadata = serde_json::json!({
+        "codec": "hevc",
+        "output": "hdr",
+        "source_kind": "pq",
+        "side_data": summary["side_data"].clone()
+    })
+    .to_string();
+    let token = data("plan.hdr_metadata", &metadata)["appended"][0]
+        .as_str()
+        .expect("token")
+        .to_owned();
+    assert!(token.starts_with("master-display=G(13250,34500)"));
+}
