@@ -757,6 +757,8 @@ fn plan_color_tags(payload: &Value) -> CoreResult<Value> {
     Ok(json!({
         "source": tag_json(&source),
         "target": tag_json(&target),
+        // The entry a conversion puts before its tone map.
+        "source_filter": luma_core::render::tag_filter(&source),
     }))
 }
 
@@ -942,6 +944,7 @@ fn probe_summarize(payload: &Value) -> CoreResult<Value> {
         "video_index": summary.video_index,
         "frame_rate": summary.frame_rate,
         "side_data": summary.side_data,
+        "source_range": summary.source_range,
     }))
 }
 

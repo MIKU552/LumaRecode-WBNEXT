@@ -234,6 +234,14 @@ pub fn software_color_filters(request: &ColorFilterRequest) -> Vec<String> {
     ]
 }
 
+/// The `setparams` entry that declares a tag set to the filters that follow.
+///
+/// Hosts that run a conversion insert the source entry before the tone map and the output
+/// entry after it, so both stages read the same description the encoder writes.
+pub fn tag_filter(tags: &ColorTags) -> String {
+    frame_tags(tags)
+}
+
 /// `setparams` leaves out tags the source never declared.
 fn frame_tags(tags: &ColorTags) -> String {
     let mut parts = Vec::new();

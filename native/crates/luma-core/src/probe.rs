@@ -30,6 +30,8 @@ pub struct ProbeSummary {
     pub hdr10_plus: bool,
     /// Video side data as reported, for the hosts that compose metadata tokens.
     pub side_data: Vec<Value>,
+    /// Range the rules read the source with, before any curve override.
+    pub source_range: &'static str,
 }
 
 /// Reads the probe document and returns the first video stream's summary.
@@ -66,6 +68,8 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         ..SourceDto::default()
     };
 
+    // Resolved before the description moves into the summary below.
+    let source_range = crate::policy::source_range(&source, None).as_str();
     Ok(ProbeSummary {
         source,
         width: number(video, "width").unwrap_or(0),
@@ -80,6 +84,7 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         dolby_vision_profile: dynamic.dolby_vision.map(|config| i64::from(config.profile)),
         hdr10_plus: dynamic.hdr10_plus,
         side_data,
+        source_range,
     })
 }
 

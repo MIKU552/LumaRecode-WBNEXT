@@ -13,6 +13,8 @@ public struct ConversionJob: Sendable {
     public var outputKind: String
     /// Manual interpretation of the source; `auto` trusts the probe.
     public var inputKind: String
+    /// `auto` infers a transfer change from the probe; `none` and `hdr-sdr` pin it.
+    public var transform: String
     /// Text of the shipped preset table.
     public var presets: String
 
@@ -23,7 +25,8 @@ public struct ConversionJob: Sendable {
         purpose: String = "archive",
         codec: String = "hevc",
         outputKind: String = "sdr",
-        inputKind: String = "auto"
+        inputKind: String = "auto",
+        transform: String = "auto"
     ) {
         self.input = input
         self.output = output
@@ -32,6 +35,7 @@ public struct ConversionJob: Sendable {
         self.codec = codec
         self.outputKind = outputKind
         self.inputKind = inputKind
+        self.transform = transform
     }
 }
 
@@ -94,17 +98,35 @@ public struct ConversionPlanner: Sendable {
         options.purpose = job.purpose
         options.codec = job.codec
         options.output = job.outputKind
-        options.transform = "none"
         options.sourceKind = job.inputKind
+        // The only transform this command runs is a transfer change, and it is inferred from
+        // what the probe described unless the caller pinned one.
+        let declaredKind = job.inputKind == "auto" ? (probed.source["kind"] as? String ?? "unknown") : job.inputKind
+        let isHdrSource = declaredKind == "hlg" || declaredKind == "pq"
+        let transform = job.transform == "auto"
+            ? (isHdrSource && job.outputKind == "sdr" ? "hdr-sdr" : "none")
+            : job.transform
+        options.transform = transform
 
         let format = try client.validate(sourceJSON: probed.source, options: options)
-        // A transfer change needs the tone-mapping and LUT chains, which stay in the
-        // Windows host until they move into the core. Re-encoding a source as itself
-        // needs no colour conversion, so the stream keeps its own tags.
-        guard isPassthrough(kind: format.sourceKind, output: options.output) else {
-            throw ConversionError.unsupported(
-                "\(format.sourceKind) to \(options.output) needs a colour transform, which macOS does not run yet."
-            )
+        switch transform {
+        case "none":
+            // Re-encoding a source as itself needs no colour conversion, so the stream keeps
+            // its own tags.
+            guard isPassthrough(kind: format.sourceKind, output: options.output) else {
+                throw ConversionError.unsupported(
+                    "\(format.sourceKind) to \(options.output) needs a colour transform; pass --transform hdr-sdr."
+                )
+            }
+        case "hdr-sdr":
+            guard format.sourceKind == "hlg" || format.sourceKind == "pq", options.output == "sdr" else {
+                throw ConversionError.unsupported("--transform hdr-sdr needs an HDR source and an SDR output.")
+            }
+            guard !(probed.source["rgb"] as? Bool ?? false) else {
+                throw ConversionError.unsupported("RGB sources do not convert between transfers on macOS yet.")
+            }
+        default:
+            throw ConversionError.unsupported("Only none and hdr-sdr run on macOS so far.")
         }
 
         let preset = try client.preset(document: job.presets, purpose: options.purpose, codec: options.codec)
@@ -117,7 +139,46 @@ public struct ConversionPlanner: Sendable {
             preserveMetadata: true,
             preserveChapters: true
         )
-        let filters = try client.filterChain(["format=\(format.pixelFormat)"])
+        let dynamic = probed.source["dynamic_hdr"] as? [String: Any]
+        let dolbyProfile = (dynamic?["dolby_vision"] as? [String: Any])?["profile"] as? Int
+        let hdr10Plus = dynamic?["hdr10_plus"] as? Bool ?? false
+        // Both tag sets and every signal-dependent entry come from the core, in the order the
+        // Windows chain uses: declare the source, tone map, drop what the conversion
+        // invalidates, then convert the range and write the output tags.
+        let tags = try client.colorTags(
+            kind: format.sourceKind,
+            output: options.output,
+            rgb: probed.source["rgb"] as? Bool ?? false,
+            dolbyProfile5: false,
+            sourceRange: probed.sourceRange,
+            outputRange: format.colorRange,
+            primaries: probed.source["color_primaries"] as? String,
+            transfer: probed.source["color_transfer"] as? String,
+            space: probed.source["color_space"] as? String
+        )
+        var chain: [String] = []
+        if transform == "hdr-sdr" {
+            let entries = try client.renderFilters(
+                toneMapRange: format.colorRange == "full" ? "pc" : "tv",
+                applyDolbyVision: dolbyProfile != nil,
+                dropDynamicMetadata: dolbyProfile != nil || hdr10Plus
+            )
+            chain.append(tags.sourceFilter)
+            for entry in [entries.toneMap, entries.droppedMetadata].compactMap({ $0 }) {
+                chain.append(entry)
+            }
+            chain += try client.colorFilters(
+                tags: tags.target,
+                conversionRange: format.colorRange,
+                pixelFormat: format.pixelFormat,
+                purpose: options.purpose,
+                depth: format.bitDepth
+            )
+        } else {
+            chain.append("format=\(format.pixelFormat)")
+        }
+        let filters = try client.filterChain(chain)
+        let colorFlags = try client.colorArguments(tags: tags.target)
         let encoder = try client.encoderArguments(
             encoder: preset.encoder,
             preset: preset.preset,
@@ -133,9 +194,6 @@ public struct ConversionPlanner: Sendable {
         )
         // The probe's side data becomes the tokens that keep the stream's HDR declaration:
         // mastering display, light levels, and the payload a preserved dynamic layer needs.
-        let dynamic = probed.source["dynamic_hdr"] as? [String: Any]
-        let dolbyProfile = (dynamic?["dolby_vision"] as? [String: Any])?["profile"] as? Int
-        let hdr10Plus = dynamic?["hdr10_plus"] as? Bool ?? false
         let metadata = try client.hdrMetadata(
             codec: options.codec,
             output: options.output,
@@ -155,6 +213,7 @@ public struct ConversionPlanner: Sendable {
         if !parameters.isEmpty {
             arguments += [parameterFlag(options.codec), parameters]
         }
+        arguments += colorFlags
         arguments += ["-fps_mode:v", "passthrough", "-enc_time_base:v", "filter"]
         // Audio is copied: a first command should not silently re-encode tracks whose
         // policy decisions have not moved to macOS yet.

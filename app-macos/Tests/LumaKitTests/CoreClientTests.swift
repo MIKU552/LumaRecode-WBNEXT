@@ -141,6 +141,31 @@ final class CoreClientTests: XCTestCase {
         XCTAssertTrue(plan.commandLine.contains("hdr10-opt=1"))
     }
 
+    func testPlannerToneMapsAnHdrSourceIntoAnSdrDelivery() throws {
+        let source: [String: Any] = [
+            "pixel_format": "yuv420p10le",
+            "kind": "hlg",
+            "components": [10, 10, 10],
+            "log2_chroma_w": 1,
+            "log2_chroma_h": 1,
+        ]
+        let job = ConversionJob(
+            input: "/tmp/in.mkv",
+            output: "/tmp/out.mkv",
+            presets: presetTable,
+            outputKind: "sdr"
+        )
+        let plan = try ConversionPlanner(ffmpeg: "/usr/bin/false")
+            .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+
+        // Source tags, tone map, then the range conversion and output tags: the Windows order.
+        let chain = plan.commandLine
+        XCTAssertTrue(chain.contains("setparams=color_primaries=bt2020:color_trc=arib-std-b67"))
+        XCTAssertTrue(chain.contains("libplacebo=format=yuv444p16le:colorspace=bt709"))
+        XCTAssertTrue(chain.contains("-color_trc bt709"))
+        XCTAssertEqual(plan.format.bitDepth, 8)
+    }
+
     func testPlannerSurfacesTheCoreRejection() {
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
         let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable, outputKind: "hdr")

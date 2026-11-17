@@ -44,7 +44,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `capability.select` | `devices`、`requirement` | 选中的设备、后端、得分、理由、是否回退 |
 | `capability.summary` | `devices`、`codec` | 可用后端、最高位深、采样、HDR 能力 |
 | `plan.build` | `source`、`options`、`backend`、`frame_window`、`motion_photo`、`preview_size` | 解码路径、帧内存位置、有序步骤、诊断标记 |
-| `probe.summarize` | `document` | 宽高、旋转、类型、像素格式、位深、Dolby Vision、HDR10+、音轨数、归一化源描述、视频流序号、帧率、侧数据 |
+| `probe.summarize` | `document` | 宽高、旋转、类型、像素格式、位深、Dolby Vision、HDR10+、音轨数、归一化源描述、视频流序号、帧率、侧数据、源范围 |
 | `capability.backend` | `encoder` | 后端名，未识别为 null |
 | `capability.supports` | `backend`、`codec`、`depth`、`sampling` | 该家族是否支持 |
 | `capability.detect` | `encoders` | 每个后端的存在状态与匹配到的编码器 |
@@ -59,7 +59,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.hdr_metadata` | `codec`、`output`、`source_kind`、`preserve_dynamic`、`dolby_vision_profile`、`hdr10_plus`、`side_data` | 编码器参数条目与静态元数据 token |
 | `plan.color_filters` | `primaries`、`transfer`、`space`、`range`、`conversion_range`、`pixel_format`、`purpose`、`depth`、`preserve_dynamic` | zscale、format 与 setparams 三条滤镜 |
 | `plan.render_filters` | `log`、`tone_map`、`dolby_render`、`drop_dynamic_metadata`、`vpp` | 曲线 LUT、色调映射、Dolby 渲染、元数据删除与 VPP，按需返回 |
-| `plan.color_tags` | `kind`、`output`、`rgb`、`dolby_profile5`、`source_range`、`output_range`、`primaries`、`transfer`、`space` | 源侧与输出侧两套色彩标签 |
+| `plan.color_tags` | `kind`、`output`、`rgb`、`dolby_profile5`、`source_range`、`output_range`、`primaries`、`transfer`、`space` | 源侧与输出侧两套色彩标签，以及源侧的 `setparams` 条目 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -122,7 +122,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `capability.select` | `devices`, `requirement` | Chosen device, backend, score, reasons, fallback flag |
 | `capability.summary` | `devices`, `codec` | Available backends, maximum depth, samplings, HDR capability |
 | `plan.build` | `source`, `options`, `backend`, `frame_window`, `motion_photo`, `preview_size` | Decode path, frame transport, ordered steps, diagnostic notes |
-| `probe.summarize` | `document` | Size, rotation, kind, pixel format, depth, Dolby Vision, HDR10+, audio count, normalized description, video index, frame rate, side data |
+| `probe.summarize` | `document` | Size, rotation, kind, pixel format, depth, Dolby Vision, HDR10+, audio count, normalized description, video index, frame rate, side data, source range |
 | `capability.backend` | `encoder` | Backend name, or null when unknown |
 | `capability.supports` | `backend`, `codec`, `depth`, `sampling` | Whether the family supports it |
 | `capability.detect` | `encoders` | Presence state and matched encoders per backend |
@@ -137,7 +137,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.hdr_metadata` | `codec`, `output`, `source_kind`, `preserve_dynamic`, `dolby_vision_profile`, `hdr10_plus`, `side_data` | Parameter entries and static metadata tokens |
 | `plan.color_filters` | `primaries`, `transfer`, `space`, `range`, `conversion_range`, `pixel_format`, `purpose`, `depth`, `preserve_dynamic` | The zscale, format and setparams filters |
 | `plan.render_filters` | `log`, `tone_map`, `dolby_render`, `drop_dynamic_metadata`, `vpp` | Curve LUT, tone mapping, Dolby render, metadata drop and VPP, only the ones that apply |
-| `plan.color_tags` | `kind`, `output`, `rgb`, `dolby_profile5`, `source_range`, `output_range`, `primaries`, `transfer`, `space` | The source tags and the output tags |
+| `plan.color_tags` | `kind`, `output`, `rgb`, `dolby_profile5`, `source_range`, `output_range`, `primaries`, `transfer`, `space` | The source tags, the output tags and the source entry |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.

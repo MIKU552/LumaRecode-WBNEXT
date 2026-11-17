@@ -76,7 +76,7 @@ void LUMA_CALL luma_string_free(char *value);
  *   probe.summarize      {document}
  *                        -> {width, height, rotation, kind, pixel_format, depth,
  *                            dolby_vision, hdr10_plus, audio, source, video_index,
- *                            frame_rate, side_data}
+ *                            frame_rate, side_data, source_range}
  *                        `source` is the normalized description `policy.*` accepts,
  *                        so a host never reads the probe document twice.
  *   capability.backend   {encoder} -> {backend}, null when the name is unknown
@@ -102,7 +102,7 @@ void LUMA_CALL luma_string_free(char *value);
  *   plan.render_filters  {log?, tone_map?, dolby_render?, drop_dynamic_metadata?, vpp?}
  *                        -> {log, tone_map, dolby_render, dropped_metadata, vpp}
  *   plan.color_tags      {kind, output, rgb?, dolby_profile5?, source_range, output_range,
- *                        primaries?, transfer?, space?} -> {source, target}
+ *                        primaries?, transfer?, space?} -> {source, target, source_filter}
  *
  * Frames never cross this boundary: the host keeps decoded images and passes
  * only timestamps, sizes and identifiers.

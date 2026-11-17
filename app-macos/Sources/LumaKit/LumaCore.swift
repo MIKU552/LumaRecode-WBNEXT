@@ -215,17 +215,21 @@ public struct ProbeResult {
     public let frameRate: Double
     /// Video side data, ready to become encoder metadata tokens.
     public let sideData: [[String: Any]]
+    /// Range the rules read the source with: `limited` or `full`.
+    public let sourceRange: String
 
     public init(
         source: [String: Any],
         videoIndex: Int,
         frameRate: Double,
-        sideData: [[String: Any]] = []
+        sideData: [[String: Any]] = [],
+        sourceRange: String = "limited"
     ) {
         self.source = source
         self.videoIndex = videoIndex
         self.frameRate = frameRate
         self.sideData = sideData
+        self.sourceRange = sourceRange
     }
 }
 
@@ -300,6 +304,47 @@ public struct PresetSelection: Decodable, Sendable, Equatable {
     }
 }
 
+/// One set of color tags; nil means the source never declared it.
+public struct ColorTagsValue: Decodable, Sendable, Equatable {
+    public let primaries: String?
+    public let transfer: String?
+    public let space: String?
+    public let range: String?
+}
+
+/// The tags to read with, the tags to write, and the entry that declares the source.
+public struct ColorTagSet: Decodable, Sendable, Equatable {
+    public let source: ColorTagsValue
+    public let target: ColorTagsValue
+    public let sourceFilter: String
+
+    enum CodingKeys: String, CodingKey {
+        case source, target
+        case sourceFilter = "source_filter"
+    }
+}
+
+/// The signal-dependent filter entries a conversion may need.
+public struct RenderFilterSet: Decodable, Sendable, Equatable {
+    public let log: String?
+    public let toneMap: String?
+    public let dolbyRender: String?
+    public let droppedMetadata: String?
+    public let vpp: String?
+
+    enum CodingKeys: String, CodingKey {
+        case log, vpp
+        case toneMap = "tone_map"
+        case dolbyRender = "dolby_render"
+        case droppedMetadata = "dropped_metadata"
+    }
+}
+
+/// The software colour conversion: range conversion, output format and its tags.
+public struct ColorFilterSet: Decodable, Sendable, Equatable {
+    public let filters: [String]
+}
+
 /// Typed access to the C ABI.
 ///
 /// The transport is a JSON envelope, which keeps a single entry point for every
@@ -350,7 +395,8 @@ public struct CoreClient: Sendable {
             source: source,
             videoIndex: raw["video_index"] as? Int ?? 0,
             frameRate: raw["frame_rate"] as? Double ?? 0,
-            sideData: raw["side_data"] as? [[String: Any]] ?? []
+            sideData: raw["side_data"] as? [[String: Any]] ?? [],
+            sourceRange: raw["source_range"] as? String ?? "limited"
         )
     }
 
@@ -424,6 +470,102 @@ public struct CoreClient: Sendable {
     public func filterChain(_ filters: [String]) throws -> String {
         let payload = try call("plan.filter_chain", request: ["filters": filters])
         return try JSONDecoder().decode(TextResult.self, from: payload).text
+    }
+
+    /// Derives the tags to read with and the tags to write.
+    public func colorTags(
+        kind: String,
+        output: String,
+        rgb: Bool,
+        dolbyProfile5: Bool,
+        sourceRange: String,
+        outputRange: String,
+        primaries: String?,
+        transfer: String?,
+        space: String?
+    ) throws -> ColorTagSet {
+        var request: [String: Any] = [
+            "kind": kind,
+            "output": output,
+            "rgb": rgb,
+            "dolby_profile5": dolbyProfile5,
+            "source_range": sourceRange,
+            "output_range": outputRange,
+        ]
+        if let primaries {
+            request["primaries"] = primaries
+        }
+        if let transfer {
+            request["transfer"] = transfer
+        }
+        if let space {
+            request["space"] = space
+        }
+        let payload = try call("plan.color_tags", request: request)
+        return try JSONDecoder().decode(ColorTagSet.self, from: payload)
+    }
+
+    /// The encoder flags that write a tag set, in the order FFmpeg expects them.
+    public func colorArguments(tags: ColorTagsValue) throws -> [String] {
+        var request: [String: Any] = [:]
+        if let primaries = tags.primaries {
+            request["primaries"] = primaries
+        }
+        if let transfer = tags.transfer {
+            request["transfer"] = transfer
+        }
+        if let space = tags.space {
+            request["space"] = space
+        }
+        if let range = tags.range {
+            request["range"] = range
+        }
+        let payload = try call("plan.color_args", request: request)
+        return try JSONDecoder().decode(ArgumentList.self, from: payload).arguments
+    }
+
+    /// The filter entries that depend on the signal rather than on the frame size.
+    public func renderFilters(
+        toneMapRange: String?,
+        applyDolbyVision: Bool,
+        dropDynamicMetadata: Bool
+    ) throws -> RenderFilterSet {
+        var request: [String: Any] = ["drop_dynamic_metadata": dropDynamicMetadata]
+        if let toneMapRange {
+            request["tone_map"] = ["range": toneMapRange, "apply_dolby_vision": applyDolbyVision]
+        }
+        let payload = try call("plan.render_filters", request: request)
+        return try JSONDecoder().decode(RenderFilterSet.self, from: payload)
+    }
+
+    /// The software colour conversion: range, output format and the output tags.
+    public func colorFilters(
+        tags: ColorTagsValue,
+        conversionRange: String,
+        pixelFormat: String,
+        purpose: String,
+        depth: Int
+    ) throws -> [String] {
+        var request: [String: Any] = [
+            "conversion_range": conversionRange,
+            "pixel_format": pixelFormat,
+            "purpose": purpose,
+            "depth": depth,
+        ]
+        if let primaries = tags.primaries {
+            request["primaries"] = primaries
+        }
+        if let transfer = tags.transfer {
+            request["transfer"] = transfer
+        }
+        if let space = tags.space {
+            request["space"] = space
+        }
+        if let range = tags.range {
+            request["range"] = range
+        }
+        let payload = try call("plan.color_filters", request: request)
+        return try JSONDecoder().decode(ColorFilterSet.self, from: payload).filters
     }
 
     /// Encoder parameters that carry HDR metadata, as the core spells them.

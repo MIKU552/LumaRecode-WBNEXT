@@ -64,7 +64,7 @@ enum ConvertCommand {
 
         guard let input = positional.first, let output = flags["-o"] ?? flags["--destination"] else {
             throw ConversionError.unsupported(
-                "usage: LumaRecode convert <input> -o <output> [--purpose archive] [--codec hevc|av1|avc] [--output sdr|hdr] [--input-kind auto|sdr|hlg|pq] [--presets <path>]"
+                "usage: LumaRecode convert <input> -o <output> [--purpose archive] [--codec hevc|av1|avc] [--output sdr|hdr] [--input-kind auto|sdr|hlg|pq] [--transform auto|none|hdr-sdr] [--presets <path>]"
             )
         }
         guard let presets = presetsDocument(flags["--presets"]) else {
@@ -80,7 +80,8 @@ enum ConvertCommand {
             purpose: flags["--purpose"] ?? "archive",
             codec: flags["--codec"] ?? "hevc",
             outputKind: flags["--output"] ?? "sdr",
-            inputKind: flags["--input-kind"] ?? "auto"
+            inputKind: flags["--input-kind"] ?? "auto",
+            transform: flags["--transform"] ?? "auto"
         )
     }
 

@@ -319,6 +319,7 @@ fn probe_summarize_returns_a_description_the_rules_accept() {
     assert_eq!(summary["video_index"], Value::from(0));
     let rate = summary["frame_rate"].as_f64().expect("frame rate");
     assert!((rate - 29.97).abs() < 0.001);
+    assert_eq!(summary["source_range"], "limited");
 
     // The description is ready for the rules without re-reading the document.
     let validate = serde_json::json!({
@@ -437,4 +438,9 @@ fn plan_color_tags_fills_the_source_and_names_the_target() {
     assert_eq!(tags["source"]["range"], "tv");
     assert_eq!(tags["target"]["transfer"], "bt709");
     assert_eq!(tags["target"]["range"], "tv");
+    // The same spelling the software tail uses for its own output entry.
+    assert_eq!(
+        tags["source_filter"],
+        "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=limited"
+    );
 }

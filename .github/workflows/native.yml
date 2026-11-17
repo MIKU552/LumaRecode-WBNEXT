@@ -250,6 +250,19 @@ jobs:
           grep -q "Mastering display metadata" build-info/pq-out.json
           grep -q '"max_content": 1000' build-info/pq-out.json
 
+          # HDR to SDR: the tone map, the range conversion and the output tags all come from
+          # the core, and the result must be tagged BT.709 rather than labelled HDR.
+          "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
+            --purpose archive --codec hevc --output sdr \
+            | tee build-info/convert-hdr-to-sdr.txt
+          grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
+          grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
+          ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
+            > build-info/hdr-to-sdr.json
+          grep -q '"codec_name": "hevc"' build-info/hdr-to-sdr.json
+          grep -q '"pix_fmt": "yuv420p"' build-info/hdr-to-sdr.json
+          grep -q '"color_transfer": "bt709"' build-info/hdr-to-sdr.json
+
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
 
