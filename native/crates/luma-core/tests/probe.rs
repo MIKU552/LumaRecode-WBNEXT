@@ -153,6 +153,9 @@ fn a_declaration_on_the_frame_is_read_as_well() {
 
     let summary = summarize(document).expect("summary");
     assert_eq!(summary.side_data.len(), 2);
-    assert_eq!(summary.side_data[0]["side_data_type"], "Mastering display metadata");
+    assert_eq!(
+        summary.side_data[0]["side_data_type"],
+        "Mastering display metadata"
+    );
     assert!(summary.hdr10_plus);
 }
