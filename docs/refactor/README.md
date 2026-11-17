@@ -78,7 +78,7 @@ macOS 统一使用 `xcode-27` 镜像）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
-  构建托管层并运行对照检查（1840 次比较，含预设、探测、时间轴、拒绝路径、GOP、HDR 元数据与桥接回放，无差异），随后以
+  构建托管层并运行对照检查（1844 次比较，含预设、探测、时间轴、拒绝路径、GOP、HDR 元数据与桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
   再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p，
   把 `probe` 与 `plan` 的 JSON 存入构建产物，并用 `doctor --json` 确认 `core.mode` 为 `shared`；
@@ -125,14 +125,16 @@ macOS 统一使用 `xcode-27` 镜像）；
    使用 `xcode-27`。该镜像属于预览镜像，不在 Actions SLA 内，待 macOS 27 正式发布后
    改为对应的稳定标签。
 
-### 下一步（P3 入口条件）
+### 下一步
 
 1. 在能构建 Windows App SDK 的环境里，把 `Interop` 与 `qa/NativeChecks` 加入
    `LumaRecode.slnx` 与 `.sln`，让 IDE 与命令行构建使用同一入口。
-2. 把 `Core/Transcoder` 的规划段改为“解析选项 → 调核心 → 由后端生成参数”，
-   保留现有 QSV 时间戳、VPP、LowPower 策略。
-3. 用 `NativeChecks` 扩展迁移对照：加入 `Validate` 的拒绝路径与 FLAC 判定。
-4. 探测适配器：`MediaProbe` 输出转换为 `SourceDto`，禁止规则直接读 ffprobe JSON。
+2. 滤镜内容仍在宿主：色调映射、LUT 与 QSV 的 VPP 段都属于后端，macOS 因此只能做
+   同制式转换；把这些规则搬进核心，才能让两个平台都做 HDR↔SDR。
+3. macOS 还缺两件事：共享档位（VideoToolbox）表，以及静态 HDR 元数据透传
+   （`plan.hdr_metadata` 已就绪，缺的是探测结果里的 mastering display）。
+4. 执行层：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描依赖子进程与进度事件，
+   属于 P2 的类型化接口，不在 JSON 信封里做。
 
 ## English
 
@@ -225,7 +227,7 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
   applies the ad-hoc signature and checks the terminal entry with `--version`.
 - `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
-  application, builds the managed layers and runs the parity check (1840
+  application, builds the managed layers and runs the parity check (1844
   comparisons including presets, probe, timeline, rejection paths, GOP, HDR metadata and the bridge replay, no mismatch), runs
   `--cli --version` to confirm the host loaded the shared core, converts a
   two-second synthetic clip and checks the output is HEVC / yuv420p, and finally
@@ -284,16 +286,20 @@ than folding them into pass or fail.
    target, so the app job pins `xcode-27`. That image is a preview and sits
    outside the Actions SLA; switch to the stable label once macOS 27 is GA.
 
-### Next steps (entry conditions for P3)
+### Next steps
 
 1. Add `Interop` and `qa/NativeChecks` to `LumaRecode.slnx` and `.sln` from a
    machine that can build Windows App SDK projects, so the IDE and the command
    line use one entry point.
-2. Split `Core/Transcoder` planning into "resolve options → call core → backend
-   builds arguments", keeping the existing QSV timestamp, VPP and LowPower
-   policies..
-3. Extend the parity harness to `Validate` rejection paths and FLAC decisions.
-4. Add a probe adapter that turns `MediaProbe` output into `SourceDto`, so no
-   rule reads ffprobe JSON directly.
+2. Filter content still belongs to the host: tone mapping, LUTs and the QSV VPP
+   stage are backend work, which is why macOS can only re-encode a source as
+   itself. Moving those rules into the core is what lets both platforms convert
+   between HDR and SDR.
+3. macOS is missing two pieces: a VideoToolbox share table, and static HDR
+   metadata pass-through (`plan.hdr_metadata` is ready; the probe result does not
+   carry the mastering display yet).
+4. Execution: `DynamicHdr.ExtractAsync` and the HDR10+ bitstream scan need
+   subprocesses and progress events, which belong to the typed P2 interface and
+   not to the JSON envelope.
 
 文档专用流程：仅修改 Markdown 或 `docs/` 时，构建工作流会被路径过滤跳过，只运行结构检查。
