@@ -152,15 +152,17 @@ jobs:
         shell: pwsh
         run: |
           # The tone map is a libplacebo filter, which the "essentials" builds leave out, so
-          # the full static build is the source here. It is also more stable than the package
-          # feed this job used to depend on.
-          # The progress bar makes a 180 MB download take minutes on this PowerShell.
+          # the full build is the source here. It ships as 7z only; the runner has 7-Zip.
+          # The progress bar makes a 160 MB download take minutes on this PowerShell.
           $ProgressPreference = 'SilentlyContinue'
-          $archive = Join-Path $env:RUNNER_TEMP "ffmpeg-full.zip"
-          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip" -OutFile $archive
-          Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $env:RUNNER_TEMP "ffmpeg-full") -Force
-          $ffmpeg = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ffmpeg-full") -Recurse -Filter ffmpeg.exe |
-            Select-Object -First 1
+          $archive = Join-Path $env:RUNNER_TEMP "ffmpeg-full.7z"
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.7z" -OutFile $archive
+          $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+          if (-not (Test-Path -LiteralPath $sevenZip)) { throw "7-Zip is unavailable." }
+          $expanded = Join-Path $env:RUNNER_TEMP "ffmpeg-full"
+          & $sevenZip x $archive "-o$expanded" -y | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "FFmpeg extraction failed with $LASTEXITCODE." }
+          $ffmpeg = Get-ChildItem $expanded -Recurse -Filter ffmpeg.exe | Select-Object -First 1
           if ($null -eq $ffmpeg) { throw "FFmpeg is unavailable." }
           $env:PATH = "$($ffmpeg.DirectoryName);$env:PATH"
           ffmpeg -version | Select-Object -First 1
