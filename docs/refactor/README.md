@@ -216,8 +216,8 @@ sources, so the two paths cannot label a stream differently.
 The software colour tail comes from `plan.color_filters`: the zscale range and its three
 colour arguments, the P010 surface quick share hands a 10-bit encoder, and the
 `setparams` tag spelling are each written once. The host still decides how filters are
-ordered, and the harness compares the whole `-vf` string for five sources, so moving or
-reordering that block fails at once.
+ordered, and the harness compares the whole `-vf` string, so moving or reordering that
+block fails at once.
 
 Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP
 stage come from `plan.render_filters`, which returns only the entries that apply: the host
