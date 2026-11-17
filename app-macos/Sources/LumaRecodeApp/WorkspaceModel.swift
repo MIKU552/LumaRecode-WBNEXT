@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import LumaKit
 import Observation
@@ -88,6 +89,17 @@ final class WorkspaceModel {
     var opened: OpenedSource?
     var probeError: String?
 
+    /// The frame shown for the current playhead, and why it is missing when it is.
+    var preview: NSImage?
+    var previewFailure: String?
+    var playhead: Double = 0
+    private var previewTask: Task<Void, Never>?
+
+    /// Seconds of the opened file, from the probe rather than from the asset.
+    var duration: Double {
+        opened?.summary.durationSeconds ?? 0
+    }
+
     /// What the convert button is doing, if anything.
     enum ConversionState: Equatable {
         case idle
@@ -145,9 +157,40 @@ final class WorkspaceModel {
                     try ProbeRunner.document(path: url.path)
                 }.value
                 opened = OpenedSource(url: url, summary: try CoreClient().summarize(probeDocument: document))
+                preview = nil
+                previewFailure = nil
+                seek(to: 0)
             } catch {
                 opened = nil
                 probeError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Asks for the frame at `seconds`; a newer request cancels the older one.
+    ///
+    /// The generator runs off the main actor, so dragging the playhead never stalls the window.
+    func seek(to seconds: Double) {
+        guard let opened else {
+            return
+        }
+        playhead = min(max(seconds, 0), max(duration, 0))
+        let target = playhead
+        previewTask?.cancel()
+        previewTask = Task {
+            do {
+                let image = try await PreviewFrames.image(path: opened.url.path, seconds: target)
+                guard !Task.isCancelled else {
+                    return
+                }
+                preview = image
+                previewFailure = nil
+            } catch {
+                guard !Task.isCancelled else {
+                    return
+                }
+                preview = nil
+                previewFailure = error.localizedDescription
             }
         }
     }

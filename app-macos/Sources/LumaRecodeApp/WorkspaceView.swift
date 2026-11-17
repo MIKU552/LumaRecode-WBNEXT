@@ -18,7 +18,7 @@ struct WorkspaceView: View {
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
                         PreviewCanvas(model: model)
-                        TimelineStrip()
+                        TimelineStrip(model: model)
                     }
                     Divider()
                     Inspector(model: model)
@@ -96,7 +96,12 @@ private struct PreviewCanvas: View {
     var body: some View {
         ZStack {
             Color(nsColor: .underPageBackgroundColor)
-            if let opened = model.opened {
+            if let preview = model.preview {
+                Image(nsImage: preview)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .padding(12)
+            } else if let opened = model.opened {
                 VStack(spacing: 8) {
                     Image(systemName: "film")
                         .font(.system(size: 40, weight: .light))
@@ -106,9 +111,10 @@ private struct PreviewCanvas: View {
                     Text("\(opened.summary.width) × \(opened.summary.height) · \(opened.summary.kind ?? "unknown") · \(opened.summary.depth ?? 0)-bit")
                         .font(.callout)
                         .monospaced()
-                    Text("\(opened.summary.audio) audio track(s)")
+                    Text(model.previewFailure ?? "\(opened.summary.audio) audio track(s)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             } else {
                 VStack(spacing: 10) {
@@ -117,7 +123,7 @@ private struct PreviewCanvas: View {
                         .foregroundStyle(.tertiary)
                     Text(model.selectedReference?.title ?? "No source")
                         .font(.title3)
-                    Text("Preview, frame stepping and trimming arrive with the AVFoundation adapter.")
+                    Text("Open a movie to see its first frame and scrub its timeline.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -129,25 +135,71 @@ private struct PreviewCanvas: View {
     }
 }
 
-/// Empty timeline with a neutral ruler, so the layout is final even before
-/// frame data exists.
+/// A ruler with a playhead: dragging it asks for the frame under the pointer.
 private struct TimelineStrip: View {
+    @Bindable var model: WorkspaceModel
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 2) {
             Divider()
-            Canvas { context, size in
-                let spacing: CGFloat = 64
-                var offset: CGFloat = 0
-                while offset < size.width {
-                    var tick = Path()
-                    tick.move(to: CGPoint(x: offset, y: 0))
-                    tick.addLine(to: CGPoint(x: offset, y: 7))
-                    context.stroke(tick, with: .color(.secondary.opacity(0.4)), lineWidth: 1)
-                    offset += spacing
+            GeometryReader { geometry in
+                Canvas { context, size in
+                    let spacing: CGFloat = 64
+                    var offset: CGFloat = 0
+                    while offset < size.width {
+                        var tick = Path()
+                        tick.move(to: CGPoint(x: offset, y: 0))
+                        tick.addLine(to: CGPoint(x: offset, y: 7))
+                        context.stroke(tick, with: .color(.secondary.opacity(0.4)), lineWidth: 1)
+                        offset += spacing
+                    }
+
+                    let x = size.width * TimelineGeometry.fraction(time: model.playhead, duration: model.duration)
+                    var head = Path()
+                    head.move(to: CGPoint(x: x, y: 0))
+                    head.addLine(to: CGPoint(x: x, y: 16))
+                    context.stroke(head, with: .color(.accentColor), lineWidth: 2)
                 }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            model.playhead = TimelineGeometry.time(
+                                x: value.location.x,
+                                width: geometry.size.width,
+                                duration: model.duration
+                            )
+                        }
+                        .onEnded { value in
+                            model.seek(to: TimelineGeometry.time(
+                                x: value.location.x,
+                                width: geometry.size.width,
+                                duration: model.duration
+                            ))
+                        }
+                )
             }
-            .frame(height: 56)
+            .frame(height: 18)
+            HStack {
+                Text(timecode(model.playhead))
+                Spacer()
+                Text(timecode(model.duration))
+            }
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 4)
         }
+    }
+
+    /// `m:ss.t`, the shape a video tool puts under a timeline.
+    private func timecode(_ seconds: Double) -> String {
+        guard seconds.isFinite, seconds >= 0 else {
+            return "0:00.0"
+        }
+        let minutes = Int(seconds) / 60
+        return String(format: "%d:%04.1f", minutes, seconds - Double(minutes * 60))
     }
 }
 
