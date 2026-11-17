@@ -3,9 +3,15 @@ import XCTest
 
 final class ExportDestinationTests: XCTestCase {
     func testTheDefaultNameKeepsTheStem() {
-        let source = URL(fileURLWithPath: "/Users/ana/Footage/clip.MOV")
-        XCTAssertEqual(ExportDestination.defaultName(for: source), "clip-converted")
-        XCTAssertEqual(ExportDestination.defaultName(for: URL(fileURLWithPath: "/")), "converted")
+        XCTAssertEqual(
+            ExportDestination.defaultName(for: URL(fileURLWithPath: "/Users/ana/Footage/clip.MOV")),
+            "clip-converted"
+        )
+        // A source without an extension is the same rule: the stem, then the suffix.
+        XCTAssertEqual(
+            ExportDestination.defaultName(for: URL(fileURLWithPath: "/Users/ana/clip")),
+            "clip-converted"
+        )
     }
 
     func testATypedNameCannotEscapeTheChosenFolder() {
