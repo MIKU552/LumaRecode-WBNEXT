@@ -417,3 +417,49 @@ fn a_profile_five_stream_keeps_its_own_surface_name() {
     let rgb = source_tags(SourceKind::Pq, true, true, &ColorTags::default(), "limited");
     assert_eq!(rgb.space.as_deref(), Some("gbr"));
 }
+
+#[test]
+fn a_lut_path_with_syntax_characters_is_quoted() {
+    let mut request = empty_content();
+    request.log = Some(LogFilter {
+        file: "/Users/ana,paula/x.cube",
+        matrix: "2020_ncl",
+        range: "full",
+        source_space: None,
+        source_range: None,
+    });
+
+    // Unquoted, FFmpeg reads the comma as a chain separator and never opens the file.
+    let log = filter_content(&request).log.expect("log chain");
+    assert!(log.contains("lut3d=file='/Users/ana,paula/x.cube':interp=tetrahedral"));
+}
+
+#[test]
+fn an_apostrophe_is_escaped_inside_the_quotes() {
+    let mut request = empty_content();
+    request.log = Some(LogFilter {
+        file: "/Users/o'brien/x.cube",
+        matrix: "2020_ncl",
+        range: "full",
+        source_space: None,
+        source_range: None,
+    });
+
+    let log = filter_content(&request).log.expect("log chain");
+    assert!(log.contains("lut3d=file='/Users/o'\\''brien/x.cube':interp=tetrahedral"));
+}
+
+#[test]
+fn a_plain_lut_name_is_left_alone() {
+    let mut request = empty_content();
+    request.log = Some(LogFilter {
+        file: "REDMI_K90_MiLog_to_Rec2100_HLG.cube",
+        matrix: "2020_ncl",
+        range: "full",
+        source_space: None,
+        source_range: None,
+    });
+
+    let log = filter_content(&request).log.expect("log chain");
+    assert!(log.contains("lut3d=file=REDMI_K90_MiLog_to_Rec2100_HLG.cube:interp=tetrahedral"));
+}

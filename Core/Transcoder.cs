@@ -278,6 +278,13 @@ public sealed partial class Transcoder
             request.Vpp is { } vpp ? ManagedVpp(vpp) : null);
     }
 
+    // Fallback for a machine without the native library: the same escaping the core applies.
+    // A path with a comma would otherwise split the filter chain.
+    private static string Quoted(string value)
+        => value.IndexOfAny([',', ':', ';', '[', ']', '\'', '\\', ' ']) >= 0
+            ? "'" + value.Replace("'", "'\\''") + "'"
+            : value;
+
     private static string ManagedLogFilter(LogFilterRequest request)
     {
         string matrix = request.SourceSpace switch
@@ -295,7 +302,7 @@ public sealed partial class Transcoder
             "tv" => "limited",
             _ => request.Range
         };
-        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={request.File}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
+        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={Quoted(request.File)}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
     }
 
     private static string ManagedToneMap(ToneMapRequest request)

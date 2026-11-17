@@ -234,6 +234,20 @@ pub fn software_color_filters(request: &ColorFilterRequest) -> Vec<String> {
     ]
 }
 
+/// Quotes a filter argument when it contains characters the filtergraph reads as syntax.
+///
+/// A LUT in a folder with a comma otherwise splits the chain, and FFmpeg answers
+/// "No option name near ..." instead of opening the file. Names without such characters are
+/// left alone, so the hosts keep producing the same command they always have.
+fn quoted(value: &str) -> String {
+    let syntax = [',', ':', ';', '[', ']', '\'', '\\', ' '];
+    if value.contains(&syntax[..]) {
+        format!("'{}'", value.replace('\'', "'\\''"))
+    } else {
+        value.to_owned()
+    }
+}
+
 /// The `setparams` entry that declares a tag set to the filters that follow.
 ///
 /// Hosts that run a conversion insert the source entry before the tone map and the output
@@ -307,7 +321,7 @@ impl LogFilter<'_> {
         };
         format!(
             "zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le",
-            self.file
+            quoted(self.file)
         )
     }
 }
