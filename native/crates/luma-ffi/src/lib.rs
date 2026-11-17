@@ -745,7 +745,7 @@ fn tone_map(dto: &ToneMapDto) -> luma_core::render::ToneMapFilter<'_> {
 
 fn dolby_render(dto: &DolbyRenderDto) -> CoreResult<luma_core::render::DolbyRenderFilter<'_>> {
     Ok(luma_core::render::DolbyRenderFilter {
-        kind: SourceKind::parse(&dto.kind)?,
+        kind: luma_core::SourceKind::parse(&dto.kind)?,
         range: dto.range.as_str(),
     })
 }
