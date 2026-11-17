@@ -18,6 +18,7 @@
 - macOS 新增 `convert` 命令：编码器、GOP、流映射与参数串全部由共享核心决定，流水线里真实转出 SDR 与 10 位 HDR 各一条。
 - 软件色彩转换段（zscale / format / setparams）改由共享核心拼装（`plan.color_filters`）；对照检查比较完整滤镜串。
 - 探测摘要带出侧数据，macOS 的 `convert` 因此能把 mastering display 与亮度声明原样带给编码器。
+- 曲线表增加一致性守卫：宿主的回退表与核心的 `plan.log_profile` 逐条比较 LUT 文件、矩阵与范围。
 - 色彩标签改由共享核心派生（`plan.color_tags`）：缺省补齐、RGB 与 profile 5 的表面对应、SDR/HDR 目标标签各只写一次。
 - macOS 的 `convert` 已能生成 HDR→SDR 的完整滤镜链与 BT.709 标签；渲染需要带 libplacebo 的 FFmpeg，构建缺少该滤镜时会给出明确提示而不是原始报错。
 - macOS 支持相机曲线：`--log-profile` 配合 `--lut-dir`，文件名、矩阵与范围取自核心的曲线表（`plan.log_profile`），转出 HLG；缺少 `zscale`/`lut3d`/`libplacebo` 时会指名哪个滤镜缺失。
@@ -305,6 +306,7 @@
 - macOS gains a `convert` command: encoder, GOP, stream mapping and the parameter string all come from the shared core, and the pipeline converts one SDR and one 10-bit HDR clip for real.
 - The software colour tail (zscale / format / setparams) is composed by the shared core (`plan.color_filters`); the harness compares the whole filter chain.
 - The probe summary now carries side data, so the macOS `convert` hands the mastering display and light levels back to the encoder.
+- The curve table gains a consistency guard: the host's fallback copy is compared with `plan.log_profile` entry by entry.
 - Color tags are derived by the shared core (`plan.color_tags`): gap filling, the RGB and profile 5 surface names, and the SDR/HDR target tags are written once.
 - The macOS `convert` command now builds the whole HDR to SDR chain and the BT.709 tags; rendering needs an FFmpeg with libplacebo, and a build without it gets a clear message instead of a raw filter error.
 - macOS develops camera curves: `--log-profile` with `--lut-dir` takes the file name, matrix and range from the core's curve table (`plan.log_profile`) and delivers HLG; when `zscale`, `lut3d` or `libplacebo` is missing, the message names it.

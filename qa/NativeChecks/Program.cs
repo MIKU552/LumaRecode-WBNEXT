@@ -422,6 +422,17 @@ try
     Compare("bridge", "gop-route", "shared", SharedCore.Gop is null ? "managed" : "shared", ref failures, ref comparisons);
     Compare("bridge", "metadata-route", "shared", SharedCore.HdrMetadata is null ? "managed" : "shared", ref failures, ref comparisons);
     Compare("bridge", "filters-route", "shared", SharedCore.ColorFilterBuilder is null ? "managed" : "shared", ref failures, ref comparisons);
+    Compare("bridge", "log-profile-route", "shared", SharedCore.LogProfile is null ? "managed" : "shared", ref failures, ref comparisons);
+
+    // The curve table exists twice on purpose: the host needs it without the native library.
+    // Requiring both copies to answer the same thing is what keeps them one table.
+    foreach (KeyValuePair<string, (string Name, string File, string Matrix, string Range)> curve in Transcoder.Profiles)
+    {
+        LogProfileInfo? described = SharedCore.LogProfile?.Invoke(curve.Key);
+        Compare($"profile/{curve.Key}", "file", curve.Value.File, described?.File ?? "missing", ref failures, ref comparisons);
+        Compare($"profile/{curve.Key}", "matrix", curve.Value.Matrix, described?.Matrix ?? "missing", ref failures, ref comparisons);
+        Compare($"profile/{curve.Key}", "range", curve.Value.Range, described?.Range ?? "missing", ref failures, ref comparisons);
+    }
     foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in gopChecks)
     {
         bool motionPhoto = label.EndsWith("/motion", StringComparison.Ordinal);

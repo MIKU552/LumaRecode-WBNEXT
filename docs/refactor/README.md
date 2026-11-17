@@ -71,6 +71,10 @@ PQ、Dolby Vision 与 HDR10+ 三种素材逐编码器比较完整参数串，两
 补齐、声明过的值不被覆盖、RGB 与 Dolby Vision profile 5 的表面名各按规则改写，目标侧 SDR 一律落
 BT.709、HDR 保留源描述而曲线与 RAW 落 HLG。同一批素材的颜色参数也逐条比较，标签派生错一位就会失败。
 
+**滤镜顺序按设计留在宿主**：预览缩放、动态照片补边、RAW 显影、GPU 通路各自存在与否取决于宿主，
+顺序编排是宿主的知识；会漂移的是每一条的拼写，而它们已经全部来自核心。曲线表同理——宿主保留
+一份用于离线回退，`qa/NativeChecks` 逐条比较两边的 LUT 文件、矩阵与范围，两份表不可能悄悄分叉。
+
 ### 已验证与未验证
 
 已经在本仓库内完成、可直接检查的部分：
@@ -110,7 +114,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
-| P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签及其派生、编码器段、参数串、滤镜链拼接、GOP 间隔、HDR 元数据、软件色彩转换段与曲线/色调映射/VPP 段均已走原生桥；宿主只剩滤镜顺序与帧尺寸相关滤镜 |
+| P3 Windows 接入 | 完成（参数迁移） | 判定、校验、输入映射、色彩标签及其派生、编码器段、参数串、滤镜链拼接、GOP 间隔、HDR 元数据、软件色彩转换段与曲线/色调映射/VPP 段均已走原生桥；滤镜顺序与帧尺寸相关滤镜按设计留在宿主，因为它们依赖 RAW 显影、预览、动态照片与 GPU 通路等宿主阶段 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
 | P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 用核心决定编码器、GOP、映射、参数、HDR 元数据 token、曲线 LUT 与色调映射，CI 里真实转出 SDR、10 位 HDR 与带 mastering display 的 PQ；曲线与 HDR→SDR 的链已生成并通过断言，但 Homebrew 的 FFmpeg 9 没有 zscale/lut3d/libplacebo，渲染在此环境被逐条明确拒绝；预览与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
@@ -228,6 +232,13 @@ colour arguments, the P010 surface quick share hands a 10-bit encoder, and the
 ordered, and the harness compares the whole `-vf` string, so moving or reordering that
 block fails at once.
 
+**The filter order stays in the host by design**: preview scaling, motion-photo padding, RAW
+development and the GPU path each exist only on some hosts, so ordering is host knowledge.
+What could drift is the spelling of each entry, and that all comes from the core. The curve
+table works the same way: the host keeps a copy for the offline fallback, and
+`qa/NativeChecks` compares the LUT file, matrix and range entry by entry, so the two copies
+cannot diverge quietly.
+
 Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP
 stage come from `plan.render_filters`, which returns only the entries that apply: the host
 decides where each one goes and the strings exist once. The harness compares the whole
@@ -280,7 +291,7 @@ than folding them into pass or fail.
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
-| P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags and their derivation, encoder block, parameter string, filter joining, the GOP interval, the HDR metadata parameters, the software colour tail and the curve/tone-map/VPP entries are bridged; the host only orders filters and owns the frame-size ones |
+| P3 Windows integration | Done (parameters) | Decisions, validation, input mapping, color tags and their derivation, encoder block, parameter string, filter joining, the GOP interval, the HDR metadata parameters, the software colour tail and the curve/tone-map/VPP entries are bridged; the filter order and the frame-size filters stay in the host by design, because they depend on host stages such as RAW development, preview, motion photos and the GPU path |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
 | P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping, parameters, the HDR metadata tokens, the curve LUT and the tone map from the core and produces SDR, 10-bit HDR and a PQ clip that keeps its mastering display in CI; the curve and HDR to SDR chains are built and asserted, but Homebrew's FFmpeg 9 has no zscale, lut3d or libplacebo, so each render stops with a named refusal; preview and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |

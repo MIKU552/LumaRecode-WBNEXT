@@ -38,6 +38,9 @@ public sealed record GopRequest(double FrameRate, bool Share, bool MotionPhoto);
 /// <summary>One encoder parameter, in insertion order.</summary>
 public sealed record ParameterPair(string Key, string Value);
 
+/// <summary>A camera curve as the core describes it: the LUT file, its matrix and its range.</summary>
+public sealed record LogProfileInfo(string Profile, string File, string Matrix, string Range);
+
 /// <summary>Facts the color tag derivation needs: what the source declares and where it goes.</summary>
 /// <param name="Kind">Effective interpretation: sdr, hlg, pq, log or raw.</param>
 /// <param name="Output">Target transfer function.</param>
@@ -140,6 +143,9 @@ public static class SharedCore
     /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
 
+    /// <summary>Describes a camera curve through the shared core; null means "use the host table".</summary>
+    public static Func<string, LogProfileInfo?>? LogProfile { get; set; }
+
     /// <summary>Derives the source and target color tags through the shared core; null means "use the managed rule".</summary>
     public static Func<ColorTagsRequest, ColorTagSet?>? ColorTagsBuilder { get; set; }
 
@@ -174,6 +180,7 @@ public static class SharedCore
         ColorFilterBuilder = null;
         RenderFilterBuilder = null;
         ColorTagsBuilder = null;
+        LogProfile = null;
         Gop = null;
         HdrMetadata = null;
         CoreVersion = "";

@@ -40,6 +40,7 @@ public static class SharedCoreBridge
         SharedCore.ColorFilterBuilder = BuildColorFilters;
         SharedCore.RenderFilterBuilder = BuildRenderFilters;
         SharedCore.ColorTagsBuilder = BuildColorTags;
+        SharedCore.LogProfile = DescribeLogProfile;
         SharedCore.Gop = ComputeGop;
         SharedCore.HdrMetadata = ComposeHdrMetadata;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
@@ -174,6 +175,25 @@ public static class SharedCoreBridge
         JsonObject payload = new();
         payload["filters"] = items;
         return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
+    }
+
+    /// <summary>Describes a camera curve through the core, so the host table cannot drift.</summary>
+    private static LogProfileInfo? DescribeLogProfile(string name)
+    {
+        JsonObject payload = new()
+        {
+            ["profile"] = name,
+        };
+        if (LumaCoreNative.Call("plan.log_profile", payload) is not JsonObject data)
+        {
+            return null;
+        }
+
+        return new LogProfileInfo(
+            Entry(data, "profile") ?? name,
+            Entry(data, "file") ?? "",
+            Entry(data, "matrix") ?? "",
+            Entry(data, "range") ?? "");
     }
 
     /// <summary>Derives the color tags through the core.</summary>
