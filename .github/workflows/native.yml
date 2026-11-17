@@ -232,13 +232,15 @@ jobs:
 
           # A PQ source that declares its mastering display, in MP4 so the declaration sits
           # in the container where the probe reads it. The output must keep it.
+          # The colour tags go into the x265 VUI: written as ffmpeg output options they
+          # do not survive into this container, and the probe would read kind "unknown".
           ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 \
-            -c:v libx265 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc smpte2084 \
-            -colorspace bt2020nc \
-            -x265-params "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50):max-cll=1000,400" \
+            -c:v libx265 -pix_fmt yuv420p10le \
+            -x265-params "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,50):max-cll=1000,400:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" \
             -y "$work/pq.mp4"
+          # No --input-kind: the source must be recognised as PQ from its own tags.
           "$binary" convert "$work/pq.mp4" -o "$work/pq-out.mkv" \
-            --purpose archive --codec hevc --output hdr --input-kind pq \
+            --purpose archive --codec hevc --output hdr \
             | tee build-info/convert-pq.txt
           # The plan must carry the tokens, not just the pixels.
           grep -q "master-display=G(13250,34500)" build-info/convert-pq.txt
