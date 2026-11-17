@@ -207,8 +207,8 @@ final class WorkspaceModel {
             } catch {
                 conversion = .failed(error.localizedDescription)
             }
-            cancellation = nil
-            conversionTask = nil
+            self.cancellation = nil
+            self.conversionTask = nil
         }
     }
 
