@@ -21,6 +21,9 @@ enum ConvertCommand {
             if case .toolMissing = error {
                 return unavailable
             }
+            if case .missingFilter = error {
+                return unavailable
+            }
             return rejected
         } catch {
             fail("error: \(error.localizedDescription)")
@@ -39,6 +42,13 @@ enum ConvertCommand {
         let probed = try CoreClient().probe(document: document)
         let plan = try ConversionPlanner(ffmpeg: ffmpeg).plan(job, probed: probed)
         print(plan.commandLine)
+        // The plan names every filter it needs; a build without one must say so here rather
+        // than fail inside FFmpeg with "No such filter".
+        for filter in ["libplacebo"] where plan.commandLine.contains("\(filter)=") {
+            guard hasFilter(filter, ffmpeg: ffmpeg) else {
+                throw ConversionError.missingFilter(filter)
+            }
+        }
         try ConversionRunner.run(plan)
         print("wrote \(job.output)")
         return 0
@@ -109,6 +119,23 @@ enum ConvertCommand {
             return configured
         }
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    /// Reads the filter list from the FFmpeg that will run the plan.
+    private static func hasFilter(_ name: String, ffmpeg: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: ffmpeg)
+        process.arguments = ["-hide_banner", "-filters"]
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else {
+            return false
+        }
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let listing = String(data: data, encoding: .utf8) ?? ""
+        return listing.contains(" \(name) ")
     }
 
     private static func fail(_ message: String) {

@@ -252,19 +252,36 @@ jobs:
           grep -q "Mastering display metadata" build-info/pq-out.json
           grep -q '"max_content": 1000' build-info/pq-out.json
 
-          # HDR to SDR: the tone map, the range conversion and the output tags all come from
-          # the core, and the result must be tagged BT.709 rather than labelled HDR.
-          "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
-            --purpose archive --codec hevc --output sdr \
-            | tee build-info/convert-hdr-to-sdr.txt
-          grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
-          grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
-          ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
-            > build-info/hdr-to-sdr.json
-          grep -q '"codec_name": "hevc"' build-info/hdr-to-sdr.json
-          # Archive keeps the 10-bit precision; only the transfer changes to BT.709.
-          grep -q '"pix_fmt": "yuv420p10le"' build-info/hdr-to-sdr.json
-          grep -q '"color_transfer": "bt709"' build-info/hdr-to-sdr.json
+          # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
+          # that filter, so this step asserts the plan and the refusal here, and renders only
+          # when the build actually has it.
+          if ffmpeg -hide_banner -filters 2>/dev/null | grep -q " libplacebo "; then
+            "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
+              --purpose archive --codec hevc --output sdr | tee build-info/convert-hdr-to-sdr.txt
+            ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
+              > build-info/hdr-to-sdr.json
+            grep -q '"color_transfer": "bt709"' build-info/hdr-to-sdr.json
+            # Archive keeps the 10-bit precision; only the transfer changes.
+            grep -q '"pix_fmt": "yuv420p10le"' build-info/hdr-to-sdr.json
+            grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
+          else
+            set +e
+            "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
+              --purpose archive --codec hevc --output sdr \
+              > build-info/convert-hdr-to-sdr.txt 2> build-info/hdr-to-sdr.err
+            status=$?
+            set -e
+            cat build-info/convert-hdr-to-sdr.txt build-info/hdr-to-sdr.err
+            # The plan is complete: source tags, tone map, range conversion, output tags.
+            grep -q "setparams=color_primaries=bt2020:color_trc=arib-std-b67" build-info/convert-hdr-to-sdr.txt
+            grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
+            grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
+            if [ "$status" -ne 3 ]; then
+              echo "expected exit 3 without libplacebo, got $status" >&2
+              exit 1
+            fi
+            grep -q "has no libplacebo filter" build-info/hdr-to-sdr.err
+          fi
 
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app

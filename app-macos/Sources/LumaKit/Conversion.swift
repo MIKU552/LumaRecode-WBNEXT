@@ -57,6 +57,8 @@ public enum ConversionError: Error, Equatable, Sendable, LocalizedError {
     case unsupported(String)
     /// An external tool is missing.
     case toolMissing(String)
+    /// The installed FFmpeg lacks a filter the plan needs.
+    case missingFilter(String)
     /// FFmpeg ran and failed.
     case failed(String)
 
@@ -66,6 +68,8 @@ public enum ConversionError: Error, Equatable, Sendable, LocalizedError {
             return message
         case let .toolMissing(tool):
             return "\(tool) was not found. Install FFmpeg or set LUMARECODE_FFMPEG."
+        case let .missingFilter(filter):
+            return "This FFmpeg build has no \(filter) filter; install one compiled with it."
         case let .failed(message):
             return message.isEmpty ? "FFmpeg failed." : message
         }
