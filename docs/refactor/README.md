@@ -61,7 +61,7 @@ PQ、Dolby Vision 与 HDR10+ 三种素材逐编码器比较完整参数串，两
 
 软件色彩转换段同样由核心拼装（`plan.color_filters`）：zscale 的范围与三项色彩参数、10 位共享档
 的 P010 交换格式、以及 `setparams` 的标签写法各只写一次。滤镜的串接顺序仍由宿主决定，
-`qa/NativeChecks` 比较 5 种素材的完整 `-vf` 串，因此这一段换位置或换顺序都会立刻显形。
+`qa/NativeChecks` 比较完整 `-vf` 串，因此这一段换位置或换顺序都会立刻显形。
 
 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也在核心（`plan.render_filters`），
 按需返回：宿主只决定插在哪一段，字符串只有一份。`qa/NativeChecks` 用 10 组素材比较完整 `-vf`，
@@ -86,7 +86,7 @@ macOS 统一使用 `xcode-27` 镜像）；
   Windows x64、ARM64 原生库构建并暂存；macOS 27 由 `xcode-27` 镜像构建 Swift 包、
   运行 LumaKit 测试、组装 `.app` 并完成 ad-hoc 签名，再用 `--version` 验证终端入口与核心加载。
 - `windows` 工作流：.NET SDK 11.0.100 以 `--locked-mode` 恢复并构建 WinUI 应用，
-  构建托管层并运行对照检查（1850 次比较，含预设、探测、时间轴、拒绝路径、GOP、HDR 元数据、滤镜与桥接回放，无差异），随后以
+  构建托管层并运行对照检查（1855 次比较，含预设、探测、时间轴、拒绝路径、GOP、HDR 元数据、滤镜与桥接回放，无差异），随后以
   `LUMARECODE_DIAGNOSTICS=1` 运行一次 `--cli --version`，确认宿主实际加载了共享核心；
   再用 FFmpeg 生成 2 秒测试源走一次 `convert`，校验输出为 HEVC / yuv420p，
   把 `probe` 与 `plan` 的 JSON 存入构建产物，并用 `doctor --json` 确认 `core.mode` 为 `shared`；
@@ -247,7 +247,7 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   package on the `xcode-27` image, runs the LumaKit tests, assembles `.app`,
   applies the ad-hoc signature and checks the terminal entry with `--version`.
 - `windows`: .NET SDK 11.0.100 restores in `--locked-mode`, builds the WinUI
-  application, builds the managed layers and runs the parity check (1850
+  application, builds the managed layers and runs the parity check (1855
   comparisons including presets, probe, timeline, rejection paths, GOP, HDR metadata, filters and the bridge replay, no mismatch), runs
   `--cli --version` to confirm the host loaded the shared core, converts a
   two-second synthetic clip and checks the output is HEVC / yuv420p, and finally
