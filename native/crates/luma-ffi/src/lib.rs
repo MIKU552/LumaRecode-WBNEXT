@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 26] = [
+const OPERATIONS: [&str; 27] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -67,6 +67,7 @@ const OPERATIONS: [&str; 26] = [
     "plan.color_filters",
     "plan.render_filters",
     "plan.color_tags",
+    "plan.log_profile",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -183,6 +184,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.color_filters" => plan_color_filters(&payload),
         "plan.render_filters" => plan_render_filters(&payload),
         "plan.color_tags" => plan_color_tags(&payload),
+        "plan.log_profile" => plan_log_profile(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -712,6 +714,25 @@ struct VppDto {
     out_range: String,
     #[serde(default)]
     sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct LogProfileDto {
+    profile: String,
+}
+
+fn plan_log_profile(payload: &Value) -> CoreResult<Value> {
+    let request: LogProfileDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let Some(profile) = luma_core::LogProfile::parse(&request.profile)? else {
+        return Err(CoreError::new(codes::TRANSFORM_PROFILE_REQUIRED));
+    };
+    Ok(json!({
+        "profile": profile.as_str(),
+        "file": profile.lut_file(),
+        "matrix": profile.matrix(),
+        "range": profile.range().as_str(),
+    }))
 }
 
 #[derive(Deserialize)]

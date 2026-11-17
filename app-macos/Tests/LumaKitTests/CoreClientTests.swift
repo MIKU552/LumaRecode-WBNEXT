@@ -167,6 +167,36 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(plan.format.bitDepth, 10)
     }
 
+    func testPlannerRunsACameraCurveThroughItsLut() throws {
+        let source: [String: Any] = [
+            "pixel_format": "yuv420p10le",
+            "kind": "log",
+            "components": [10, 10, 10],
+            "log2_chroma_w": 1,
+            "log2_chroma_h": 1,
+        ]
+        let job = ConversionJob(
+            input: "/tmp/in.mkv",
+            output: "/tmp/out.mkv",
+            presets: presetTable,
+            outputKind: "hdr",
+            inputKind: "log",
+            logProfile: "milog",
+            lutDirectory: "/repo/Assets"
+        )
+        let plan = try ConversionPlanner(ffmpeg: "/usr/bin/false")
+            .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+
+        // The curve table, the LUT path and the matrix it was graded in all come from the core.
+        let chain = plan.commandLine
+        XCTAssertTrue(chain.contains("lut3d=file=/repo/Assets/REDMI_K90_MiLog_to_Rec2100_HLG.cube"))
+        XCTAssertTrue(chain.contains("zscale=matrixin=2020_ncl:rangein=full:range=full"))
+        XCTAssertTrue(chain.contains("setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67"))
+        // No tone map for a curve that already develops to HLG.
+        XCTAssertFalse(chain.contains("libplacebo="))
+        XCTAssertEqual(plan.format.sourceKind, "log")
+    }
+
     func testPlannerSurfacesTheCoreRejection() {
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
         let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable, outputKind: "hdr")

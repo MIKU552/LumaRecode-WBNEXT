@@ -13,8 +13,13 @@ public struct ConversionJob: Sendable {
     public var outputKind: String
     /// Manual interpretation of the source; `auto` trusts the probe.
     public var inputKind: String
-    /// `auto` infers a transfer change from the probe; `none` and `hdr-sdr` pin it.
+    /// `auto` infers a transfer change from the probe; `none`, `hdr-sdr` and the two
+    /// `log-*` values pin it.
     public var transform: String
+    /// Camera curve name; required by the `log-*` transforms.
+    public var logProfile: String
+    /// Directory the shipped LUT files live in.
+    public var lutDirectory: String
     /// Text of the shipped preset table.
     public var presets: String
 
@@ -26,7 +31,9 @@ public struct ConversionJob: Sendable {
         codec: String = "hevc",
         outputKind: String = "sdr",
         inputKind: String = "auto",
-        transform: String = "auto"
+        transform: String = "auto",
+        logProfile: String = "",
+        lutDirectory: String = "Assets"
     ) {
         self.input = input
         self.output = output
@@ -36,6 +43,8 @@ public struct ConversionJob: Sendable {
         self.outputKind = outputKind
         self.inputKind = inputKind
         self.transform = transform
+        self.logProfile = logProfile
+        self.lutDirectory = lutDirectory
     }
 }
 
@@ -107,10 +116,16 @@ public struct ConversionPlanner: Sendable {
         // what the probe described unless the caller pinned one.
         let declaredKind = job.inputKind == "auto" ? (probed.source["kind"] as? String ?? "unknown") : job.inputKind
         let isHdrSource = declaredKind == "hlg" || declaredKind == "pq"
+        let isLogSource = declaredKind == "log"
         let transform = job.transform == "auto"
-            ? (isHdrSource && job.outputKind == "sdr" ? "hdr-sdr" : "none")
+            ? (isLogSource
+                ? (job.outputKind == "hdr" ? "log-hdr" : "log-sdr")
+                : (isHdrSource && job.outputKind == "sdr" ? "hdr-sdr" : "none"))
             : job.transform
         options.transform = transform
+        if isLogSource || transform.hasPrefix("log-") {
+            options.profile = job.logProfile.isEmpty ? nil : job.logProfile
+        }
 
         let format = try client.validate(sourceJSON: probed.source, options: options)
         switch transform {
@@ -129,8 +144,15 @@ public struct ConversionPlanner: Sendable {
             guard !(probed.source["rgb"] as? Bool ?? false) else {
                 throw ConversionError.unsupported("RGB sources do not convert between transfers on macOS yet.")
             }
+        case "log-hdr", "log-sdr":
+            guard format.sourceKind == "log", !job.logProfile.isEmpty else {
+                throw ConversionError.unsupported("--transform \(transform) needs --input-kind log and --log-profile.")
+            }
+            guard !(probed.source["rgb"] as? Bool ?? false) else {
+                throw ConversionError.unsupported("RGB sources do not run a curve on macOS yet.")
+            }
         default:
-            throw ConversionError.unsupported("Only none and hdr-sdr run on macOS so far.")
+            throw ConversionError.unsupported("Only none, hdr-sdr and the log transforms run on macOS so far.")
         }
 
         let preset = try client.preset(document: job.presets, purpose: options.purpose, codec: options.codec)
@@ -160,15 +182,33 @@ public struct ConversionPlanner: Sendable {
             transfer: probed.source["color_transfer"] as? String,
             space: probed.source["color_space"] as? String
         )
+        let usesCurve = transform.hasPrefix("log-")
+        let usesToneMap = transform == "hdr-sdr" || transform == "log-sdr"
         var chain: [String] = []
-        if transform == "hdr-sdr" {
+        if usesCurve || usesToneMap {
+            var curve: LogFilterInput?
+            if usesCurve {
+                let profile = try client.logProfile(job.logProfile)
+                curve = LogFilterInput(
+                    file: lutPath(profile.file, directory: job.lutDirectory),
+                    matrix: profile.matrix,
+                    range: profile.range,
+                    sourceSpace: tags.source.space,
+                    sourceRange: tags.source.range
+                )
+            }
             let entries = try client.renderFilters(
-                toneMapRange: format.colorRange == "full" ? "pc" : "tv",
+                log: curve,
+                toneMapRange: usesToneMap ? (format.colorRange == "full" ? "pc" : "tv") : nil,
                 applyDolbyVision: dolbyProfile != nil,
                 dropDynamicMetadata: dolbyProfile != nil || hdr10Plus
             )
-            chain.append(tags.sourceFilter)
-            for entry in [entries.toneMap, entries.droppedMetadata].compactMap({ $0 }) {
+            // A curve reads the frame as the camera wrote it, so only a straight transfer
+            // change needs the source tags declared first.
+            if !usesCurve {
+                chain.append(tags.sourceFilter)
+            }
+            for entry in [entries.log, entries.toneMap, entries.droppedMetadata].compactMap({ $0 }) {
                 chain.append(entry)
             }
             chain += try client.colorFilters(
@@ -224,6 +264,14 @@ public struct ConversionPlanner: Sendable {
         arguments += ["-c:a", "copy"]
         arguments.append(job.output)
         return ConversionPlan(arguments: arguments, format: format)
+    }
+
+    /// Resolves the LUT the core named against the directory this host keeps it in.
+    private func lutPath(_ file: String, directory: String) -> String {
+        guard !directory.isEmpty, !file.hasPrefix("/") else {
+            return file
+        }
+        return URL(fileURLWithPath: directory).appendingPathComponent(file).path
     }
 
     /// The flag each encoder family reads its parameter string from.

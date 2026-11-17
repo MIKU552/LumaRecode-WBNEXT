@@ -324,6 +324,23 @@ public struct ColorTagSet: Decodable, Sendable, Equatable {
     }
 }
 
+/// A camera curve: the LUT file the host resolves, plus the matrix and range it was graded in.
+public struct LogCurve: Decodable, Sendable, Equatable {
+    public let profile: String
+    public let file: String
+    public let matrix: String
+    public let range: String
+}
+
+/// What the curve chain needs: the resolved LUT path and the tags to read the frames with.
+public struct LogFilterInput: Sendable, Equatable {
+    public let file: String
+    public let matrix: String
+    public let range: String
+    public let sourceSpace: String?
+    public let sourceRange: String?
+}
+
 /// The signal-dependent filter entries a conversion may need.
 public struct RenderFilterSet: Decodable, Sendable, Equatable {
     public let log: String?
@@ -524,13 +541,34 @@ public struct CoreClient: Sendable {
         return try JSONDecoder().decode(ArgumentList.self, from: payload).arguments
     }
 
+    /// The curve table entry for a profile name.
+    public func logProfile(_ name: String) throws -> LogCurve {
+        let payload = try call("plan.log_profile", request: ["profile": name])
+        return try JSONDecoder().decode(LogCurve.self, from: payload)
+    }
+
     /// The filter entries that depend on the signal rather than on the frame size.
     public func renderFilters(
+        log: LogFilterInput?,
         toneMapRange: String?,
         applyDolbyVision: Bool,
         dropDynamicMetadata: Bool
     ) throws -> RenderFilterSet {
         var request: [String: Any] = ["drop_dynamic_metadata": dropDynamicMetadata]
+        if let log {
+            var entry: [String: Any] = [
+                "file": log.file,
+                "matrix": log.matrix,
+                "range": log.range,
+            ]
+            if let sourceSpace = log.sourceSpace {
+                entry["source_space"] = sourceSpace
+            }
+            if let sourceRange = log.sourceRange {
+                entry["source_range"] = sourceRange
+            }
+            request["log"] = entry
+        }
         if let toneMapRange {
             request["tone_map"] = ["range": toneMapRange, "apply_dolby_vision": applyDolbyVision]
         }

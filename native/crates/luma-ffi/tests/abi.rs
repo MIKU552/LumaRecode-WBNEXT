@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 26);
+    assert_eq!(operations.len(), 27);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -443,4 +443,15 @@ fn plan_color_tags_fills_the_source_and_names_the_target() {
         tags["source_filter"],
         "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc:range=limited"
     );
+}
+
+#[test]
+fn plan_log_profile_names_the_curve_the_lut_expects() {
+    let request = serde_json::json!({ "profile": "milog" }).to_string();
+    let profile = data("plan.log_profile", &request);
+
+    assert_eq!(profile["file"], "REDMI_K90_MiLog_to_Rec2100_HLG.cube");
+    assert_eq!(profile["matrix"], "2020_ncl");
+    // Mi-Log is the one curve the camera writes full range.
+    assert_eq!(profile["range"], "full");
 }

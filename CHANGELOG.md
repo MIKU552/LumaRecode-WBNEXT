@@ -20,6 +20,7 @@
 - 探测摘要带出侧数据，macOS 的 `convert` 因此能把 mastering display 与亮度声明原样带给编码器。
 - 色彩标签改由共享核心派生（`plan.color_tags`）：缺省补齐、RGB 与 profile 5 的表面对应、SDR/HDR 目标标签各只写一次。
 - macOS 的 `convert` 已能生成 HDR→SDR 的完整滤镜链与 BT.709 标签；渲染需要带 libplacebo 的 FFmpeg，构建缺少该滤镜时会给出明确提示而不是原始报错。
+- macOS 支持相机曲线：`--log-profile` 配合 `--lut-dir`，文件名、矩阵与范围取自核心的曲线表（`plan.log_profile`），转出 HLG。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -306,6 +307,7 @@
 - The probe summary now carries side data, so the macOS `convert` hands the mastering display and light levels back to the encoder.
 - Color tags are derived by the shared core (`plan.color_tags`): gap filling, the RGB and profile 5 surface names, and the SDR/HDR target tags are written once.
 - The macOS `convert` command now builds the whole HDR to SDR chain and the BT.709 tags; rendering needs an FFmpeg with libplacebo, and a build without it gets a clear message instead of a raw filter error.
+- macOS develops camera curves: `--log-profile` with `--lut-dir` takes the file name, matrix and range from the core's curve table (`plan.log_profile`) and delivers HLG.
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

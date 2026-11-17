@@ -103,6 +103,7 @@ void LUMA_CALL luma_string_free(char *value);
  *                        -> {log, tone_map, dolby_render, dropped_metadata, vpp}
  *   plan.color_tags      {kind, output, rgb?, dolby_profile5?, source_range, output_range,
  *                        primaries?, transfer?, space?} -> {source, target, source_filter}
+ *   plan.log_profile     {profile} -> {profile, file, matrix, range}
  *
  * Frames never cross this boundary: the host keeps decoded images and passes
  * only timestamps, sizes and identifiers.
