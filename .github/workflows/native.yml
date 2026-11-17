@@ -253,16 +253,28 @@ jobs:
           grep -q '"max_content": 1000' build-info/pq-out.json
 
           # A camera curve: the LUT path, the matrix it was graded in and the HLG retag all
-          # come from the core; only the file itself is the repository's.
+          # come from the core; only the file itself is the repository's. A build with the
+          # filters renders it, one without names the filter it lacks.
+          set +e
           "$binary" convert "$work/hlg.mkv" -o "$work/log-out.mkv" \
             --purpose archive --codec hevc --output hdr --input-kind log --log-profile milog \
-            | tee build-info/convert-log.txt
+            > build-info/convert-log.txt 2> build-info/convert-log.err
+          status=$?
+          set -e
+          cat build-info/convert-log.txt build-info/convert-log.err
           grep -q "lut3d=file=.*REDMI_K90_MiLog_to_Rec2100_HLG.cube" build-info/convert-log.txt
-          ffprobe -v error -select_streams v:0 -show_streams -of json "$work/log-out.mkv" \
-            > build-info/log-out.json
-          grep -q '"codec_name": "hevc"' build-info/log-out.json
-          grep -q '"pix_fmt": "yuv420p10le"' build-info/log-out.json
-          grep -q '"color_transfer": "arib-std-b67"' build-info/log-out.json
+          grep -q "zscale=matrixin=2020_ncl:rangein=limited:range=full" build-info/convert-log.txt
+          if [ "$status" -eq 0 ]; then
+            ffprobe -v error -select_streams v:0 -show_streams -of json "$work/log-out.mkv" \
+              > build-info/log-out.json
+            grep -q '"pix_fmt": "yuv420p10le"' build-info/log-out.json
+            grep -q '"color_transfer": "arib-std-b67"' build-info/log-out.json
+          elif [ "$status" -eq 3 ]; then
+            grep -q "has no .* filter" build-info/convert-log.err
+          else
+            echo "unexpected exit $status for the curve conversion" >&2
+            exit 1
+          fi
 
           # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
           # that filter, so this step asserts the plan and the refusal here, and renders only

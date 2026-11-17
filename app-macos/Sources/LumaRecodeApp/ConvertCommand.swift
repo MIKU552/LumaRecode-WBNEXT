@@ -43,9 +43,12 @@ enum ConvertCommand {
         let plan = try ConversionPlanner(ffmpeg: ffmpeg).plan(job, probed: probed)
         print(plan.commandLine)
         // The plan names every filter it needs; a build without one must say so here rather
-        // than fail inside FFmpeg with "No such filter".
-        for filter in ["libplacebo"] where plan.commandLine.contains("\(filter)=") {
-            guard hasFilter(filter, ffmpeg: ffmpeg) else {
+        // than fail inside FFmpeg with "No such filter". Homebrew's ffmpeg 9 has none of the
+        // three, which is worth naming precisely.
+        let required = ["libplacebo", "zscale", "lut3d"].filter { plan.commandLine.contains("\($0)=") }
+        if !required.isEmpty {
+            let listing = filterListing(ffmpeg: ffmpeg)
+            for filter in required where !listing.contains(" \(filter) ") {
                 throw ConversionError.missingFilter(filter)
             }
         }
@@ -126,7 +129,7 @@ enum ConvertCommand {
     }
 
     /// Reads the filter list from the FFmpeg that will run the plan.
-    private static func hasFilter(_ name: String, ffmpeg: String) -> Bool {
+    private static func filterListing(ffmpeg: String) -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ffmpeg)
         process.arguments = ["-hide_banner", "-filters"]
@@ -134,12 +137,11 @@ enum ConvertCommand {
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice
         guard (try? process.run()) != nil else {
-            return false
+            return ""
         }
         let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        let listing = String(data: data, encoding: .utf8) ?? ""
-        return listing.contains(" \(name) ")
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
     private static func fail(_ message: String) {
