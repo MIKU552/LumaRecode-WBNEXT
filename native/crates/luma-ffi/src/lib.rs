@@ -966,6 +966,7 @@ fn probe_summarize(payload: &Value) -> CoreResult<Value> {
         "frame_rate": summary.frame_rate,
         "side_data": summary.side_data,
         "source_range": summary.source_range,
+        "duration_seconds": summary.duration_seconds,
     }))
 }
 

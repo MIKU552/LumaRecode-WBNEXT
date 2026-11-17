@@ -32,6 +32,8 @@ pub struct ProbeSummary {
     pub side_data: Vec<Value>,
     /// Range the rules read the source with, before any curve override.
     pub source_range: &'static str,
+    /// Container duration in seconds; zero when the probe did not report one.
+    pub duration_seconds: f64,
 }
 
 /// Reads the probe document and returns the first video stream's summary.
@@ -70,6 +72,13 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
 
     // The same rule the hosts apply, resolved through a copy so the description can still
     // move into the summary below.
+    let duration = root
+        .get("format")
+        .and_then(|format| format.get("duration"))
+        .and_then(Value::as_str)
+        .and_then(|text| text.parse::<f64>().ok())
+        .filter(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(0.0);
     let described = source.clone().into_source()?;
     let source_range = crate::policy::source_range(&described, None).as_str();
     Ok(ProbeSummary {
@@ -87,6 +96,7 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         hdr10_plus: dynamic.hdr10_plus,
         side_data,
         source_range,
+        duration_seconds: duration,
     })
 }
 

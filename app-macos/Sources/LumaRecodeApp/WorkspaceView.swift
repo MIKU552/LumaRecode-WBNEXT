@@ -24,6 +24,10 @@ struct WorkspaceView: View {
                     Inspector(model: model)
                         .frame(width: 320)
                 }
+                if model.opened != nil {
+                    Divider()
+                    ConversionPanel(model: model)
+                }
                 Divider()
                 StatusBar(model: model)
             }
@@ -144,6 +148,50 @@ private struct TimelineStrip: View {
             }
             .frame(height: 56)
         }
+    }
+}
+
+/// Convert controls for the open file: run, watch, cancel, read the result.
+private struct ConversionPanel: View {
+    @Bindable var model: WorkspaceModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            switch model.conversion {
+            case .idle:
+                Button("Convert") { model.startConversion() }
+            case let .running(progress):
+                ProgressView(value: progress)
+                    .frame(width: 140)
+                Text("\(Int((progress * 100).rounded()))%")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                Button("Cancel") { model.cancelConversion() }
+            case let .finished(path):
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(path)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Button("Again") { model.startConversion() }
+            case let .failed(message):
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                Text(message)
+                    .lineLimit(2)
+                    .foregroundStyle(.secondary)
+                Button("Retry") { model.startConversion() }
+            }
+            Spacer()
+            if let destination = model.suggestedOutput {
+                Text(destination.lastPathComponent)
+                    .monospaced()
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .font(.callout)
     }
 }
 

@@ -196,12 +196,15 @@ public struct ProbeSummary: Decodable, Sendable, Equatable {
     public let dolbyVision: Int?
     public let hdr10Plus: Bool
     public let audio: Int
+    /// Container duration in seconds; zero when the probe did not report one.
+    public let durationSeconds: Double
 
     enum CodingKeys: String, CodingKey {
         case width, height, rotation, kind, depth, audio
         case pixelFormat = "pixel_format"
         case dolbyVision = "dolby_vision"
         case hdr10Plus = "hdr10_plus"
+        case durationSeconds = "duration_seconds"
     }
 }
 
@@ -217,19 +220,23 @@ public struct ProbeResult {
     public let sideData: [[String: Any]]
     /// Range the rules read the source with: `limited` or `full`.
     public let sourceRange: String
+    /// Container duration in seconds, used to turn progress into a fraction.
+    public let duration: Double
 
     public init(
         source: [String: Any],
         videoIndex: Int,
         frameRate: Double,
         sideData: [[String: Any]] = [],
-        sourceRange: String = "limited"
+        sourceRange: String = "limited",
+        duration: Double = 0
     ) {
         self.source = source
         self.videoIndex = videoIndex
         self.frameRate = frameRate
         self.sideData = sideData
         self.sourceRange = sourceRange
+        self.duration = duration
     }
 }
 
@@ -413,7 +420,8 @@ public struct CoreClient: Sendable {
             videoIndex: raw["video_index"] as? Int ?? 0,
             frameRate: raw["frame_rate"] as? Double ?? 0,
             sideData: raw["side_data"] as? [[String: Any]] ?? [],
-            sourceRange: raw["source_range"] as? String ?? "limited"
+            sourceRange: raw["source_range"] as? String ?? "limited",
+            duration: raw["duration_seconds"] as? Double ?? 0
         )
     }
 

@@ -68,6 +68,8 @@ public enum ConversionError: Error, Equatable, Sendable, LocalizedError {
     case toolMissing(String)
     /// The installed FFmpeg lacks a filter the plan needs.
     case missingFilter(String)
+    /// The caller asked the run to stop.
+    case cancelled
     /// FFmpeg ran and failed.
     case failed(String)
 
@@ -79,6 +81,8 @@ public enum ConversionError: Error, Equatable, Sendable, LocalizedError {
             return "\(tool) was not found. Install FFmpeg or set LUMARECODE_FFMPEG."
         case let .missingFilter(filter):
             return "This FFmpeg build has no \(filter) filter; install one compiled with it."
+        case .cancelled:
+            return "The conversion was cancelled."
         case let .failed(message):
             return message.isEmpty ? "FFmpeg failed." : message
         }
@@ -303,30 +307,138 @@ public struct ConversionPlanner: Sendable {
 }
 
 /// Runs one planned conversion.
+/// One line of FFmpeg's `-progress` stream.
+public enum ProgressSample {
+    /// The presentation time reached so far, in microseconds.
+    ///
+    /// FFmpeg writes `out_time_us=` once per interval and `N/A` before the first frame, so
+    /// anything that is not a non-negative integer is ignored.
+    public static func microseconds(_ line: String) -> Int64? {
+        let prefix = "out_time_us="
+        guard line.hasPrefix(prefix) else {
+            return nil
+        }
+        let value = line.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+        guard let microseconds = Int64(value), microseconds >= 0 else {
+            return nil
+        }
+        return microseconds
+    }
+}
+
+/// A box the caller keeps while a run is in flight, so another thread can stop it.
+public final class ConversionCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    public init() {}
+
+    public func cancel() {
+        lock.lock()
+        cancelled = true
+        lock.unlock()
+    }
+
+    public var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+    }
+}
+
+/// Runs a plan and reports how far FFmpeg has got.
 public enum ConversionRunner {
     /// Executes the plan and fails when FFmpeg reports a non-zero status.
     ///
-    /// The call blocks; callers run it off the main thread. Output is read before waiting,
-    /// which is safe because the command keeps FFmpeg quiet (`-loglevel warning -nostats`).
-    public static func run(_ plan: ConversionPlan) throws {
+    /// The call blocks; callers run it off the main thread. Progress comes from FFmpeg's own
+    /// `-progress` stream, so the fraction is measured work rather than a guess, and a run
+    /// that is asked to stop throws `.cancelled` once FFmpeg has exited.
+    public static func run(
+        _ plan: ConversionPlan,
+        duration: Double = 0,
+        cancellation: ConversionCancellation = ConversionCancellation(),
+        progress: (Double) -> Void = { _ in }
+    ) throws {
         guard let executable = plan.arguments.first else {
             throw ConversionError.toolMissing("ffmpeg")
         }
 
+        // The report goes before the destination, where FFmpeg still reads output options.
+        var arguments = Array(plan.arguments.dropFirst())
+        if let destination = arguments.popLast() {
+            arguments += ["-progress", "pipe:1", "-nostats"]
+            arguments.append(destination)
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = Array(plan.arguments.dropFirst())
+        process.arguments = arguments
+        let output = Pipe()
         let errors = Pipe()
+        process.standardOutput = output
         process.standardError = errors
-        process.standardOutput = FileHandle.nullDevice
 
         try process.run()
-        let data = errors.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
+        var reported = 0.0
+        var buffer = Data()
+        let reader = output.fileHandleForReading
+        while !cancellation.isCancelled {
+            let chunk = reader.availableData
+            if chunk.isEmpty {
+                break
+            }
+            buffer.append(chunk)
+            while let newline = buffer.firstIndex(of: 0x0A) {
+                let line = String(decoding: buffer[buffer.startIndex..<newline], as: UTF8.self)
+                buffer.removeSubrange(buffer.startIndex...newline)
+                guard duration > 0, let microseconds = ProgressSample.microseconds(line) else {
+                    continue
+                }
+                let fraction = min(max(Double(microseconds) / (duration * 1_000_000), 0), 1)
+                if fraction > reported {
+                    reported = fraction
+                    progress(fraction)
+                }
+            }
+        }
 
+        if cancellation.isCancelled {
+            process.terminate()
+        }
+        let errorData = errors.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        if cancellation.isCancelled {
+            throw ConversionError.cancelled
+        }
         guard process.terminationStatus == 0 else {
-            let message = String(data: data, encoding: .utf8) ?? ""
+            let message = String(data: errorData, encoding: .utf8) ?? ""
             throw ConversionError.failed(message.trimmingCharacters(in: .whitespacesAndNewlines))
         }
+    }
+}
+
+/// The preset table and the asset directory both hosts resolve against.
+public enum PresetDocument {
+    /// Where the shipped LUTs and preset tables live.
+    public static var assetDirectory: String {
+        ProcessInfo.processInfo.environment["LUMARECODE_ASSETS"] ?? "Assets"
+    }
+
+    /// Reads the shipped preset table from the first place that has it.
+    public static func load(configured: String? = nil) -> String? {
+        var candidates: [String] = []
+        if let configured {
+            candidates.append(configured)
+        }
+        if let environment = ProcessInfo.processInfo.environment["LUMARECODE_PRESETS"] {
+            candidates.append(environment)
+        }
+        candidates.append("\(assetDirectory)/recommended-presets.json")
+        for path in candidates where FileManager.default.fileExists(atPath: path) {
+            if let text = try? String(contentsOfFile: path, encoding: .utf8) {
+                return text
+            }
+        }
+        return nil
     }
 }

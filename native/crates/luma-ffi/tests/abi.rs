@@ -311,7 +311,8 @@ fn plan_hdr_metadata_keeps_dynamic_metadata_on_an_sdr_target() {
 
 #[test]
 fn probe_summarize_returns_a_description_the_rules_accept() {
-    let document = r#"{"streams":[{"codec_type":"video","index":0,"pix_fmt":"yuv420p",
+    let document = r#"{"format":{"duration":"61.5"},
+        "streams":[{"codec_type":"video","index":0,"pix_fmt":"yuv420p",
         "width":320,"height":240,"color_transfer":"bt709","avg_frame_rate":"30000/1001",
         "bits_per_raw_sample":"8"}]}"#;
     let request = serde_json::json!({ "document": document }).to_string();
@@ -320,6 +321,7 @@ fn probe_summarize_returns_a_description_the_rules_accept() {
     let rate = summary["frame_rate"].as_f64().expect("frame rate");
     assert!((rate - 29.97).abs() < 0.001);
     assert_eq!(summary["source_range"], "limited");
+    assert!((summary["duration_seconds"].as_f64().expect("duration") - 61.5).abs() < 0.001);
 
     // The description is ready for the rules without re-reading the document.
     let validate = serde_json::json!({

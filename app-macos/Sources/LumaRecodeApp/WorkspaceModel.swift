@@ -88,6 +88,28 @@ final class WorkspaceModel {
     var opened: OpenedSource?
     var probeError: String?
 
+    /// What the convert button is doing, if anything.
+    enum ConversionState: Equatable {
+        case idle
+        case running(Double)
+        case finished(String)
+        case failed(String)
+    }
+
+    var conversion: ConversionState = .idle
+    private var cancellation: ConversionCancellation?
+    private var conversionTask: Task<Void, Never>?
+
+    /// Where a conversion of the open file writes: beside it, with a clear name.
+    var suggestedOutput: URL? {
+        guard let opened else {
+            return nil
+        }
+        let base = opened.url.deletingPathExtension().lastPathComponent
+        return opened.url.deletingLastPathComponent()
+            .appendingPathComponent("\(base)-converted.mkv")
+    }
+
     var selectedReference: Reference? {
         references.first { $0.id == selectedID }
     }
@@ -128,6 +150,71 @@ final class WorkspaceModel {
                 probeError = error.localizedDescription
             }
         }
+    }
+
+    /// Converts the open file with the options the inspector shows.
+    ///
+    /// Probing, planning and encoding run off the main actor; only the state changes come
+    /// back to it. FFmpeg's own progress stream drives the bar, so a stalled encode looks
+    /// stalled instead of pretending to move.
+    func startConversion() {
+        guard let opened, let destination = suggestedOutput else {
+            return
+        }
+        if case .running = conversion {
+            return
+        }
+        guard let presets = PresetDocument.load() else {
+            conversion = .failed("The preset table is unavailable.")
+            return
+        }
+
+        let job = ConversionJob(
+            input: opened.url.path,
+            output: destination.path,
+            presets: presets,
+            purpose: options.purpose,
+            codec: options.codec,
+            outputKind: options.output,
+            inputKind: "auto",
+            transform: "auto",
+            logProfile: options.profile ?? "",
+            lutDirectory: PresetDocument.assetDirectory
+        )
+        let cancellation = ConversionCancellation()
+        self.cancellation = cancellation
+        conversion = .running(0)
+        conversionTask = Task {
+            do {
+                try await Task.detached(priority: .userInitiated) {
+                    let document = try ProbeRunner.document(path: opened.url.path, includeFirstFrame: true)
+                    let probed = try CoreClient().probe(document: document)
+                    guard let ffmpeg = FFmpegLocator.locate() else {
+                        throw ConversionError.toolMissing("ffmpeg")
+                    }
+                    let plan = try ConversionPlanner(ffmpeg: ffmpeg).plan(job, probed: probed)
+                    try ConversionRunner.run(plan, duration: probed.duration, cancellation: cancellation) { fraction in
+                        Task { @MainActor in
+                            if case .running = self.conversion {
+                                self.conversion = .running(fraction)
+                            }
+                        }
+                    }
+                }.value
+                conversion = .finished(destination.path)
+            } catch ConversionError.cancelled {
+                conversion = .idle
+            } catch {
+                conversion = .failed(error.localizedDescription)
+            }
+            cancellation = nil
+            conversionTask = nil
+        }
+    }
+
+    /// Asks the running conversion to stop; the state returns to idle once FFmpeg has exited.
+    func cancelConversion() {
+        cancellation?.cancel()
     }
 
     /// Re-runs describe and validate for the current selection and options.

@@ -33,8 +33,7 @@ enum ConvertCommand {
 
     private static func execute(_ arguments: [String]) throws -> Int32 {
         let (job, dryRun) = try parse(arguments)
-        let candidates = ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"]
-        guard let ffmpeg = locate("LUMARECODE_FFMPEG", candidates: candidates) else {
+        guard let ffmpeg = FFmpegLocator.locate() else {
             throw ConversionError.toolMissing("ffmpeg")
         }
 
@@ -92,7 +91,7 @@ enum ConvertCommand {
                 "usage: LumaRecode convert <input> -o <output> [--purpose archive] [--codec hevc|av1|avc] [--output sdr|hdr] [--input-kind auto|sdr|hlg|pq] [--transform auto|none|hdr-sdr|log-hdr|log-sdr] [--log-profile pocket3|samsung|milog|applelog|applelog2] [--lut-dir <path>] [--presets <path>] [--dry-run]"
             )
         }
-        guard let presets = presetsDocument(flags["--presets"]) else {
+        guard let presets = PresetDocument.load(configured: flags["--presets"]) else {
             throw ConversionError.unsupported(
                 "The preset table is unavailable; pass --presets <path> or set LUMARECODE_PRESETS."
             )
@@ -115,32 +114,6 @@ enum ConvertCommand {
         return (job, flags["--dry-run"] != nil)
     }
 
-    /// Reads the shipped preset table from the first place that has it.
-    private static func presetsDocument(_ configured: String?) -> String? {
-        var candidates: [String] = []
-        if let configured {
-            candidates.append(configured)
-        }
-        if let environment = ProcessInfo.processInfo.environment["LUMARECODE_PRESETS"] {
-            candidates.append(environment)
-        }
-        candidates.append("Assets/recommended-presets.json")
-        for path in candidates where FileManager.default.fileExists(atPath: path) {
-            if let text = try? String(contentsOfFile: path, encoding: .utf8) {
-                return text
-            }
-        }
-        return nil
-    }
-
-    private static func locate(_ variable: String, candidates: [String]) -> String? {
-        if let configured = ProcessInfo.processInfo.environment[variable],
-           FileManager.default.isExecutableFile(atPath: configured) {
-            return configured
-        }
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
-    }
-
     /// Reads the filter list from the FFmpeg that will run the plan.
     private static func filterListing(ffmpeg: String) -> String {
         let process = Process()
@@ -160,4 +133,5 @@ enum ConvertCommand {
     private static func fail(_ message: String) {
         FileHandle.standardError.write(Data((message + "\n").utf8))
     }
+}
 }
