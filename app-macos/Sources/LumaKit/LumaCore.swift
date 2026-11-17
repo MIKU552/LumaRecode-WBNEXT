@@ -106,6 +106,7 @@ public struct OutputOptions: Equatable, Sendable {
     public var audio = "auto"
     public var container = "auto"
     public var dynamicHdr = "preserve"
+    public var sourceKind = "auto"
     public var cpuDecode = false
 
     public init() {}
@@ -122,6 +123,7 @@ public struct OutputOptions: Equatable, Sendable {
             "audio": audio,
             "container": container,
             "dynamic_hdr": dynamicHdr,
+            "source_kind": sourceKind,
             "cpu_decode": cpuDecode,
         ]
         if let profile {
@@ -183,12 +185,6 @@ public struct ResolvedFormat: Decodable, Sendable {
     }
 }
 
-/// Typed access to the C ABI.
-///
-/// The transport is a JSON envelope, which keeps a single entry point for every
-/// operation while the typed structs for progress events are still being
-/// designed. Nothing here throws on a rejected request: the core's stable code
-/// is surfaced through `CoreError`.
 /// Video and audio facts the core read from an ffprobe document.
 public struct ProbeSummary: Decodable, Sendable, Equatable {
     public let width: Int
@@ -209,6 +205,88 @@ public struct ProbeSummary: Decodable, Sendable, Equatable {
     }
 }
 
+/// A probe result: the description the rules accept, plus the two facts a command needs.
+///
+/// `source` is the core's normalized description, passed back unchanged to `policy.*` and
+/// `plan.*`. Keeping it opaque means no host has to read ffprobe output a second time.
+public struct ProbeResult {
+    public let source: [String: Any]
+    public let videoIndex: Int
+    public let frameRate: Double
+
+    public init(source: [String: Any], videoIndex: Int, frameRate: Double) {
+        self.source = source
+        self.videoIndex = videoIndex
+        self.frameRate = frameRate
+    }
+}
+
+/// One encoder setting from a shipped preset table.
+public enum PresetValue: Decodable, Sendable, Equatable {
+    case flag(Bool)
+    case number(Double)
+    case text(String)
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let flag = try? container.decode(Bool.self) {
+            self = .flag(flag)
+        } else if let number = try? container.decode(Double.self) {
+            self = .number(number)
+        } else {
+            self = .text(try container.decode(String.self))
+        }
+    }
+
+    /// The value as the encoder expects it: a whole number loses the trailing `.0`.
+    public var text: String {
+        switch self {
+        case let .flag(flag):
+            return flag ? "1" : "0"
+        case let .number(number):
+            guard number == number.rounded(), abs(number) < 1e15 else {
+                return String(number)
+            }
+            return String(Int64(number))
+        case let .text(value):
+            return value
+        }
+    }
+}
+
+/// The encoder, rate control and options one preset selector resolves to.
+public struct PresetSelection: Decodable, Sendable, Equatable {
+    public let selector: String
+    public let encoder: String
+    public let preset: String
+    public let quality: Int
+    public let parameters: [String: PresetValue]
+
+    /// Options in table order, so the same request always builds the same command.
+    public var parameterPairs: [(String, String)] {
+        parameters.keys.sorted().map { ($0, parameters[$0]?.text ?? "") }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case selector, encoder, preset, quality, parameters
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        selector = try container.decode(String.self, forKey: .selector)
+        encoder = try container.decode(String.self, forKey: .encoder)
+        preset = try container.decode(String.self, forKey: .preset)
+        quality = try container.decode(Int.self, forKey: .quality)
+        parameters = try container.decodeIfPresent([String: PresetValue].self, forKey: .parameters) ?? [:]
+    }
+}
+
+/// Typed access to the C ABI.
+///
+/// The transport is a JSON envelope, which keeps a single entry point for every
+/// operation while the typed structs for progress events are still being
+/// designed. Nothing here throws on a rejected request: the core's stable code
+/// is surfaced through `CoreError`.
 public struct CoreClient: Sendable {
     public init() {}
 
@@ -239,6 +317,100 @@ public struct CoreClient: Sendable {
 
     public func validate(source: SourceDescription, options: OutputOptions) throws -> ResolvedFormat {
         try decode("policy.validate", source: source, options: options)
+    }
+
+    /// Reads the normalized description a command can hand back to the rules.
+    public func probe(document: String) throws -> ProbeResult {
+        let payload = try call("probe.summarize", request: ["document": document])
+        guard let raw = (try? JSONSerialization.jsonObject(with: payload)) as? [String: Any],
+              let source = raw["source"] as? [String: Any]
+        else {
+            throw CoreError.malformedResponse
+        }
+        return ProbeResult(
+            source: source,
+            videoIndex: raw["video_index"] as? Int ?? 0,
+            frameRate: raw["frame_rate"] as? Double ?? 0
+        )
+    }
+
+    /// Validates a request against a description the probe already normalized.
+    public func validate(sourceJSON: [String: Any], options: OutputOptions) throws -> ResolvedFormat {
+        let payload = try call("policy.validate", request: ["source": sourceJSON, "options": options.json])
+        return try JSONDecoder().decode(ResolvedFormat.self, from: payload)
+    }
+
+    /// Resolves one selector from a preset table.
+    public func preset(document: String, purpose: String, codec: String) throws -> PresetSelection {
+        let payload = try call("presets.resolve", request: ["document": document, "purpose": purpose, "codec": codec])
+        return try JSONDecoder().decode(PresetSelection.self, from: payload)
+    }
+
+    /// GOP length for one conversion; the input block below carries it to the encoder.
+    public func gop(frameRate: Double, share: Bool) throws -> Int {
+        let payload = try call("plan.gop", request: ["frame_rate": frameRate, "share": share])
+        return try JSONDecoder().decode(FrameCount.self, from: payload).frames
+    }
+
+    /// The `-i` block and stream selection.
+    public func inputMap(
+        input: String,
+        videoIndex: Int,
+        audioMap: String,
+        preserveMetadata: Bool,
+        preserveChapters: Bool
+    ) throws -> [String] {
+        let payload = try call("plan.input_map", request: [
+            "input": input,
+            "video_index": videoIndex,
+            "audio_map": audioMap,
+            "preserve_metadata": preserveMetadata,
+            "preserve_chapters": preserveChapters,
+        ])
+        return try JSONDecoder().decode(ArgumentList.self, from: payload).arguments
+    }
+
+    /// The encoder block, including the interval the core decided.
+    public func encoderArguments(
+        encoder: String,
+        preset: String,
+        quality: String,
+        share: Bool,
+        codec: String,
+        depth: Int,
+        gop: Int,
+        autoLowPower: Bool,
+        timingCompatibility: Bool,
+        asyncDepth: String,
+        pixelFormat: String
+    ) throws -> [String] {
+        let payload = try call("plan.encoder_args", request: [
+            "encoder": encoder,
+            "preset": preset,
+            "quality": quality,
+            "share": share,
+            "codec": codec,
+            "depth": depth,
+            "gop": gop,
+            "auto_low_power": autoLowPower,
+            "timing_compatibility": timingCompatibility,
+            "async_depth": asyncDepth,
+            "pixel_format": pixelFormat,
+        ])
+        return try JSONDecoder().decode(ArgumentList.self, from: payload).arguments
+    }
+
+    /// Joins filter expressions the way FFmpeg expects them.
+    public func filterChain(_ filters: [String]) throws -> String {
+        let payload = try call("plan.filter_chain", request: ["filters": filters])
+        return try JSONDecoder().decode(TextResult.self, from: payload).text
+    }
+
+    /// Joins encoder parameters into the single string the encoder family expects.
+    public func parameterString(values: [(String, String)], appended: [String]) throws -> String {
+        let pairs = values.map { ["key": $0.0, "value": $0.1] }
+        let payload = try call("plan.parameter_string", request: ["values": pairs, "appended": appended])
+        return try JSONDecoder().decode(TextResult.self, from: payload).text
     }
 
     /// Normalizes an ffprobe document through the shared probe reader.
@@ -299,4 +471,19 @@ public struct CoreClient: Sendable {
             case coreVersion = "core_version"
         }
     }
+}
+
+/// `plan.gop` answer.
+private struct FrameCount: Decodable {
+    let frames: Int
+}
+
+/// Any operation that answers with a bare argument list.
+private struct ArgumentList: Decodable {
+    let arguments: [String]
+}
+
+/// Any operation that answers with one joined string.
+private struct TextResult: Decodable {
+    let text: String
 }

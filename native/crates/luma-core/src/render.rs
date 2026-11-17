@@ -165,9 +165,16 @@ pub fn filter_chain(filters: &[String]) -> String {
 /// Quick share keeps the interval short so high-frame-rate sources stay below the
 /// long-GOP range associated with some Arc driver failures. Archive follows the usual
 /// eight-second cadence, and motion photos use two because they are short clips.
+/// A source whose rate the probe could not resolve is treated as 30 fps, which is what
+/// both hosts assume when no rate is available.
 pub fn gop(frame_rate: f64, share: bool, motion_photo: bool) -> i64 {
+    let rate = if frame_rate > 0.0 && frame_rate.is_finite() {
+        frame_rate
+    } else {
+        30.0
+    };
     let factor = if share || motion_photo { 2.0 } else { 8.0 };
-    let frames = (factor * frame_rate).round();
+    let frames = (factor * rate).round();
     if share {
         frames.clamp(1.0, 240.0) as i64
     } else {

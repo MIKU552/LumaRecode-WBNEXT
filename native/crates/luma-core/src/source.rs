@@ -34,7 +34,7 @@ pub struct PictureFormat {
 }
 
 /// Dolby Vision compatibility layer reported by the probe.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 pub struct DolbyVisionConfig {
     #[serde(default)]
     pub profile: i32,
@@ -66,7 +66,7 @@ impl DolbyVisionConfig {
 }
 
 /// Dynamic HDR payloads found on the video stream or its first frames.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 pub struct DynamicHdrInfo {
     #[serde(default)]
     pub dolby_vision: Option<DolbyVisionConfig>,
@@ -125,7 +125,7 @@ impl SourceFormat {
 }
 
 /// Wire form of a source description.
-#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct SourceDto {
     #[serde(default)]
     pub pixel_format: Option<String>,
@@ -172,7 +172,7 @@ pub struct SourceDto {
 }
 
 /// Wire form of one audio track.
-#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[derive(Debug, Clone, Default, serde::Deserialize, serde::Serialize)]
 pub struct AudioDto {
     #[serde(default)]
     pub codec_name: Option<String>,

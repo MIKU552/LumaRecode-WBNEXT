@@ -188,6 +188,48 @@ jobs:
           "$binary" --version | tee build-info/cli.txt
           grep -q "core: shared 0.1.0" build-info/cli.txt
 
+      - name: Conversion smoke
+        run: |
+          # A hosted macOS runner ships no FFmpeg, and the first real conversion needs
+          # one. The Homebrew bottle installs in well under a minute on Apple Silicon.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            brew install ffmpeg
+          fi
+          ffmpeg -version | head -1
+          work="$(mktemp -d)"
+          # Two sources: an 8-bit SDR clip, and a 10-bit HLG clip with audio. FFV1 keeps
+          # the second independent of whichever encoders the installed FFmpeg ships.
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 \
+            -c:v libx264 -pix_fmt yuv420p -y "$work/source.mp4"
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 \
+            -f lavfi -i sine=frequency=440:duration=1 \
+            -c:v ffv1 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc arib-std-b67 \
+            -colorspace bt2020nc -c:a pcm_s16le -shortest -y "$work/hlg.mkv"
+
+          binary="app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode"
+          export LUMARECODE_PRESETS="$GITHUB_WORKSPACE/Assets/recommended-presets.json"
+          "$binary" convert "$work/source.mp4" -o "$work/out.mkv" \
+            --purpose archive --codec hevc --input-kind sdr
+          "$binary" convert "$work/hlg.mkv" -o "$work/hlg-out.mkv" \
+            --purpose archive --codec hevc --output hdr --input-kind hlg
+
+          sdr="$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 "$work/out.mkv")"
+          hdr="$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 "$work/hlg-out.mkv")"
+          echo "sdr: $sdr"
+          echo "hdr: $hdr"
+          case "$sdr" in
+            hevc,yuv420p*) ;;
+            *) echo "unexpected SDR output: $sdr" >&2; exit 1 ;;
+          esac
+          # The 10-bit source must stay 10-bit: an 8-bit result would mean the depth
+          # policy was not applied on this platform.
+          if [ "$hdr" != "hevc,yuv420p10le" ]; then
+            echo "unexpected HDR output: $hdr" >&2
+            exit 1
+          fi
+          printf '%s\n' "$sdr" > build-info/convert-sdr.txt
+          printf '%s\n' "$hdr" > build-info/convert-hdr.txt
+
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
 

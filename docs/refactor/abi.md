@@ -44,7 +44,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `capability.select` | `devices`、`requirement` | 选中的设备、后端、得分、理由、是否回退 |
 | `capability.summary` | `devices`、`codec` | 可用后端、最高位深、采样、HDR 能力 |
 | `plan.build` | `source`、`options`、`backend`、`frame_window`、`motion_photo`、`preview_size` | 解码路径、帧内存位置、有序步骤、诊断标记 |
-| `probe.summarize` | `document` | 宽高、旋转、类型、像素格式、位深、Dolby Vision、HDR10+、音轨数 |
+| `probe.summarize` | `document` | 宽高、旋转、类型、像素格式、位深、Dolby Vision、HDR10+、音轨数、归一化源描述、视频流序号、帧率 |
 | `capability.backend` | `encoder` | 后端名，未识别为 null |
 | `capability.supports` | `backend`、`codec`、`depth`、`sampling` | 该家族是否支持 |
 | `capability.detect` | `encoders` | 每个后端的存在状态与匹配到的编码器 |
@@ -119,7 +119,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `capability.select` | `devices`, `requirement` | Chosen device, backend, score, reasons, fallback flag |
 | `capability.summary` | `devices`, `codec` | Available backends, maximum depth, samplings, HDR capability |
 | `plan.build` | `source`, `options`, `backend`, `frame_window`, `motion_photo`, `preview_size` | Decode path, frame transport, ordered steps, diagnostic notes |
-| `probe.summarize` | `document` | Size, rotation, kind, pixel format, depth, Dolby Vision, HDR10+, audio count |
+| `probe.summarize` | `document` | Size, rotation, kind, pixel format, depth, Dolby Vision, HDR10+, audio count, normalized description, video index, frame rate |
 | `capability.backend` | `encoder` | Backend name, or null when unknown |
 | `capability.supports` | `backend`, `codec`, `depth`, `sampling` | Whether the family supports it |
 | `capability.detect` | `encoders` | Presence state and matched encoders per backend |

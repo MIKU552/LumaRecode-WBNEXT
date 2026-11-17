@@ -67,4 +67,58 @@ final class CoreClientTests: XCTestCase {
         let described = try client.describe(source: sdr, options: OutputOptions())
         XCTAssertFalse(described.audio.flac)
     }
+
+    func testPlannerBuildsAnArchiveCommandFromCoreDecisions() throws {
+        let presets = """
+        {"archive":{"hevc":{"encoder":"libx265","preset":"medium","quality":23,
+        "encoder_parameters":{"rdoq-level":2}}}}
+        """
+        let source: [String: Any] = [
+            "pixel_format": "yuv420p",
+            "kind": "sdr",
+            "components": [8, 8, 8],
+            "log2_chroma_w": 1,
+            "log2_chroma_h": 1,
+        ]
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presets)
+        let plan = try ConversionPlanner(ffmpeg: "/opt/homebrew/bin/ffmpeg")
+            .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+
+        XCTAssertEqual(plan.arguments.first, "/opt/homebrew/bin/ffmpeg")
+        XCTAssertTrue(plan.arguments.contains("libx265"))
+        // Eight seconds at 30 fps, decided by the core rather than by this test.
+        XCTAssertTrue(plan.commandLine.contains("-g 240"))
+        XCTAssertTrue(plan.arguments.contains("-x265-params"))
+        XCTAssertTrue(plan.commandLine.contains("rdoq-level=2"))
+        XCTAssertEqual(plan.format.sourceKind, "sdr")
+    }
+
+    func testPlannerSurfacesTheCoreRejection() {
+        let presets = """
+        {"archive":{"hevc":{"encoder":"libx265","preset":"medium","quality":23}}}
+        """
+        let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presets, outputKind: "hdr")
+
+        XCTAssertThrowsError(
+            try ConversionPlanner(ffmpeg: "/usr/bin/false")
+                .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+        ) { error in
+            XCTAssertEqual((error as? CoreError)?.code, "policy.hdr_depth")
+        }
+    }
+
+    func testPlannerOnlyRunsArchivePresets() {
+        let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
+        let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mp4", presets: "{}", purpose: "share")
+
+        XCTAssertThrowsError(
+            try ConversionPlanner(ffmpeg: "/usr/bin/false")
+                .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+        ) { error in
+            guard let conversion = error as? ConversionError, case .unsupported = conversion else {
+                return XCTFail("expected an unsupported error, got \(error)")
+            }
+        }
+    }
 }

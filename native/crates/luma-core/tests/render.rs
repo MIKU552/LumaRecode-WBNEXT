@@ -165,3 +165,9 @@ fn gop_follows_rate_and_purpose() {
     assert_eq!(luma_core::render::gop(30.0, false, true), 60);
     assert_eq!(luma_core::render::gop(30.0, false, false), 240);
 }
+
+#[test]
+fn an_unknown_rate_falls_back_to_thirty() {
+    assert_eq!(luma_core::render::gop(0.0, false, false), 240);
+    assert_eq!(luma_core::render::gop(f64::NAN, true, false), 60);
+}

@@ -75,7 +75,10 @@ void LUMA_CALL luma_string_free(char *value);
  *                        preview_size?} -> {resolved, decode, transport, steps, notes}
  *   probe.summarize      {document}
  *                        -> {width, height, rotation, kind, pixel_format, depth,
- *                            dolby_vision, hdr10_plus, audio}
+ *                            dolby_vision, hdr10_plus, audio, source, video_index,
+ *                            frame_rate}
+ *                        `source` is the normalized description `policy.*` accepts,
+ *                        so a host never reads the probe document twice.
  *   capability.backend   {encoder} -> {backend}, null when the name is unknown
  *   capability.supports  {backend, codec, depth, sampling} -> {supported}
  *   cache.plan           {entries, current?, policy}

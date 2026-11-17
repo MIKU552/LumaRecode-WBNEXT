@@ -18,6 +18,10 @@ pub struct ProbeSummary {
     pub source: SourceDto,
     pub width: i64,
     pub height: i64,
+    /// Index of the video stream the summary describes.
+    pub video_index: i64,
+    /// Nominal frame rate, zero when the probe reported none.
+    pub frame_rate: f64,
     /// Display-matrix rotation in degrees; zero when the stream is not rotated.
     pub rotation: i64,
     /// Dolby Vision profile from the side data, when present.
@@ -62,6 +66,8 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         source,
         width: number(video, "width").unwrap_or(0),
         height: number(video, "height").unwrap_or(0),
+        video_index: number(video, "index").unwrap_or(0),
+        frame_rate: nominal_rate(video),
         rotation: side_data
             .iter()
             .find(|item| side_type(item).contains("Display Matrix"))
@@ -109,6 +115,40 @@ fn number(value: &Value, key: &str) -> Option<i64> {
         Value::Number(number) => number.as_i64(),
         Value::String(text) => text.trim().parse().ok(),
         _ => None,
+    }
+}
+
+/// Nominal frame rate: the average rate wins because it reflects variable-rate files,
+/// and the nominal rate is only a fallback the container may not report at all.
+fn nominal_rate(video: &Value) -> f64 {
+    let average = rate(text(video, "avg_frame_rate").as_deref());
+    if average > 0.0 {
+        return average;
+    }
+    rate(text(video, "r_frame_rate").as_deref())
+}
+
+/// Reads a rate the probe reports as `numerator/denominator`, or as a plain number.
+fn rate(value: Option<&str>) -> f64 {
+    let Some(text) = value.map(str::trim).filter(|text| !text.is_empty()) else {
+        return 0.0;
+    };
+    let quotient = match text.split_once('/') {
+        None => text.parse::<f64>().unwrap_or(0.0),
+        Some((numerator, denominator)) => {
+            let numerator: f64 = numerator.trim().parse().unwrap_or(0.0);
+            let denominator: f64 = denominator.trim().parse().unwrap_or(0.0);
+            if denominator > 0.0 {
+                numerator / denominator
+            } else {
+                0.0
+            }
+        }
+    };
+    if quotient.is_finite() && quotient > 0.0 {
+        quotient
+    } else {
+        0.0
     }
 }
 

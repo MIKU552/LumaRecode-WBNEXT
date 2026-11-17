@@ -722,6 +722,7 @@ fn probe_summarize(payload: &Value) -> CoreResult<Value> {
     let request: PresetDocument = serde_json::from_value(payload.clone())
         .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "probe"))?;
     let summary = luma_core::probe::summarize(&request.document)?;
+    let source = summary.source.clone();
     Ok(json!({
         "width": summary.width,
         "height": summary.height,
@@ -731,7 +732,12 @@ fn probe_summarize(payload: &Value) -> CoreResult<Value> {
         "depth": summary.source.bits_per_raw_sample,
         "dolby_vision": summary.dolby_vision_profile,
         "hdr10_plus": summary.hdr10_plus,
-        "audio": summary.source.audio.len(),
+        "audio": source.audio.len(),
+        // The normalized description is ready for `policy.*` and `plan.*`: a host must
+        // not have to re-read ffprobe output to reach the same decision.
+        "source": source,
+        "video_index": summary.video_index,
+        "frame_rate": summary.frame_rate,
     }))
 }
 

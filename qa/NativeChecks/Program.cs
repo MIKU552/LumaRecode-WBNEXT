@@ -168,6 +168,14 @@ foreach (string name in new[] { "ffprobe-testsrc.json", "ffprobe-tenbit.json" })
     Compare(label, "width", video.Text("width"), summary?["width"]?.ToString() ?? "", ref failures, ref comparisons);
     Compare(label, "height", video.Text("height"), summary?["height"]?.ToString() ?? "", ref failures, ref comparisons);
     Compare(label, "depth", video.Text("bits_per_raw_sample"), summary?["depth"]?.ToString() ?? "", ref failures, ref comparisons);
+    Compare(label, "video_index", video.Text("index"), summary?["video_index"]?.ToString() ?? "", ref failures, ref comparisons);
+    double managedRate = JsonFields.Number(video.Text("avg_frame_rate"));
+    if (managedRate <= 0)
+    {
+        managedRate = JsonFields.Number(video.Text("r_frame_rate"));
+    }
+
+    Compare(label, "frame_rate", Seconds(managedRate), NativeSeconds(summary, "frame_rate"), ref failures, ref comparisons);
     int audio = root["streams"]!.AsArray().Objects().Count(stream => stream.Text("codec_type") == "audio");
     Compare(label, "audio", $"{audio}", summary?["audio"]?.ToString() ?? "", ref failures, ref comparisons);
 }

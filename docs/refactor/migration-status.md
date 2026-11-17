@@ -42,6 +42,7 @@
 | — | `luma-core/src/execution.rs` | 新增（顺序执行与结果报告） | `tests/execution.rs` |
 | — | `luma-core/src/providers.rs` | 新增（检测要求、运行时探测、厂商参数表） | `tests/providers.rs`；`doctor` 输出探测结果 |
 | — | `luma-core/src/render.rs` | 新增（输入映射、色彩标签、编码器段、参数串、滤镜链、GOP 间隔） | `tests/render.rs`；`Transcoder` 经 `plan.*` 调用 |
+| — | `app-macos/Sources/LumaKit/Conversion.swift` | 新增（macOS 第一条转换命令） | `LumaKitTests`；macOS 流水线真实转出 SDR 与 10 位 HDR |
 
 规则层的“完成”指该文件中的格式决策已逐条迁移并有测试，不代表整个管线可用。
 执行、探测与元数据仍在 C# 侧，P3 之前 Windows 应用继续使用现有实现。
@@ -87,6 +88,7 @@ comparison and regression work finish, as plan §16.2 requires.
 | — | `luma-core/src/execution.rs` | New (sequential execution and reporting) | `tests/execution.rs` |
 | — | `luma-core/src/providers.rs` | New (requirements, runtime detection, vendor parameters) | `tests/providers.rs`; `doctor` reports the result |
 | — | `luma-core/src/render.rs` | New (input mapping, color tags, encoder block, parameter string, filter chain, GOP interval) | `tests/render.rs`; `Transcoder` calls `plan.*` |
+| — | `app-macos/Sources/LumaKit/Conversion.swift` | New (first macOS conversion command) | `LumaKitTests`; the macOS pipeline converts SDR and 10-bit HDR for real |
 
 "Done" for a rule file means its format decisions are migrated and tested, not
 that the pipeline works end to end. Probing, execution and metadata are still in

@@ -100,7 +100,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
 | P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签、编码器段、参数串、滤镜链拼接、GOP 间隔与 HDR 元数据参数均已走原生桥；滤镜内容仍由宿主生成 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
-| P5 macOS 应用 | 媒体入口已接 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；预览、转换与导出未接 |
+| P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 子命令用核心决定编码器、GOP、映射与参数，在 CI 里真实转出 SDR 与 10 位 HDR；预览、色调映射与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
 | P7 校准与优化 | 回收闭环完成 | 标识、策略、存储抽象、计划与带范围保护的删除已接线；预算测量、预设候选与长任务待做 |
 | P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
@@ -251,7 +251,7 @@ than folding them into pass or fail.
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
 | P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags, encoder block, parameter string, filter joining, the GOP interval and the HDR metadata parameters are bridged; filter content stays in the host |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
-| P5 macOS app | Media intake wired | Open, ffprobe probe, core normalization and real stream display work; preview, conversion and export remain |
+| P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping and parameters from the core and produces SDR and 10-bit HDR output in CI; preview, tone mapping and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
 | P7 Calibration | Reclamation closed | Identity, retention, the store seam, the plan and guarded deletion are wired; budgets, preset candidates and long jobs remain |
 | P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |

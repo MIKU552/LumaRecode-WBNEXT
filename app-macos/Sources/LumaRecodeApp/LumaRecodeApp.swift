@@ -8,16 +8,22 @@ struct LumaRecodeApp: App {
         // The executable doubles as a terminal entry point, as the plan requires for
         // macOS. Keep the check ahead of any window or scene work so a headless run
         // never touches AppKit.
-        guard CommandLine.arguments.contains("--version") else {
-            return
+        let arguments = CommandLine.arguments
+        if arguments.contains("--version") {
+            print("LumaRecode 4.4.3 WBNEXT")
+            do {
+                print("core: shared \(try CoreClient().identity().version)")
+            } catch {
+                print("core: unavailable")
+            }
+            exit(0)
         }
-        print("LumaRecode 4.4.3 WBNEXT")
-        do {
-            print("core: shared \(try CoreClient().identity().version)")
-        } catch {
-            print("core: unavailable")
+
+        // The first real conversion path: `convert <input> -o <output>`. It runs and
+        // exits before SwiftUI builds a scene, so CI can drive it on a headless runner.
+        if arguments.count > 1, arguments[1] == "convert" {
+            exit(ConvertCommand.run(Array(arguments.dropFirst(2))))
         }
-        exit(0)
     }
 
     var body: some Scene {

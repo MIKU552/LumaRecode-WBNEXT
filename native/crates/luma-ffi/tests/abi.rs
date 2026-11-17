@@ -302,3 +302,25 @@ fn plan_hdr_metadata_keeps_dynamic_metadata_on_an_sdr_target() {
     assert_eq!(arguments["parameters"][0]["key"], "dhdr10-info");
     assert_eq!(arguments["parameters"][0]["value"], "hdr10plus.json");
 }
+
+#[test]
+fn probe_summarize_returns_a_description_the_rules_accept() {
+    let document = r#"{"streams":[{"codec_type":"video","index":0,"pix_fmt":"yuv420p",
+        "width":320,"height":240,"color_transfer":"bt709","avg_frame_rate":"30000/1001",
+        "bits_per_raw_sample":"8"}]}"#;
+    let request = serde_json::json!({ "document": document }).to_string();
+    let summary = data("probe.summarize", &request);
+    assert_eq!(summary["video_index"], Value::from(0));
+    let rate = summary["frame_rate"].as_f64().expect("frame rate");
+    assert!((rate - 29.97).abs() < 0.001);
+
+    // The description is ready for the rules without re-reading the document.
+    let validate = serde_json::json!({
+        "source": summary["source"].clone(),
+        "options": { "purpose": "archive", "codec": "hevc" }
+    })
+    .to_string();
+    let resolved = data("policy.validate", &validate);
+    assert_eq!(resolved["sampling"], "420");
+    assert_eq!(resolved["source_kind"], "sdr");
+}
