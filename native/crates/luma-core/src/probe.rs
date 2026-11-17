@@ -68,8 +68,10 @@ pub fn summarize(document: &str) -> CoreResult<ProbeSummary> {
         ..SourceDto::default()
     };
 
-    // Resolved before the description moves into the summary below.
-    let source_range = crate::policy::source_range(&source, None).as_str();
+    // The same rule the hosts apply, resolved through a copy so the description can still
+    // move into the summary below.
+    let described = source.clone().into_source()?;
+    let source_range = crate::policy::source_range(&described, None).as_str();
     Ok(ProbeSummary {
         source,
         width: number(video, "width").unwrap_or(0),
