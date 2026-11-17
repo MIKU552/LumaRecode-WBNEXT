@@ -38,6 +38,19 @@ public sealed record GopRequest(double FrameRate, bool Share, bool MotionPhoto);
 /// <summary>One encoder parameter, in insertion order.</summary>
 public sealed record ParameterPair(string Key, string Value);
 
+/// <summary>The software colour conversion: tags to write, range to convert, format to emit.</summary>
+/// <param name="Primaries">Color primaries tag, or null when the source never declared it.</param>
+/// <param name="Transfer">Transfer characteristic tag, or null.</param>
+/// <param name="Space">Matrix tag, or null.</param>
+/// <param name="Range">Range tag in encoder spelling: <c>pc</c> or <c>tv</c>.</param>
+/// <param name="ConversionRange">Range the conversion writes: <c>limited</c> or <c>full</c>.</param>
+/// <param name="PixelFormat">Resolved output pixel format.</param>
+/// <param name="Purpose">Share and archive differ on the 10-bit format.</param>
+/// <param name="Depth">Resolved output depth.</param>
+/// <param name="PreserveDynamic">Dynamic metadata survives, so no conversion stage runs.</param>
+public sealed record ColorFilterRequest(string? Primaries, string? Transfer, string? Space, string? Range,
+    string ConversionRange, string PixelFormat, string Purpose, int Depth, bool PreserveDynamic);
+
 /// <summary>HDR metadata one encode should carry into the encoder parameters.</summary>
 /// <param name="Codec">Encoder family; the two families spell the tokens differently.</param>
 /// <param name="Output">Target transfer function; an SDR target keeps only the dynamic payload.</param>
@@ -84,6 +97,9 @@ public static class SharedCore
     /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
 
+    /// <summary>Builds the software colour conversion filters through the shared core; null means "use the managed builder".</summary>
+    public static Func<ColorFilterRequest, IReadOnlyList<string>?>? ColorFilterBuilder { get; set; }
+
     /// <summary>Computes the GOP length through the shared core; null means "use the managed formula".</summary>
     public static Func<GopRequest, long?>? Gop { get; set; }
 
@@ -106,6 +122,7 @@ public static class SharedCore
         EncoderBuilder = null;
         ParameterBuilder = null;
         FilterBuilder = null;
+        ColorFilterBuilder = null;
         Gop = null;
         HdrMetadata = null;
         CoreVersion = "";

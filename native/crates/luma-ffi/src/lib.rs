@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 23] = [
+const OPERATIONS: [&str; 24] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -64,6 +64,7 @@ const OPERATIONS: [&str; 23] = [
     "plan.filter_chain",
     "plan.gop",
     "plan.hdr_metadata",
+    "plan.color_filters",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -177,6 +178,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.filter_chain" => plan_filter_chain(&payload),
         "plan.gop" => plan_gop(&payload),
         "plan.hdr_metadata" => plan_hdr_metadata(&payload),
+        "plan.color_filters" => plan_color_filters(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -674,6 +676,46 @@ fn plan_gop(payload: &Value) -> CoreResult<Value> {
     Ok(json!({
         "frames": luma_core::render::gop(request.frame_rate, request.share, request.motion_photo),
     }))
+}
+
+#[derive(Deserialize)]
+struct ColorFilterDto {
+    #[serde(default)]
+    primaries: Option<String>,
+    #[serde(default)]
+    transfer: Option<String>,
+    #[serde(default)]
+    space: Option<String>,
+    #[serde(default)]
+    range: Option<String>,
+    /// Sample range the conversion writes: `limited` or `full`.
+    conversion_range: String,
+    pixel_format: String,
+    purpose: String,
+    depth: u8,
+    #[serde(default)]
+    preserve_dynamic: bool,
+}
+
+fn plan_color_filters(payload: &Value) -> CoreResult<Value> {
+    let request: ColorFilterDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let tags = luma_core::render::ColorTags {
+        primaries: request.primaries,
+        transfer: request.transfer,
+        space: request.space,
+        range: request.range,
+    };
+    let color_request = luma_core::render::ColorFilterRequest {
+        tags,
+        range: request.conversion_range,
+        pixel_format: request.pixel_format,
+        purpose: Purpose::parse(&request.purpose)?,
+        depth: request.depth,
+        preserve_dynamic: request.preserve_dynamic,
+    };
+    let filters = luma_core::render::software_color_filters(&color_request);
+    Ok(json!({ "filters": filters }))
 }
 
 #[derive(Deserialize)]

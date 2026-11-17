@@ -4,6 +4,8 @@
 //! choices. The blocks here are the ones that must not drift between hosts: which streams are
 //! mapped, whether metadata and chapters survive, and the flags that keep the process quiet.
 
+use crate::domain::Purpose;
+
 /// One input and its stream mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct InputMap<'a> {
@@ -180,4 +182,83 @@ pub fn gop(frame_rate: f64, share: bool, motion_photo: bool) -> i64 {
     } else {
         frames.max(1.0) as i64
     }
+}
+
+/// Everything the software colour conversion needs to know.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColorFilterRequest {
+    /// Tag values as the encoder takes them: `pc`/`tv` for the range.
+    pub tags: ColorTags,
+    /// Sample range for the conversion itself: `limited` or `full`.
+    pub range: String,
+    pub pixel_format: String,
+    pub purpose: Purpose,
+    pub depth: u8,
+    /// Dynamic metadata survives, so no conversion stage runs at all.
+    pub preserve_dynamic: bool,
+}
+
+/// Range conversion, output format and the tags that follow them.
+///
+/// Share and archive disagree on the 10-bit format: quick share hands the encoder a P010
+/// surface, archive keeps the resolved planar format. Preserving dynamic HDR skips the
+/// conversion entirely, because re-tagging the stream would invalidate the metadata.
+pub fn software_color_filters(request: &ColorFilterRequest) -> Vec<String> {
+    if request.preserve_dynamic {
+        return Vec::new();
+    }
+
+    let mut conversion = vec![
+        format!("range={}", request.range),
+        "dither=error_diffusion".to_owned(),
+    ];
+    for (value, target) in [
+        (&request.tags.primaries, "primaries"),
+        (&request.tags.transfer, "transfer"),
+        (&request.tags.space, "matrix"),
+    ] {
+        if let Some(value) = specified(value) {
+            conversion.push(format!("{target}={value}"));
+        }
+    }
+
+    let format = if request.purpose == Purpose::Share && request.depth == 10 {
+        "p010le"
+    } else {
+        request.pixel_format.as_str()
+    };
+    vec![
+        format!("zscale={}", conversion.join(":")),
+        format!("format={format}"),
+        frame_tags(&request.tags),
+    ]
+}
+
+/// `setparams` leaves out tags the source never declared.
+fn frame_tags(tags: &ColorTags) -> String {
+    let mut parts = Vec::new();
+    for (value, key) in [
+        (&tags.primaries, "color_primaries"),
+        (&tags.transfer, "color_trc"),
+        (&tags.space, "colorspace"),
+        (&tags.range, "range"),
+    ] {
+        let Some(value) = specified(value) else {
+            continue;
+        };
+        // `setparams` spells the range out; the encoder flags take `pc` and `tv`.
+        let value = match value {
+            "pc" => "full",
+            "tv" => "limited",
+            other => other,
+        };
+        parts.push(format!("{key}={value}"));
+    }
+
+    format!("setparams={}", parts.join(":"))
+}
+
+/// Treats the probe's placeholder words as "not declared", as the hosts do.
+fn specified(value: &Option<String>) -> Option<&str> {
+    value.as_deref().filter(|text| !matches!(*text, "" | "unknown" | "unspecified" | "reserved"))
 }

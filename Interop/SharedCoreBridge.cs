@@ -37,6 +37,7 @@ public static class SharedCoreBridge
         SharedCore.EncoderBuilder = BuildEncoderArguments;
         SharedCore.ParameterBuilder = BuildParameterString;
         SharedCore.FilterBuilder = BuildFilterChain;
+        SharedCore.ColorFilterBuilder = BuildColorFilters;
         SharedCore.Gop = ComputeGop;
         SharedCore.HdrMetadata = ComposeHdrMetadata;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
@@ -171,6 +172,49 @@ public static class SharedCoreBridge
         JsonObject payload = new();
         payload["filters"] = items;
         return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
+    }
+
+    /// <summary>Builds the software colour conversion filters through the core.</summary>
+    private static IReadOnlyList<string>? BuildColorFilters(ColorFilterRequest request)
+    {
+        JsonObject payload = new();
+        if (request.Primaries is not null)
+        {
+            payload["primaries"] = request.Primaries;
+        }
+
+        if (request.Transfer is not null)
+        {
+            payload["transfer"] = request.Transfer;
+        }
+
+        if (request.Space is not null)
+        {
+            payload["space"] = request.Space;
+        }
+
+        if (request.Range is not null)
+        {
+            payload["range"] = request.Range;
+        }
+
+        payload["conversion_range"] = request.ConversionRange;
+        payload["pixel_format"] = request.PixelFormat;
+        payload["purpose"] = request.Purpose;
+        payload["depth"] = request.Depth;
+        payload["preserve_dynamic"] = request.PreserveDynamic;
+        if (LumaCoreNative.Call("plan.color_filters", payload)?["filters"] is not JsonArray filters)
+        {
+            return null;
+        }
+
+        List<string> result = new(filters.Count);
+        foreach (JsonNode? node in filters)
+        {
+            result.Add(node?.ToString() ?? "");
+        }
+
+        return result;
     }
 
     /// <summary>Computes the GOP length through the core.</summary>

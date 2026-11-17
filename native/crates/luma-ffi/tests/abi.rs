@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 23);
+    assert_eq!(operations.len(), 24);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -81,6 +81,7 @@ fn core_info_lists_every_operation() {
     );
     assert!(operations.iter().any(|value| value == "plan.gop"));
     assert!(operations.iter().any(|value| value == "plan.hdr_metadata"));
+    assert!(operations.iter().any(|value| value == "plan.color_filters"));
 }
 
 #[test]
@@ -323,4 +324,32 @@ fn probe_summarize_returns_a_description_the_rules_accept() {
     let resolved = data("policy.validate", &validate);
     assert_eq!(resolved["sampling"], "420");
     assert_eq!(resolved["source_kind"], "sdr");
+}
+
+#[test]
+fn plan_color_filters_writes_the_software_tail() {
+    let request = serde_json::json!({
+        "primaries": "bt709",
+        "transfer": "bt709",
+        "space": "bt709",
+        "range": "tv",
+        "conversion_range": "limited",
+        "pixel_format": "yuv420p",
+        "purpose": "archive",
+        "depth": 8
+    })
+    .to_string();
+    let filters = data("plan.color_filters", &request);
+    let list = filters["filters"].as_array().expect("filters");
+
+    assert_eq!(list.len(), 3);
+    assert_eq!(
+        list[0],
+        "zscale=range=limited:dither=error_diffusion:primaries=bt709:transfer=bt709:matrix=bt709"
+    );
+    assert_eq!(list[1], "format=yuv420p");
+    assert_eq!(
+        list[2],
+        "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited"
+    );
 }

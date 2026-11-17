@@ -198,8 +198,37 @@ public sealed partial class Transcoder
         ? (long)Math.Clamp(Math.Round(2 * frameRate, MidpointRounding.AwayFromZero), 1, 240)
         : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate, MidpointRounding.AwayFromZero));
     // Fallback for a machine without the native library: the same rules the core applies.
-    // Static tokens are only re-declared for PQ output, and only for encoders that can carry
-    // them; an SDR target keeps the dynamic payload but drops the mastering declaration.
+    private static IReadOnlyList<string> ManagedColorFilters(ColorFilterRequest request)
+    {
+        if (request.PreserveDynamic)
+        {
+            return [];
+        }
+
+        var conversion = new List<string> { "range=" + request.ConversionRange, "dither=error_diffusion" };
+        foreach (var (value, target) in new[] { (request.Primaries, "primaries"), (request.Transfer, "transfer"), (request.Space, "matrix") })
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                conversion.Add(target + "=" + value);
+            }
+        }
+
+        // FrameTags already owns the tag spelling, including the range words, so give it the
+        // same shape it reads on the resolved colours.
+        JsonObject tags = new()
+        {
+            ["color_primaries"] = request.Primaries,
+            ["color_transfer"] = request.Transfer,
+            ["color_space"] = request.Space,
+            ["color_range"] = request.Range,
+        };
+        string format = request.Purpose == "share" && request.Depth == 10 ? "p010le" : request.PixelFormat;
+        return ["zscale=" + string.Join(':', conversion), "format=" + format, FrameTags(tags)];
+    }
+    // Fallback for a machine without the native library. Static tokens are only re-declared
+    // for PQ output, and only for encoders that can carry them; an SDR target keeps the
+    // dynamic payload but drops the mastering declaration.
     private static HdrMetadataArguments ManagedHdrMetadata(HdrMetadataRequest request)
     {
         var parameters = new List<ParameterPair>();
@@ -454,18 +483,13 @@ public sealed partial class Transcoder
         }
         else if (!preserveDynamic)
         {
-            var conversion = new List<string> { "range=" + options.ColorRange, "dither=error_diffusion" };
-            foreach (var (key, target) in new[] { ("color_primaries", "primaries"), ("color_transfer", "transfer"), ("color_space", "matrix") })
-            {
-                if (!JsonFields.Unspecified(colors.Text(key)))
-                {
-                    conversion.Add(target + "=" + colors.Text(key));
-                }
-            }
-
-            filters.Add("zscale=" + string.Join(':', conversion));
-            filters.Add("format=" + (options.Purpose == "share" && options.Depth == 10 ? "p010le" : options.PixelFormat));
-            filters.Add(FrameTags(colors));
+            ColorFilterRequest colorRequest = new(
+                JsonFields.Unspecified(colors.Text("color_primaries")) ? null : colors.Text("color_primaries"),
+                JsonFields.Unspecified(colors.Text("color_transfer")) ? null : colors.Text("color_transfer"),
+                JsonFields.Unspecified(colors.Text("color_space")) ? null : colors.Text("color_space"),
+                JsonFields.Unspecified(colors.Text("color_range")) ? null : colors.Text("color_range"),
+                options.ColorRange, options.PixelFormat, options.Purpose, options.Depth, preserveDynamic);
+            filters.AddRange(SharedCore.ColorFilterBuilder?.Invoke(colorRequest) ?? ManagedColorFilters(colorRequest));
         }
         if (motionPhoto && motionSize != "source")
         {

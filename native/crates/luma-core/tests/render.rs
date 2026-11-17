@@ -1,4 +1,7 @@
-use luma_core::render::{InputMap, input_map};
+use luma_core::domain::Purpose;
+use luma_core::render::{
+    ColorFilterRequest, ColorTags, InputMap, input_map, software_color_filters,
+};
 
 #[test]
 fn keeps_metadata_and_chapters_for_a_plain_conversion() {
@@ -170,4 +173,57 @@ fn gop_follows_rate_and_purpose() {
 fn an_unknown_rate_falls_back_to_thirty() {
     assert_eq!(luma_core::render::gop(0.0, false, false), 240);
     assert_eq!(luma_core::render::gop(f64::NAN, true, false), 60);
+}
+
+fn color_request(purpose: Purpose, depth: u8, format: &str) -> ColorFilterRequest {
+    ColorFilterRequest {
+        tags: ColorTags {
+            primaries: Some("bt709".to_owned()),
+            transfer: Some("bt709".to_owned()),
+            space: Some("bt709".to_owned()),
+            range: Some("tv".to_owned()),
+        },
+        range: "limited".to_owned(),
+        pixel_format: format.to_owned(),
+        purpose,
+        depth,
+        preserve_dynamic: false,
+    }
+}
+
+#[test]
+fn the_software_tail_converts_range_and_writes_tags() {
+    let filters = software_color_filters(&color_request(Purpose::Archive, 8, "yuv420p"));
+
+    let expected =
+        "zscale=range=limited:dither=error_diffusion:primaries=bt709:transfer=bt709:matrix=bt709,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=limited";
+    assert_eq!(filters.join(","), expected);
+}
+
+#[test]
+fn share_hands_the_encoder_a_ten_bit_surface() {
+    let filters = software_color_filters(&color_request(Purpose::Share, 10, "yuv420p10le"));
+
+    assert_eq!(filters[1], "format=p010le");
+}
+
+#[test]
+fn undeclared_tags_are_left_out_and_the_range_word_is_spelled_out() {
+    let mut bare = color_request(Purpose::Archive, 8, "yuv420p");
+    bare.tags = ColorTags {
+        range: Some("pc".to_owned()),
+        ..ColorTags::default()
+    };
+
+    let filters = software_color_filters(&bare);
+    assert_eq!(filters[0], "zscale=range=limited:dither=error_diffusion");
+    assert_eq!(filters[2], "setparams=range=full");
+}
+
+#[test]
+fn preserving_dynamic_metadata_skips_the_conversion() {
+    let mut kept = color_request(Purpose::Archive, 10, "yuv420p10le");
+    kept.preserve_dynamic = true;
+
+    assert!(software_color_filters(&kept).is_empty());
 }

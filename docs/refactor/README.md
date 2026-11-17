@@ -59,6 +59,10 @@ HDR 元数据的参数组合也移到核心（`plan.hdr_metadata`）：保留动
 `content-light`，都按各编码器的十进制精度生成。托管回退保留同一套规则，`qa/NativeChecks` 用
 PQ、Dolby Vision 与 HDR10+ 三种素材逐编码器比较完整参数串，两处不会写出不同的标签。
 
+软件色彩转换段同样由核心拼装（`plan.color_filters`）：zscale 的范围与三项色彩参数、10 位共享档
+的 P010 交换格式、以及 `setparams` 的标签写法各只写一次。滤镜的串接顺序仍由宿主决定，
+`qa/NativeChecks` 比较 5 种素材的完整 `-vf` 串，因此这一段换位置或换顺序都会立刻显形。
+
 ### 已验证与未验证
 
 已经在本仓库内完成、可直接检查的部分：
@@ -98,7 +102,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P0 基线与研究 | 部分完成 | 分支、工具链、依赖清单已建立；各后端公开资料研究待逐项补 |
 | P1 架构验证 | 部分验证 | 最小核心 + Windows/macOS 调用 + 启动骨架已就绪；Windows 调用与对照通过，macOS 构建与启动未验证 |
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
-| P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签、编码器段、参数串、滤镜链拼接、GOP 间隔与 HDR 元数据参数均已走原生桥；滤镜内容仍由宿主生成 |
+| P3 Windows 接入 | 参数迁移接近完成 | 判定、校验、输入映射、色彩标签、编码器段、参数串、滤镜链拼接、GOP 间隔、HDR 元数据与软件色彩转换段均已走原生桥；LUT、色调映射与 QSV 段仍由宿主生成 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
 | P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 子命令用核心决定编码器、GOP、映射与参数，在 CI 里真实转出 SDR 与 10 位 HDR；预览、色调映射与导出未接 |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
@@ -129,8 +133,8 @@ macOS 统一使用 `xcode-27` 镜像）；
 
 1. 在能构建 Windows App SDK 的环境里，把 `Interop` 与 `qa/NativeChecks` 加入
    `LumaRecode.slnx` 与 `.sln`，让 IDE 与命令行构建使用同一入口。
-2. 滤镜内容仍在宿主：色调映射、LUT 与 QSV 的 VPP 段都属于后端，macOS 因此只能做
-   同制式转换；把这些规则搬进核心，才能让两个平台都做 HDR↔SDR。
+2. 滤镜内容只迁了软件色彩转换段：LUT、色调映射与 QSV 的 VPP 段仍在宿主，macOS 因此
+   只能做同制式转换；把这三段搬进核心，才能让两个平台都做 HDR↔SDR。
 3. macOS 还缺两件事：共享档位（VideoToolbox）表，以及静态 HDR 元数据透传
    （`plan.hdr_metadata` 已就绪，缺的是探测结果里的 mastering display）。
 4. 执行层：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描依赖子进程与进度事件，
@@ -205,6 +209,12 @@ encoder family expects. The managed fallback keeps the same rules and the harnes
 compares the whole parameter string per encoder for PQ, Dolby Vision and HDR10+
 sources, so the two paths cannot label a stream differently.
 
+The software colour tail comes from `plan.color_filters`: the zscale range and its three
+colour arguments, the P010 surface quick share hands a 10-bit encoder, and the
+`setparams` tag spelling are each written once. The host still decides how filters are
+ordered, and the harness compares the whole `-vf` string for five sources, so moving or
+reordering that block fails at once.
+
 ### Verified and unverified
 
 Implemented and reviewable in this repository:
@@ -251,7 +261,7 @@ than folding them into pass or fail.
 | P0 Baseline | Partial | Branch, toolchain and inventory exist; per-backend research remains |
 | P1 Architecture | Partly verified | Minimal core and both hosts exist; the Windows load and parity pass, the macOS build and launch do not |
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
-| P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags, encoder block, parameter string, filter joining, the GOP interval and the HDR metadata parameters are bridged; filter content stays in the host |
+| P3 Windows integration | Parameter migration nearly done | Decisions, validation, input mapping, color tags, encoder block, parameter string, filter joining, the GOP interval, the HDR metadata parameters and the software colour tail are bridged; LUTs, tone mapping and the QSV stage stay in the host |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
 | P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping and parameters from the core and produces SDR and 10-bit HDR output in CI; preview, tone mapping and export remain |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
@@ -291,10 +301,10 @@ than folding them into pass or fail.
 1. Add `Interop` and `qa/NativeChecks` to `LumaRecode.slnx` and `.sln` from a
    machine that can build Windows App SDK projects, so the IDE and the command
    line use one entry point.
-2. Filter content still belongs to the host: tone mapping, LUTs and the QSV VPP
-   stage are backend work, which is why macOS can only re-encode a source as
-   itself. Moving those rules into the core is what lets both platforms convert
-   between HDR and SDR.
+2. Only the software colour tail has moved: LUTs, tone mapping and the QSV VPP
+   stage still belong to the host, which is why macOS can only re-encode a source
+   as itself. Moving those three into the core is what lets both platforms
+   convert between HDR and SDR.
 3. macOS is missing two pieces: a VideoToolbox share table, and static HDR
    metadata pass-through (`plan.hdr_metadata` is ready; the probe result does not
    carry the mastering display yet).

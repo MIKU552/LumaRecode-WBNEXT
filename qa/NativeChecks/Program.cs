@@ -349,6 +349,24 @@ foreach ((string fixtureName, string codec) in metadataCases)
     metadataChecks.Add(($"metadata/{fixtureName}/{codec}", media, options, ParameterArgument(transcoder, media, options)));
 }
 
+// Filter parity: the whole chain must be identical whether the software colour
+// conversion comes from the core or from the managed builder.
+(string Fixture, string Purpose, string Output)[] filterCases =
+[
+    ("420-8", "share", "sdr"),
+    ("420-8", "archive", "sdr"),
+    ("420-10", "archive", "hdr"),
+    ("yuvj-8", "archive", "sdr"),
+    ("rgb-8", "archive", "sdr"),
+];
+List<(string Label, MediaInfo Media, EncodeOptions Options, string Managed)> filterChecks = new();
+foreach ((string fixtureName, string purpose, string output) in filterCases)
+{
+    MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
+    EncodeOptions options = new(purpose, "hevc", output, "none");
+    filterChecks.Add(($"filters/{fixtureName}/{purpose}", media, options, FilterArgument(transcoder, media, options)));
+}
+
 // Behaviour preservation through the public API: install the bridge, replay every
 // request and require the same decision, resolved values and message.
 List<(string Label, EncodeOptions Options, MediaInfo Media)> replay = new();
@@ -387,10 +405,16 @@ try
 
     Compare("bridge", "gop-route", "shared", SharedCore.Gop is null ? "managed" : "shared", ref failures, ref comparisons);
     Compare("bridge", "metadata-route", "shared", SharedCore.HdrMetadata is null ? "managed" : "shared", ref failures, ref comparisons);
+    Compare("bridge", "filters-route", "shared", SharedCore.ColorFilterBuilder is null ? "managed" : "shared", ref failures, ref comparisons);
     foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in gopChecks)
     {
         bool motionPhoto = label.EndsWith("/motion", StringComparison.Ordinal);
         Compare(label, "gop", managed, GopArgument(transcoder, media, options, motionPhoto), ref failures, ref comparisons);
+    }
+
+    foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in filterChecks)
+    {
+        Compare(label, "filters", managed, FilterArgument(transcoder, media, options), ref failures, ref comparisons);
     }
 
     foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in metadataChecks)
@@ -463,6 +487,14 @@ static string ParameterArgument(Transcoder transcoder, MediaInfo media, EncodeOp
     EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv");
     string flag = options.Codec == "av1" ? "-svtav1-params" : "-x265-params";
     int index = Array.IndexOf(plan.Arguments, flag);
+    return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
+}
+
+/// <summary>Builds a plan and returns the filter chain it would pass.</summary>
+static string FilterArgument(Transcoder transcoder, MediaInfo media, EncodeOptions options)
+{
+    EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv");
+    int index = Array.IndexOf(plan.Arguments, "-vf");
     return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
 }
 
