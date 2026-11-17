@@ -1,4 +1,4 @@
-use luma_core::domain::{Purpose, SourceKind};
+use luma_core::domain::{Output, Purpose, SourceKind};
 use luma_core::render::{
     ColorFilterRequest, ColorTags, DolbyRenderFilter, FilterContentRequest, InputMap, LogFilter,
     ToneMapFilter, VppFilter, filter_content, input_map, software_color_filters, source_tags,
