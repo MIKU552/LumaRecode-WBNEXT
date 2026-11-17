@@ -197,21 +197,23 @@ jobs:
           fi
           ffmpeg -version | head -1
           work="$(mktemp -d)"
-          # Two sources: an 8-bit SDR clip, and a 10-bit HLG clip with audio. FFV1 keeps
-          # the second independent of whichever encoders the installed FFmpeg ships.
+          # Two sources: an 8-bit SDR clip, and a 10-bit HLG clip with audio. The HLG tags go
+          # into the x265 VUI so the clip describes itself, exactly like a camera file.
           ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 \
             -c:v libx264 -pix_fmt yuv420p -y "$work/source.mp4"
           ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 \
             -f lavfi -i sine=frequency=440:duration=1 \
-            -c:v ffv1 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc arib-std-b67 \
-            -colorspace bt2020nc -c:a pcm_s16le -shortest -y "$work/hlg.mkv"
+            -c:v libx265 -pix_fmt yuv420p10le \
+            -x265-params "colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc" \
+            -c:a pcm_s16le -shortest -y "$work/hlg.mkv"
 
           binary="app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode"
           export LUMARECODE_PRESETS="$GITHUB_WORKSPACE/Assets/recommended-presets.json"
           "$binary" convert "$work/source.mp4" -o "$work/out.mkv" \
             --purpose archive --codec hevc --input-kind sdr
+          # No --input-kind here either: the clip's own tags must say HLG.
           "$binary" convert "$work/hlg.mkv" -o "$work/hlg-out.mkv" \
-            --purpose archive --codec hevc --output hdr --input-kind hlg
+            --purpose archive --codec hevc --output hdr
 
           sdr="$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 "$work/out.mkv")"
           hdr="$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 "$work/hlg-out.mkv")"
