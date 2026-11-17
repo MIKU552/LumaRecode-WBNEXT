@@ -141,10 +141,10 @@ macOS 统一使用 `xcode-27` 镜像）；
 
 1. 在能构建 Windows App SDK 的环境里，把 `Interop` 与 `qa/NativeChecks` 加入
    `LumaRecode.slnx` 与 `.sln`，让 IDE 与命令行构建使用同一入口。
-2. macOS 已能生成 HDR→SDR 的完整链（色调映射、标签与色彩参数都来自核心），渲染受限于
-   FFmpeg 构建：Homebrew 的 ffmpeg 没有 libplacebo，需要 `--enable-libplacebo` 的版本。
-   曲线 LUT、SDR→HDR 与 HDR→HDR 的日志曲线还没接；宿主的预览缩放、动态照片补边、RAW 显影
-   与整条链的顺序也未迁移。
+2. HDR→SDR 的链两个平台都由核心生成；渲染需要一个带 libplacebo 的 FFmpeg。Windows 的
+   流水线改用 full 构建并真实转出 BT.709 结果，macOS 的 Homebrew 版没有该滤镜，只断言到
+   「计划完整 + 明确拒绝」。曲线 LUT、SDR→HDR 与 HDR→HDR 的日志曲线还没接；宿主的预览缩放、
+   动态照片补边、RAW 显影与整条链的顺序也未迁移。
 3. macOS 还缺共享档位（VideoToolbox）表；静态 HDR 元数据与色彩标签派生都已在核心，
    跨制式转换只剩 macOS 侧接入 `plan.render_filters` 与曲线选择。
 4. 执行层：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描依赖子进程与进度事件，
@@ -317,10 +317,11 @@ than folding them into pass or fail.
 1. Add `Interop` and `qa/NativeChecks` to `LumaRecode.slnx` and `.sln` from a
    machine that can build Windows App SDK projects, so the IDE and the command
    line use one entry point.
-2. macOS builds a complete HDR to SDR chain now (the tone map, the tags and the encoder
-   flags come from the core), but rendering needs an FFmpeg built with libplacebo;
-   Homebrew's formula has none. The curve LUT, SDR to HDR and the HDR-to-HDR log curves
-   are still missing, and the host's preview scaling, motion-photo padding, RAW
+2. Both platforms build the HDR to SDR chain from the core; rendering needs an FFmpeg with
+   libplacebo. The Windows pipeline switched to the full build and renders a BT.709 result
+   for real, while Homebrew's macOS formula has no such filter, so that job asserts the
+   complete plan and the refusal instead. The curve LUT, SDR to HDR and the HDR-to-HDR log
+   curves are still missing, and the host's preview scaling, motion-photo padding, RAW
    development and chain order have not moved either.
 3. macOS still needs a VideoToolbox share table; static HDR metadata and the colour
    tag derivation both live in the core now. Cross-transfer conversion only needs the
