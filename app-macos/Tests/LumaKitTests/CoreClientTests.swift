@@ -163,7 +163,8 @@ final class CoreClientTests: XCTestCase {
         XCTAssertTrue(chain.contains("setparams=color_primaries=bt2020:color_trc=arib-std-b67"))
         XCTAssertTrue(chain.contains("libplacebo=format=yuv444p16le:colorspace=bt709"))
         XCTAssertTrue(chain.contains("-color_trc bt709"))
-        XCTAssertEqual(plan.format.bitDepth, 8)
+        // Archive keeps the source's precision: 10-bit BT.709, not 8-bit.
+        XCTAssertEqual(plan.format.bitDepth, 10)
     }
 
     func testPlannerSurfacesTheCoreRejection() {
