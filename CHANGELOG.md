@@ -18,6 +18,7 @@
 - macOS 新增 `convert` 命令：编码器、GOP、流映射与参数串全部由共享核心决定，流水线里真实转出 SDR 与 10 位 HDR 各一条。
 - 软件色彩转换段（zscale / format / setparams）改由共享核心拼装（`plan.color_filters`）；对照检查比较完整滤镜串。
 - 探测摘要带出侧数据，macOS 的 `convert` 因此能把 mastering display 与亮度声明原样带给编码器。
+- 色彩标签改由共享核心派生（`plan.color_tags`）：缺省补齐、RGB 与 profile 5 的表面对应、SDR/HDR 目标标签各只写一次。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -302,6 +303,7 @@
 - macOS gains a `convert` command: encoder, GOP, stream mapping and the parameter string all come from the shared core, and the pipeline converts one SDR and one 10-bit HDR clip for real.
 - The software colour tail (zscale / format / setparams) is composed by the shared core (`plan.color_filters`); the harness compares the whole filter chain.
 - The probe summary now carries side data, so the macOS `convert` hands the mastering display and light levels back to the encoder.
+- Color tags are derived by the shared core (`plan.color_tags`): gap filling, the RGB and profile 5 surface names, and the SDR/HDR target tags are written once.
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

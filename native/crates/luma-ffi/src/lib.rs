@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 25] = [
+const OPERATIONS: [&str; 26] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -66,6 +66,7 @@ const OPERATIONS: [&str; 25] = [
     "plan.hdr_metadata",
     "plan.color_filters",
     "plan.render_filters",
+    "plan.color_tags",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -181,6 +182,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.hdr_metadata" => plan_hdr_metadata(&payload),
         "plan.color_filters" => plan_color_filters(&payload),
         "plan.render_filters" => plan_render_filters(&payload),
+        "plan.color_tags" => plan_color_tags(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -710,6 +712,61 @@ struct VppDto {
     out_range: String,
     #[serde(default)]
     sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct ColorTagsDto {
+    kind: String,
+    output: String,
+    #[serde(default)]
+    rgb: bool,
+    /// Dolby Vision profile 5 carries its own color description.
+    #[serde(default)]
+    dolby_profile5: bool,
+    /// Resolved source range: `limited` or `full`.
+    source_range: String,
+    /// Resolved output range: `limited` or `full`.
+    output_range: String,
+    #[serde(default)]
+    primaries: Option<String>,
+    #[serde(default)]
+    transfer: Option<String>,
+    #[serde(default)]
+    space: Option<String>,
+}
+
+fn plan_color_tags(payload: &Value) -> CoreResult<Value> {
+    let request: ColorTagsDto = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let kind = luma_core::SourceKind::parse(&request.kind)?;
+    let output = Output::parse(&request.output)?;
+    let declared = luma_core::render::ColorTags {
+        primaries: request.primaries,
+        transfer: request.transfer,
+        space: request.space,
+        range: None,
+    };
+    let source = luma_core::render::source_tags(
+        kind,
+        request.rgb,
+        request.dolby_profile5,
+        &declared,
+        &request.source_range,
+    );
+    let target = luma_core::render::target_tags(kind, output, &source, &request.output_range);
+    Ok(json!({
+        "source": tag_json(&source),
+        "target": tag_json(&target),
+    }))
+}
+
+fn tag_json(tags: &luma_core::render::ColorTags) -> Value {
+    json!({
+        "primaries": tags.primaries,
+        "transfer": tags.transfer,
+        "space": tags.space,
+        "range": tags.range,
+    })
 }
 
 #[derive(Deserialize)]

@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 25);
+    assert_eq!(operations.len(), 26);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -418,4 +418,23 @@ fn probe_side_data_feeds_the_metadata_tokens() {
         .expect("token")
         .to_owned();
     assert!(token.starts_with("master-display=G(13250,34500)"));
+}
+
+#[test]
+fn plan_color_tags_fills_the_source_and_names_the_target() {
+    let request = serde_json::json!({
+        "kind": "pq",
+        "output": "sdr",
+        "source_range": "limited",
+        "output_range": "limited",
+        "space": "bt2020nc"
+    })
+    .to_string();
+    let tags = data("plan.color_tags", &request);
+
+    assert_eq!(tags["source"]["transfer"], "smpte2084");
+    assert_eq!(tags["source"]["primaries"], "bt2020");
+    assert_eq!(tags["source"]["range"], "tv");
+    assert_eq!(tags["target"]["transfer"], "bt709");
+    assert_eq!(tags["target"]["range"], "tv");
 }

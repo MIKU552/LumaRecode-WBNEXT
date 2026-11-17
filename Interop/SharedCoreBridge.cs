@@ -39,6 +39,7 @@ public static class SharedCoreBridge
         SharedCore.FilterBuilder = BuildFilterChain;
         SharedCore.ColorFilterBuilder = BuildColorFilters;
         SharedCore.RenderFilterBuilder = BuildRenderFilters;
+        SharedCore.ColorTagsBuilder = BuildColorTags;
         SharedCore.Gop = ComputeGop;
         SharedCore.HdrMetadata = ComposeHdrMetadata;
         SharedCore.CoreVersion = LumaCoreNative.CoreVersion;
@@ -174,6 +175,46 @@ public static class SharedCoreBridge
         payload["filters"] = items;
         return LumaCoreNative.Call("plan.filter_chain", payload)?["text"]?.ToString();
     }
+
+    /// <summary>Derives the color tags through the core.</summary>
+    private static ColorTagSet? BuildColorTags(ColorTagsRequest request)
+    {
+        JsonObject payload = new()
+        {
+            ["kind"] = request.Kind,
+            ["output"] = request.Output,
+            ["rgb"] = request.Rgb,
+            ["dolby_profile5"] = request.DolbyProfile5,
+            ["source_range"] = request.SourceRange,
+            ["output_range"] = request.OutputRange,
+        };
+        if (request.Primaries is not null)
+        {
+            payload["primaries"] = request.Primaries;
+        }
+
+        if (request.Transfer is not null)
+        {
+            payload["transfer"] = request.Transfer;
+        }
+
+        if (request.Space is not null)
+        {
+            payload["space"] = request.Space;
+        }
+
+        JsonNode? data = LumaCoreNative.Call("plan.color_tags", payload);
+        if (data?["source"] is not JsonObject source || data["target"] is not JsonObject target)
+        {
+            return null;
+        }
+
+        return new ColorTagSet(Tags(source), Tags(target));
+    }
+
+    /// <summary>Reads one tag set, mapping JSON null and empty values to null.</summary>
+    private static ColorTagsValue Tags(JsonObject data)
+        => new(Entry(data, "primaries"), Entry(data, "transfer"), Entry(data, "space"), Entry(data, "range"));
 
     /// <summary>Builds the signal-dependent filters through the core.</summary>
     private static RenderFilters? BuildRenderFilters(RenderFiltersRequest request)

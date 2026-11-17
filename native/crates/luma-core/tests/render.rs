@@ -1,7 +1,8 @@
 use luma_core::domain::{Purpose, SourceKind};
 use luma_core::render::{
     ColorFilterRequest, ColorTags, DolbyRenderFilter, FilterContentRequest, InputMap, LogFilter,
-    ToneMapFilter, VppFilter, filter_content, input_map, software_color_filters,
+    ToneMapFilter, VppFilter, filter_content, input_map, software_color_filters, source_tags,
+    target_tags,
 };
 
 #[test]
@@ -331,4 +332,70 @@ fn dropped_metadata_is_only_emitted_when_a_conversion_invalidates_it() {
 
     request.drop_dynamic_metadata = true;
     assert!(filter_content(&request).dropped_metadata.is_some());
+}
+
+#[test]
+fn an_untagged_source_keeps_what_it_declared_and_fills_the_rest() {
+    let declared = ColorTags {
+        space: Some("smpte170m".to_owned()),
+        ..ColorTags::default()
+    };
+
+    let tags = source_tags(SourceKind::Sdr, false, false, &declared, "limited");
+    assert_eq!(tags.primaries.as_deref(), Some("bt709"));
+    assert_eq!(tags.transfer.as_deref(), Some("bt709"));
+    // A declared matrix is a fact about the file, not a gap to fill.
+    assert_eq!(tags.space.as_deref(), Some("smpte170m"));
+    assert_eq!(tags.range.as_deref(), Some("tv"));
+}
+
+#[test]
+fn an_hdr_interpretation_decides_the_transfer() {
+    let declared = ColorTags {
+        transfer: Some("bt709".to_owned()),
+        ..ColorTags::default()
+    };
+
+    let tags = source_tags(SourceKind::Pq, false, false, &declared, "full");
+    assert_eq!(tags.transfer.as_deref(), Some("smpte2084"));
+    assert_eq!(tags.primaries.as_deref(), Some("bt2020"));
+    assert_eq!(tags.range.as_deref(), Some("pc"));
+}
+
+#[test]
+fn the_output_tags_follow_the_target_not_the_source() {
+    let source = source_tags(SourceKind::Pq, false, false, &ColorTags::default(), "limited");
+
+    let sdr = target_tags(SourceKind::Pq, Output::Sdr, &source, "limited");
+    assert_eq!(sdr.primaries.as_deref(), Some("bt709"));
+    assert_eq!(sdr.transfer.as_deref(), Some("bt709"));
+
+    let hdr = target_tags(SourceKind::Pq, Output::Hdr, &source, "limited");
+    assert_eq!(hdr.transfer.as_deref(), Some("smpte2084"));
+
+    let developed = target_tags(SourceKind::Log, Output::Hdr, &ColorTags::default(), "full");
+    assert_eq!(developed.transfer.as_deref(), Some("arib-std-b67"));
+    assert_eq!(developed.range.as_deref(), Some("pc"));
+}
+
+#[test]
+fn a_rgb_output_names_the_matrix_it_becomes() {
+    let source = source_tags(SourceKind::Sdr, true, false, &ColorTags::default(), "limited");
+    assert_eq!(source.space.as_deref(), Some("gbr"));
+
+    let sdr = target_tags(SourceKind::Sdr, Output::Sdr, &source, "limited");
+    assert_eq!(sdr.space.as_deref(), Some("bt709"));
+
+    let hdr = target_tags(SourceKind::Sdr, Output::Hdr, &source, "limited");
+    assert_eq!(hdr.space.as_deref(), Some("bt2020nc"));
+}
+
+#[test]
+fn a_profile_five_stream_keeps_its_own_surface_name() {
+    let tags = source_tags(SourceKind::Pq, false, true, &ColorTags::default(), "limited");
+    assert_eq!(tags.space.as_deref(), Some("ipt-c2"));
+
+    // The RGB rule is the last word, exactly as the host ordered the two overrides.
+    let rgb = source_tags(SourceKind::Pq, true, true, &ColorTags::default(), "limited");
+    assert_eq!(rgb.space.as_deref(), Some("gbr"));
 }

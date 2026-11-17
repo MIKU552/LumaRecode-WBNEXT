@@ -30,8 +30,6 @@ public sealed partial class Transcoder
         ["applelog"] = ("Apple Log", "Apple_Log_to_Rec2100_HLG.cube", "2020_ncl", "limited"),
         ["applelog2"] = ("Apple Log 2", "Apple_Log_2_to_Rec2100_HLG.cube", "2020_ncl", "limited")
     };
-    private static JsonObject Rec709() => new() { ["color_primaries"] = "bt709", ["color_transfer"] = "bt709", ["color_space"] = "bt709", ["color_range"] = "tv" };
-    private static JsonObject Hlg() => new() { ["color_primaries"] = "bt2020", ["color_transfer"] = "arib-std-b67", ["color_space"] = "bt2020nc", ["color_range"] = "tv" };
     private static readonly (string Key, string Flag)[] colorFlags = [("color_primaries", "-color_primaries"), ("color_transfer", "-color_trc"), ("color_space", "-colorspace"), ("color_range", "-color_range")];
     private static bool IsHdr(string kind) => kind is "hlg" or "pq";
     private static void Require(bool condition, string message)
@@ -203,6 +201,71 @@ public sealed partial class Transcoder
         string format = request.Purpose == "share" && request.Depth == 10 ? "p010le" : request.PixelFormat;
         return ["zscale=" + string.Join(':', conversion), "format=" + format, FrameTags(tags)];
     }
+    // Fallback for a machine without the native library: the same derivation the core applies.
+    private static ColorTagSet ManagedColorTags(ColorTagsRequest request)
+    {
+        ColorTagsValue source = new(request.Primaries, request.Transfer, request.Space, RangeWord(request.SourceRange));
+        if (request.Kind is "hlg" or "pq")
+        {
+            source = source with { Transfer = request.Kind == "hlg" ? "arib-std-b67" : "smpte2084" };
+            source = Fill(source, "bt2020", "arib-std-b67", "bt2020nc");
+        }
+        else if (request.Kind == "sdr")
+        {
+            source = Fill(source, "bt709", "bt709", "bt709");
+        }
+
+        if (request.DolbyProfile5)
+        {
+            source = source with { Space = "ipt-c2" };
+        }
+        if (request.Rgb)
+        {
+            source = source with { Space = "gbr" };
+        }
+
+        ColorTagsValue target = request.Output == "sdr"
+            ? new ColorTagsValue("bt709", "bt709", "bt709", null)
+            : request.Kind is "log" or "raw" ? new ColorTagsValue("bt2020", "arib-std-b67", "bt2020nc", null) : source;
+        if (target.Space == "gbr")
+        {
+            target = target with { Space = request.Output == "hdr" ? "bt2020nc" : "bt709" };
+        }
+
+        return new ColorTagSet(
+            source with { Range = RangeWord(request.SourceRange) },
+            target with { Range = RangeWord(request.OutputRange) });
+    }
+
+    private static ColorTagsValue Fill(ColorTagsValue tags, string primaries, string transfer, string space)
+        => tags with
+        {
+            Primaries = string.IsNullOrEmpty(tags.Primaries) ? primaries : tags.Primaries,
+            Transfer = string.IsNullOrEmpty(tags.Transfer) ? transfer : tags.Transfer,
+            Space = string.IsNullOrEmpty(tags.Space) ? space : tags.Space
+        };
+
+    private static string RangeWord(string range) => range == "full" ? "pc" : "tv";
+
+    private static void ApplyTags(JsonObject video, ColorTagsValue tags)
+    {
+        if (tags.Primaries is not null)
+        {
+            video["color_primaries"] = tags.Primaries;
+        }
+        if (tags.Transfer is not null)
+        {
+            video["color_transfer"] = tags.Transfer;
+        }
+        if (tags.Space is not null)
+        {
+            video["color_space"] = tags.Space;
+        }
+        if (tags.Range is not null)
+        {
+            video["color_range"] = tags.Range;
+        }
+    }
     // Fallback for a machine without the native library. These strings are the interface
     // between the hosts, so they are spelled exactly the way the core spells them.
     private static RenderFilters ManagedRenderFilters(RenderFiltersRequest request)
@@ -331,56 +394,30 @@ public sealed partial class Transcoder
         var kind = Validate(requestedOptions, media);
         var options = ResolveFormat(FrameOptions(media, requestedOptions, window is not null, motionPhoto), media);
         var video = media.Video.DeepClone().AsObject();
-        video["color_range"] = OutputPolicy.SourceRange(media, kind == "log" ? Profiles[options.Profile!].Range : null) == "full" ? "pc" : "tv";
-        if (IsHdr(kind))
-        {
-            video["color_transfer"] = kind == "hlg" ? "arib-std-b67" : "smpte2084";
-            foreach (var p in Hlg())
-            {
-                if (JsonFields.Unspecified(video.Text(p.Key)))
-                {
-                    video[p.Key] = p.Value?.DeepClone();
-                }
-            }
-        }
-        else if (kind == "sdr")
-        {
-            foreach (var p in Rec709())
-            {
-                if (JsonFields.Unspecified(video.Text(p.Key)))
-                {
-                    video[p.Key] = p.Value?.DeepClone();
-                }
-            }
-        }
-
         bool preserveDynamic = DynamicHdr.Preserve(media, options);
         bool developRaw = media.Raw is not null;
         bool renderDolby = media.DolbyVision is not null && !preserveDynamic;
-        if (preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5)
+        // Which defaults fill a silent container, how an RGB or profile 5 surface is named, and
+        // what the output should carry all live in the core; this file applies the answer.
+        ColorTagsRequest tagsRequest = new(
+            kind,
+            options.Output,
+            OutputPolicy.IsRgb(media),
+            preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5,
+            OutputPolicy.SourceRange(media, kind == "log" ? Profiles[options.Profile!].Range : null),
+            options.ColorRange,
+            JsonFields.Unspecified(video.Text("color_primaries")) ? null : video.Text("color_primaries"),
+            JsonFields.Unspecified(video.Text("color_transfer")) ? null : video.Text("color_transfer"),
+            JsonFields.Unspecified(video.Text("color_space")) ? null : video.Text("color_space"));
+        ColorTagSet tags = SharedCore.ColorTagsBuilder?.Invoke(tagsRequest) ?? ManagedColorTags(tagsRequest);
+        ApplyTags(video, tags.Source);
+        JsonObject colors = new()
         {
-            video["color_space"] = "ipt-c2";
-        }
-        if (OutputPolicy.IsRgb(media))
-        {
-            video["color_space"] = "gbr";
-        }
-
-        var colors = options.Output == "sdr" ? Rec709() : kind is "log" or "raw" ? Hlg() : new JsonObject();
-        if (colors.Count == 0)
-        {
-            foreach (var (key, _) in colorFlags)
-            {
-                colors[key] = video[key]?.DeepClone();
-            }
-        }
-
-        if (colors.Text("color_space") == "gbr")
-        {
-            colors["color_space"] = options.Output == "hdr" ? "bt2020nc" : "bt709";
-        }
-
-        colors["color_range"] = options.ColorRange == "full" ? "pc" : "tv";
+            ["color_primaries"] = tags.Target.Primaries,
+            ["color_transfer"] = tags.Target.Transfer,
+            ["color_space"] = tags.Target.Space,
+            ["color_range"] = tags.Target.Range,
+        };
 
         var config = (motionPhoto ? MotionConfig[options.Purpose]?[options.Codec] : options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
         bool colorConversion = colors.Any(p => video.Text(p.Key) != p.Value?.ToString());

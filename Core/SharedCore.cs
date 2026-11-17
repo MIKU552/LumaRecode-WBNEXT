@@ -38,6 +38,25 @@ public sealed record GopRequest(double FrameRate, bool Share, bool MotionPhoto);
 /// <summary>One encoder parameter, in insertion order.</summary>
 public sealed record ParameterPair(string Key, string Value);
 
+/// <summary>Facts the color tag derivation needs: what the source declares and where it goes.</summary>
+/// <param name="Kind">Effective interpretation: sdr, hlg, pq, log or raw.</param>
+/// <param name="Output">Target transfer function.</param>
+/// <param name="Rgb">The source is RGB, so its matrix names a surface rather than a delivery one.</param>
+/// <param name="DolbyProfile5">A single-layer profile 5 stream carries its own surface name.</param>
+/// <param name="SourceRange">Resolved source range: limited or full.</param>
+/// <param name="OutputRange">Resolved output range: limited or full.</param>
+/// <param name="Primaries">Primaries the source declares, or null.</param>
+/// <param name="Transfer">Transfer the source declares, or null.</param>
+/// <param name="Space">Matrix the source declares, or null.</param>
+public sealed record ColorTagsRequest(string Kind, string Output, bool Rgb, bool DolbyProfile5,
+    string SourceRange, string OutputRange, string? Primaries, string? Transfer, string? Space);
+
+/// <summary>One set of color tags; null means the source never declared it.</summary>
+public sealed record ColorTagsValue(string? Primaries, string? Transfer, string? Space, string? Range);
+
+/// <summary>The tags to read with and the tags to write.</summary>
+public sealed record ColorTagSet(ColorTagsValue Source, ColorTagsValue Target);
+
 /// <summary>The software colour conversion: tags to write, range to convert, format to emit.</summary>
 /// <param name="Primaries">Color primaries tag, or null when the source never declared it.</param>
 /// <param name="Transfer">Transfer characteristic tag, or null.</param>
@@ -121,6 +140,9 @@ public static class SharedCore
     /// <summary>Joins the filter chain through the shared core; null means "use the managed join".</summary>
     public static Func<IReadOnlyList<string>, string?>? FilterBuilder { get; set; }
 
+    /// <summary>Derives the source and target color tags through the shared core; null means "use the managed rule".</summary>
+    public static Func<ColorTagsRequest, ColorTagSet?>? ColorTagsBuilder { get; set; }
+
     /// <summary>Builds the signal-dependent filters through the shared core; null means "use the managed builder".</summary>
     public static Func<RenderFiltersRequest, RenderFilters?>? RenderFilterBuilder { get; set; }
 
@@ -151,6 +173,7 @@ public static class SharedCore
         FilterBuilder = null;
         ColorFilterBuilder = null;
         RenderFilterBuilder = null;
+        ColorTagsBuilder = null;
         Gop = null;
         HdrMetadata = null;
         CoreVersion = "";

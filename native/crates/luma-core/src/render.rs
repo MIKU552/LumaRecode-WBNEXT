@@ -406,3 +406,108 @@ pub fn filter_content(request: &FilterContentRequest<'_>) -> FilterContent {
 
 /// The metadata a conversion invalidates; keeping it would mislabel the output.
 pub const DYNAMIC_METADATA_DROP: &str = "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+
+/// Tags the source should be read with: the defaults fill what the container omits.
+///
+/// Probes often report a matrix but no primaries or transfer, especially for files written by
+/// a tool that only took the matrix seriously. Filling the gaps keeps the filter chain and the
+/// encoder flags describing the same signal; a tag the source did declare is never replaced.
+pub fn source_tags(
+    kind: SourceKind,
+    rgb: bool,
+    dolby_profile5: bool,
+    source: &ColorTags,
+    range: &str,
+) -> ColorTags {
+    let mut tags = source.clone();
+    tags.range = Some(range_word(range).to_owned());
+    match kind {
+        SourceKind::Hlg | SourceKind::Pq => {
+            // The transfer is not a fallback here: the interpretation decided it.
+            tags.transfer = Some(hdr_transfer(kind).to_owned());
+            fill_missing(&mut tags, &hlg_tags());
+        }
+        SourceKind::Sdr => fill_missing(&mut tags, &rec709_tags()),
+        _ => {}
+    }
+    if dolby_profile5 {
+        // Profile 5 stores IPTPQc2 code values; naming it YCbCr would mislabel the stream.
+        tags.space = Some("ipt-c2".to_owned());
+    }
+    if rgb {
+        tags.space = Some("gbr".to_owned());
+    }
+    tags
+}
+
+/// Tags the output should carry: SDR lands in BT.709, HDR keeps the source's description
+/// unless the source is a camera curve or RAW, which develop to HLG.
+pub fn target_tags(kind: SourceKind, output: Output, source: &ColorTags, range: &str) -> ColorTags {
+    let mut tags = match output {
+        Output::Sdr => rec709_tags(),
+        Output::Hdr => match kind {
+            SourceKind::Log | SourceKind::Raw => hlg_tags(),
+            _ => source.clone(),
+        },
+    };
+    if tags.space.as_deref() == Some("gbr") {
+        // A RGB surface is not a delivery matrix; the output names the YCbCr one it becomes.
+        tags.space = Some(ycbcr_space(output).to_owned());
+    }
+    tags.range = Some(range_word(range).to_owned());
+    tags
+}
+
+fn rec709_tags() -> ColorTags {
+    ColorTags {
+        primaries: Some("bt709".to_owned()),
+        transfer: Some("bt709".to_owned()),
+        space: Some("bt709".to_owned()),
+        range: None,
+    }
+}
+
+fn hlg_tags() -> ColorTags {
+    ColorTags {
+        primaries: Some("bt2020".to_owned()),
+        transfer: Some("arib-std-b67".to_owned()),
+        space: Some("bt2020nc".to_owned()),
+        range: None,
+    }
+}
+
+fn hdr_transfer(kind: SourceKind) -> &'static str {
+    if kind == SourceKind::Hlg {
+        "arib-std-b67"
+    } else {
+        "smpte2084"
+    }
+}
+
+fn ycbcr_space(output: Output) -> &'static str {
+    match output {
+        Output::Hdr => "bt2020nc",
+        Output::Sdr => "bt709",
+    }
+}
+
+fn range_word(range: &str) -> &'static str {
+    if range == "full" {
+        "pc"
+    } else {
+        "tv"
+    }
+}
+
+/// Fills the tags the source never declared, leaving what it did declare alone.
+fn fill_missing(tags: &mut ColorTags, defaults: &ColorTags) {
+    if specified(&tags.primaries).is_none() {
+        tags.primaries.clone_from(&defaults.primaries);
+    }
+    if specified(&tags.transfer).is_none() {
+        tags.transfer.clone_from(&defaults.transfer);
+    }
+    if specified(&tags.space).is_none() {
+        tags.space.clone_from(&defaults.space);
+    }
+}

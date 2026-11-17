@@ -365,7 +365,7 @@ foreach ((string fixtureName, string codec) in metadataCases)
     ("dovi-10", "archive", "hdr", "none", null, "standard", false),
     ("420-8", "share", "sdr", "none", null, null, true),
 ];
-List<(string Label, MediaInfo Media, EncodeOptions Options, string Managed)> filterChecks = new();
+List<(string Label, MediaInfo Media, EncodeOptions Options, string ManagedFilters, string ManagedTags)> filterChecks = new();
 foreach ((string fixtureName, string purpose, string output, string transform, string? profile, string? dynamicHdr, bool qsv) in filterCases)
 {
     MediaInfo media = Fixture.All.First(item => item.Name == fixtureName).ToMedia();
@@ -380,7 +380,7 @@ foreach ((string fixtureName, string purpose, string output, string transform, s
 
     EncodeOptions options = new(purpose, "hevc", output, transform, profile, DynamicHdr: dynamicHdr ?? "preserve");
     string label = $"filters/{fixtureName}/{purpose}/{transform}{(qsv ? "/qsv" : "")}";
-    filterChecks.Add((label, media, options, FilterArgument(transcoder, media, options)));
+    filterChecks.Add((label, media, options, FilterArgument(transcoder, media, options), ColorFlags(transcoder, media, options)));
 }
 
 // Behaviour preservation through the public API: install the bridge, replay every
@@ -428,9 +428,10 @@ try
         Compare(label, "gop", managed, GopArgument(transcoder, media, options, motionPhoto), ref failures, ref comparisons);
     }
 
-    foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in filterChecks)
+    foreach ((string label, MediaInfo media, EncodeOptions options, string filters, string tags) in filterChecks)
     {
-        Compare(label, "filters", managed, FilterArgument(transcoder, media, options), ref failures, ref comparisons);
+        Compare(label, "filters", filters, FilterArgument(transcoder, media, options), ref failures, ref comparisons);
+        Compare(label, "color-flags", tags, ColorFlags(transcoder, media, options), ref failures, ref comparisons);
     }
 
     foreach ((string label, MediaInfo media, EncodeOptions options, string managed) in metadataChecks)
@@ -513,6 +514,21 @@ static string ParameterArgument(Transcoder transcoder, MediaInfo media, EncodeOp
     string flag = options.Codec == "av1" ? "-svtav1-params" : "-x265-params";
     int index = Array.IndexOf(plan.Arguments, flag);
     return index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "missing";
+}
+
+/// <summary>Builds a plan and returns its colour flags in a stable order.</summary>
+static string ColorFlags(Transcoder transcoder, MediaInfo media, EncodeOptions options)
+{
+    EncodingPlan plan = transcoder.Plan(new MediaTools("ffmpeg", "ffprobe"), media, options, "out.mkv");
+    string[] flags = ["-color_primaries", "-color_trc", "-colorspace", "-color_range"];
+    List<string> values = new();
+    foreach (string flag in flags)
+    {
+        int index = Array.IndexOf(plan.Arguments, flag);
+        values.Add(index >= 0 && index + 1 < plan.Arguments.Length ? plan.Arguments[index + 1] : "-");
+    }
+
+    return string.Join(';', values);
 }
 
 /// <summary>Builds a plan and returns the filter chain it would pass.</summary>
