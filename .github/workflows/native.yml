@@ -200,9 +200,9 @@ jobs:
           # The default formula lacks the filters the colour chains need, so this job also
           # installs the full build (keg-only) and points the app at it. Fixtures still use
           # the ffmpeg on PATH.
+          # The full build is keg-only and used only where it helps: zscale and lut3d run on
+          # the CPU, while libplacebo needs a Vulkan device this runner does not expose.
           brew install ffmpeg-full
-          export LUMARECODE_FFMPEG="$(brew --prefix ffmpeg-full)/bin/ffmpeg"
-          "$LUMARECODE_FFMPEG" -version | head -1
           work="$(mktemp -d)"
           # Two sources: an 8-bit SDR clip, and a 10-bit HLG clip with audio. The HLG tags go
           # into the x265 VUI so the clip describes itself, exactly like a camera file.
@@ -315,11 +315,21 @@ jobs:
             --dry-run | tee build-info/convert-log.txt
           grep -q "lut3d=file=.*REDMI_K90_MiLog_to_Rec2100_HLG.cube" build-info/convert-log.txt
           grep -q "zscale=matrixin=2020_ncl:rangein=limited:range=full" build-info/convert-log.txt
+          # The same chain with the full build: the LUT and the matrix conversion run on the
+          # CPU, so this one really renders and the output has to carry the HLG tags.
+          LUMARECODE_FFMPEG="$(brew --prefix ffmpeg-full)/bin/ffmpeg" \
+            "$binary" convert "$work/hlg.mkv" -o "$work/log-real.mkv" \
+              --purpose archive --codec hevc --output hdr --input-kind log --log-profile milog \
+            | tee build-info/convert-log-real.txt
+          ffprobe -v error -select_streams v:0 -show_streams -of json "$work/log-real.mkv" \
+            > build-info/log-real.json
+          grep -q '"color_transfer": "arib-std-b67"' build-info/log-real.json
+          grep -q '"pix_fmt": "yuv420p10le"' build-info/log-real.json
 
           # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
           # that filter, so this step asserts the plan and the refusal here, and renders only
           # when the build actually has it.
-          if "$LUMARECODE_FFMPEG" -hide_banner -filters 2>/dev/null | grep -q " libplacebo "; then
+          if ffmpeg -hide_banner -filters 2>/dev/null | grep -q " libplacebo "; then
             "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
               --purpose archive --codec hevc --output sdr | tee build-info/convert-hdr-to-sdr.txt
             ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
