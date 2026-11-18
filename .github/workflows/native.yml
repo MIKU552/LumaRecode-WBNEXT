@@ -255,7 +255,7 @@ jobs:
           # Share runs on VideoToolbox, so the host builds those flags rather than the
           # shared table's QSV ones. A dry run asserts the plan without a device.
           "$binary" convert "$work/source.mp4" -o "$work/share-out.mkv" \
-            --purpose share --codec hevc --dry-run | tee build-info/convert-share.txt
+            --purpose share --codec hevc --input-kind sdr --dry-run | tee build-info/convert-share.txt
           grep -q -- "-c:v hevc_videotoolbox" build-info/convert-share.txt
           grep -q -- "-q:v 60" build-info/convert-share.txt
           grep -q -- "-realtime 1" build-info/convert-share.txt
