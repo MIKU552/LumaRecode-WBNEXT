@@ -192,10 +192,7 @@ pub fn document(lines: &[String]) -> CoreResult<Value> {
             previous = Some(current);
         }
         let mut frame = frame;
-        frame.insert(
-            "SceneFrameIndex".to_owned(),
-            json!(sequence - scene_start),
-        );
+        frame.insert("SceneFrameIndex".to_owned(), json!(sequence - scene_start));
         frame.insert("SceneId".to_owned(), json!(scene));
         frame.insert("SequenceFrameIndex".to_owned(), json!(sequence));
         sequence += 1;
