@@ -116,7 +116,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P2 共享核心 | 完成（规则与执行抽象） | 模型、输出规则、时间轴、预设、能力、规划、缓存、安全、探测、元数据与执行抽象均已迁移；宿主全面接线由 P3 收口 |
 | P3 Windows 接入 | 完成（参数迁移） | 判定、校验、输入映射、色彩标签及其派生、编码器段、参数串、滤镜链拼接、GOP 间隔、HDR 元数据、软件色彩转换段与曲线/色调映射/VPP 段均已走原生桥；滤镜顺序与帧尺寸相关滤镜按设计留在宿主，因为它们依赖 RAW 显影、预览、动态照片与 GPU 通路等宿主阶段 |
 | P4 多厂商适配 | 完成（实机验证暂略） | 后端映射、支持矩阵、检测要求、运行时探测与厂商参数表均已接线；按用户要求不以实机硬件验证作为完成前提 |
-| P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 用核心决定编码器、GOP、映射、参数、HDR 元数据 token、曲线 LUT 与色调映射，CI 里真实转出 SDR、10 位 HDR 与带 mastering display 的 PQ；曲线与 HDR→SDR 的链已生成并通过断言，但 Homebrew 的 FFmpeg 9 没有 zscale/lut3d/libplacebo，渲染在此环境被逐条明确拒绝；窗口里已能直接转换打开的文件（进度来自 FFmpeg 的 `-progress`，可取消）；预览画布与时间轴接上 AVFoundation 抽帧，可拖动定位；导出面板可选目录、命名并在覆盖前确认 |
+| P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 用核心决定编码器、GOP、映射、参数、HDR 元数据 token、曲线 LUT 与色调映射，CI 里真实转出 SDR、10 位 HDR 与带 mastering display 的 PQ；曲线与 HDR→SDR 的链已生成并通过断言，但 Homebrew 的 FFmpeg 9 没有 zscale/lut3d/libplacebo，渲染在此环境被逐条明确拒绝；窗口里已能直接转换打开的文件（进度来自 FFmpeg 的 `-progress`，可取消）；预览画布与时间轴接上 AVFoundation 抽帧，可拖动定位；导出面板可选目录、命名并在覆盖前确认；共享档位走 VideoToolbox（参数由本宿主拼装，数值标注为未实测） |
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
 | P7 校准与优化 | 回收闭环完成 | 标识、策略、存储抽象、计划与带范围保护的删除已接线；预算测量、预设候选与长任务待做 |
 | P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
@@ -152,7 +152,7 @@ macOS 统一使用 `xcode-27` 镜像）；
    （full 构建 + GPU）用同一条链可以正常出片。
    曲线 LUT 已在 macOS 上接通（五条曲线由核心给出文件名、矩阵与范围）；SDR→HDR 仍未接，
    宿主的预览缩放、动态照片补边、RAW 显影与整条链的顺序也未迁移。
-3. macOS 还缺共享档位（VideoToolbox）表；静态 HDR 元数据与色彩标签派生都已在核心，
+3. macOS 的共享档位已接（`Assets/recommended-presets-macos.json`，VideoToolbox 参数由宿主拼装）；
    跨制式转换只剩 macOS 侧接入 `plan.render_filters` 与曲线选择。
 4. 执行层：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描依赖子进程与进度事件，
    属于 P2 的类型化接口，不在 JSON 信封里做。
@@ -293,7 +293,7 @@ than folding them into pass or fail.
 | P2 Shared core | Done (rules and execution seam) | Model, policy, timeline, presets, capability, planning, cache, safety, probe, metadata and the execution seam are migrated; host wiring closes under P3 |
 | P3 Windows integration | Done (parameters) | Decisions, validation, input mapping, color tags and their derivation, encoder block, parameter string, filter joining, the GOP interval, the HDR metadata parameters, the software colour tail and the curve/tone-map/VPP entries are bridged; the filter order and the frame-size filters stay in the host by design, because they depend on host stages such as RAW development, preview, motion photos and the GPU path |
 | P4 Multi-vendor | Done (hardware verification skipped) | Backend mapping, support matrix, detection requirements, runtime detection and vendor parameter tables are wired; real-device verification is not a completion requirement by request |
-| P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping, parameters, the HDR metadata tokens, the curve LUT and the tone map from the core and produces SDR, 10-bit HDR and a PQ clip that keeps its mastering display in CI; the curve and HDR to SDR chains are built and asserted, but Homebrew's FFmpeg 9 has no zscale, lut3d or libplacebo, so each render stops with a named refusal; the window can convert the open file directly (progress comes from FFmpeg's own `-progress` stream and the run can be cancelled); the preview canvas and timeline use AVFoundation stills and scrub; the export sheet picks the folder and name and confirms a replacement |
+| P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping, parameters, the HDR metadata tokens, the curve LUT and the tone map from the core and produces SDR, 10-bit HDR and a PQ clip that keeps its mastering display in CI; the curve and HDR to SDR chains are built and asserted, but Homebrew's FFmpeg 9 has no zscale, lut3d or libplacebo, so each render stops with a named refusal; the window can convert the open file directly (progress comes from FFmpeg's own `-progress` stream and the run can be cancelled); the preview canvas and timeline use AVFoundation stills and scrub; the export sheet picks the folder and name and confirms a replacement; share runs on VideoToolbox with host-built flags (the values are marked unmeasured) |
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
 | P7 Calibration | Reclamation closed | Identity, retention, the store seam, the plan and guarded deletion are wired; budgets, preset candidates and long jobs remain |
 | P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |

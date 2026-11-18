@@ -1,0 +1,99 @@
+{
+ "archive": {
+  "avc": {
+   "encoder": "libx264",
+   "preset": "medium",
+   "quality": 21,
+   "pixel_format": "yuv420p",
+   "encoder_parameters": {
+    "aq-mode": 2,
+    "aq-strength": 0.8
+   }
+  },
+  "hevc": {
+   "encoder": "libx265",
+   "preset": "medium",
+   "quality": 23,
+   "pixel_format": "yuv420p10le",
+   "encoder_parameters": {
+    "rdoq-level": 2,
+    "psy-rdoq": 1
+   }
+  },
+  "av1": {
+   "encoder": "libsvtav1",
+   "preset": "4",
+   "quality": 32,
+   "pixel_format": "yuv420p10le",
+   "tune": 0,
+   "lp": 0,
+   "encoder_parameters": {
+    "enable-qm": 1,
+    "qm-min": 8,
+    "qm-max": 15
+   }
+  }
+ },
+ "archive_fast_av1": {
+  "encoder": "libsvtav1",
+  "preset": "6",
+  "quality": 32,
+  "pixel_format": "yuv420p10le",
+  "tune": 0,
+  "lp": 4,
+  "encoder_parameters": {
+   "enable-qm": 1,
+   "qm-min": 8,
+   "qm-max": 15,
+   "hierarchical-levels": 4
+  }
+ },
+ "share": {
+  "avc": {
+   "encoder": "h264_videotoolbox",
+   "preset": "",
+   "quality": 65,
+   "pixel_format": "yuv420p",
+   "encoder_parameters": {
+    "realtime": 1,
+    "allow_sw": 1
+   }
+  },
+  "hevc": {
+   "encoder": "hevc_videotoolbox",
+   "preset": "",
+   "quality": 60,
+   "pixel_format": "yuv420p",
+   "encoder_parameters": {
+    "realtime": 1,
+    "allow_sw": 1
+   }
+  }
+ },
+ "audio": {
+  "archive_default": "copy",
+  "share_default": {
+   "avc": "aac",
+   "hevc": "aac",
+   "av1": "opus"
+  },
+  "aac": {
+   "encoder": "aac",
+   "bitrate_kbps": 256,
+   "channels": 2,
+   "sample_rate": "source"
+  },
+  "opus": {
+   "encoder": "libopus",
+   "bitrate_kbps": 192,
+   "channels": 2,
+   "sample_rate": 48000,
+   "vbr": "on",
+   "application": "audio",
+   "compression_level": 10
+  },
+  "av1_compatibility_audio": "aac",
+  "note": "有损预设为双声道；AV1默认Opus192K，另保留AAC256K兼容项。归档默认复制全部原音轨。音频不与视频编码器技术绑定。"
+ },
+ "note": "macOS 表：archive 与共享表一致（软件编码器）；share 走 VideoToolbox。VideoToolbox 没有 AV1，share-av1 在 macOS 上不可用。两档 quality 是 -q:v（1–100，越大越好）的起始值，等同“适合分享”的意图，按方案 §4 的实机验证未完成，属未实测默认值，拿到 M 系列记录后再校准。"
+}

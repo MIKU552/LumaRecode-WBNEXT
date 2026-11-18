@@ -197,6 +197,42 @@ final class CoreClientTests: XCTestCase {
         XCTAssertEqual(plan.format.sourceKind, "log")
     }
 
+    func testTheShippedMacOSShareTableResolvesToVideoToolbox() throws {
+        let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
+        let job = ConversionJob(
+            input: "/tmp/in.mkv",
+            output: "/tmp/out.mkv",
+            presets: try macPresetTable(),
+            purpose: "share",
+            codec: "hevc",
+            outputKind: "sdr"
+        )
+        let plan = try ConversionPlanner(ffmpeg: "/usr/bin/false")
+            .plan(job, probed: ProbeResult(source: source, videoIndex: 0, frameRate: 30))
+
+        // The flags a share needs are VideoToolbox's own; the shared table's QSV flags would
+        // be unknown options here, which is why this host builds them.
+        let command = plan.commandLine
+        XCTAssertTrue(command.contains("-c:v hevc_videotoolbox"))
+        XCTAssertTrue(command.contains("-q:v 60"))
+        XCTAssertTrue(command.contains("-realtime 1"))
+        XCTAssertTrue(command.contains("-allow_sw 1"))
+        XCTAssertFalse(command.contains("-global_quality"))
+        XCTAssertFalse(command.contains("-low_power"))
+        XCTAssertFalse(command.contains("-x265-params"))
+    }
+
+    /// The shipped macOS table, read from the repository so the file itself is under test.
+    private func macPresetTable() throws -> String {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let path = root.appendingPathComponent("Assets/recommended-presets-macos.json")
+        return try String(contentsOf: path, encoding: .utf8)
+    }
+
     func testPlannerSurfacesTheCoreRejection() {
         let source: [String: Any] = ["pixel_format": "yuv420p", "kind": "sdr", "components": [8, 8, 8]]
         let job = ConversionJob(input: "/tmp/in.mp4", output: "/tmp/out.mkv", presets: presetTable, outputKind: "hdr")

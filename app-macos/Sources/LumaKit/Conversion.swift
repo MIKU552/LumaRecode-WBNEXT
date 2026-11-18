@@ -105,12 +105,6 @@ public struct ConversionPlanner: Sendable {
     }
 
     public func plan(_ job: ConversionJob, probed: ProbeResult) throws -> ConversionPlan {
-        // The share table is measured for QSV; macOS needs its own VideoToolbox entries
-        // before that path can be honest, so this command archives only.
-        guard job.purpose == "archive" else {
-            throw ConversionError.unsupported("Only archive presets exist for macOS so far; pass --purpose archive.")
-        }
-
         var options = OutputOptions()
         options.purpose = job.purpose
         options.codec = job.codec
@@ -161,6 +155,13 @@ public struct ConversionPlanner: Sendable {
 
         let preset = try client.preset(document: job.presets, purpose: options.purpose, codec: options.codec)
         let share = options.purpose == "share"
+        // Share runs on VideoToolbox; the table's other rows are software encoders whose
+        // flags the core spells, and mixing the two would hand FFmpeg unknown options.
+        if share && !preset.encoder.hasSuffix("_videotoolbox") {
+            throw ConversionError.unsupported(
+                "macOS shares with VideoToolbox only; this preset resolves to \(preset.encoder)."
+            )
+        }
         let gop = try client.gop(frameRate: probed.frameRate, share: share)
         let mapping = try client.inputMap(
             input: job.input,
@@ -230,19 +231,24 @@ public struct ConversionPlanner: Sendable {
         }
         let filters = try client.filterChain(chain)
         let colorFlags = try client.colorArguments(tags: tags.target)
-        let encoder = try client.encoderArguments(
-            encoder: preset.encoder,
-            preset: preset.preset,
-            quality: String(preset.quality),
-            share: share,
-            codec: options.codec,
-            depth: format.bitDepth,
-            gop: gop,
-            autoLowPower: false,
-            timingCompatibility: false,
-            asyncDepth: "4",
-            pixelFormat: format.pixelFormat
-        )
+        let encoder: [String]
+        if share {
+            encoder = videoToolboxArguments(preset: preset, format: format, codec: options.codec, gop: gop)
+        } else {
+            encoder = try client.encoderArguments(
+                encoder: preset.encoder,
+                preset: preset.preset,
+                quality: String(preset.quality),
+                share: share,
+                codec: options.codec,
+                depth: format.bitDepth,
+                gop: gop,
+                autoLowPower: false,
+                timingCompatibility: false,
+                asyncDepth: "4",
+                pixelFormat: format.pixelFormat
+            )
+        }
         // The probe's side data becomes the tokens that keep the stream's HDR declaration:
         // mastering display, light levels, and the payload a preserved dynamic layer needs.
         let metadata = try client.hdrMetadata(
@@ -255,7 +261,9 @@ public struct ConversionPlanner: Sendable {
             sideData: probed.sideData
         )
         let values = preset.parameterPairs + metadata.parameters.map { ($0.key, $0.value) }
-        let parameters = try client.parameterString(values: values, appended: metadata.appended)
+        let parameters = share
+            ? ""
+            : try client.parameterString(values: values, appended: metadata.appended)
 
         var arguments = [ffmpeg, "-hide_banner", "-nostdin", "-n", "-xerror", "-loglevel", "warning", "-nostats"]
         arguments += mapping
@@ -271,6 +279,28 @@ public struct ConversionPlanner: Sendable {
         arguments += ["-c:a", "copy"]
         arguments.append(job.output)
         return ConversionPlan(arguments: arguments, format: format)
+    }
+
+    /// VideoToolbox takes its own rate control: `-q:v` instead of CRF or a global quality.
+    ///
+    /// The Windows table's QSV flags (`-global_quality`, `-low_power`, `-async_depth`) are
+    /// unknown options here, which is why the design keeps command construction with the
+    /// backend instead of the rules.
+    private func videoToolboxArguments(
+        preset: PresetSelection,
+        format: ResolvedFormat,
+        codec: String,
+        gop: Int
+    ) -> [String] {
+        var arguments = ["-c:v", preset.encoder, "-q:v", String(preset.quality)]
+        for (key, value) in preset.parameterPairs {
+            arguments += ["-\(key)", value]
+        }
+        arguments += ["-pix_fmt", format.pixelFormat, "-g", String(gop)]
+        if codec == "hevc" {
+            arguments += ["-profile:v", format.bitDepth == 10 ? "main10" : "main"]
+        }
+        return arguments
     }
 
     /// Resolves the LUT the core named against the directory this host keeps it in.
@@ -433,6 +463,8 @@ public enum PresetDocument {
         if let environment = ProcessInfo.processInfo.environment["LUMARECODE_PRESETS"] {
             candidates.append(environment)
         }
+        // The share rows name a backend: VideoToolbox here, Intel QSV in the shared table.
+        candidates.append("\(assetDirectory)/recommended-presets-macos.json")
         candidates.append("\(assetDirectory)/recommended-presets.json")
         for path in candidates where FileManager.default.fileExists(atPath: path) {
             if let text = try? String(contentsOfFile: path, encoding: .utf8) {
