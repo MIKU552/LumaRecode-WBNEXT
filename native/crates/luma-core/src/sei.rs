@@ -168,11 +168,10 @@ pub fn document(lines: &[String]) -> CoreResult<Value> {
     let mut scenes: Vec<Value> = Vec::new();
     let mut profile: Option<&str> = None;
     let mut previous: Option<String> = None;
-    let mut sequence = 0u64;
     let mut scene: i64 = -1;
-    let mut scene_start = 0u64;
+    let mut scene_start = 0usize;
 
-    for line in lines {
+    for (sequence, line) in lines.iter().enumerate() {
         let frame = frame_fields(line)?;
         let current = Value::Object(frame.clone()).to_string();
         let frame_profile = if frame.contains_key("BezierCurveData") {
@@ -180,10 +179,8 @@ pub fn document(lines: &[String]) -> CoreResult<Value> {
         } else {
             "A"
         };
-        if let Some(known) = profile {
-            if known != frame_profile {
-                return Err(CoreError::new(codes::METADATA_HDR10PLUS));
-            }
+        if profile.is_some_and(|known| known != frame_profile) {
+            return Err(CoreError::new(codes::METADATA_HDR10PLUS));
         }
         profile = Some(frame_profile);
         if previous.as_deref() != Some(current.as_str()) {
@@ -195,7 +192,6 @@ pub fn document(lines: &[String]) -> CoreResult<Value> {
         frame.insert("SceneFrameIndex".to_owned(), json!(sequence - scene_start));
         frame.insert("SceneId".to_owned(), json!(scene));
         frame.insert("SequenceFrameIndex".to_owned(), json!(sequence));
-        sequence += 1;
         scenes.push(Value::Object(frame));
     }
 
