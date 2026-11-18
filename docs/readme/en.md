@@ -141,7 +141,7 @@ licenses/  Third-party licenses, notices, and provenance
 
 ## Code signing policy
 
-Windows builds are currently unsigned. Free open-source signing will be requested from SignPath Foundation near release; once approved, the package is built and signed by SignPath.io with a certificate issued to SignPath Foundation, and no commercial certificate is purchased. Until then the download page states "unsigned" and the project does not switch to a paid service.
+Windows builds ship **unsigned**; that is the project's decision and no code signing certificate will be requested. The release page publishes a SHA-256 for the package so a download can be checked against it, and the SmartScreen prompt on first run is expected — no system protection needs to be turned off.
 
 The macOS build uses a free ad-hoc signature: no Apple Developer ID and no notarization. On first launch, choose "Open Anyway" in System Settings → Privacy & Security; the distribution notes state that step and never ask you to disable Gatekeeper.
 

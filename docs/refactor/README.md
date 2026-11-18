@@ -104,7 +104,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 - 工具链：Rust 1.100.0（Windows 与 macOS 共用同一 `rust-toolchain.toml`）、
   .NET 11.0.100、Swift 6.4.2 与 Xcode 27.2（镜像内最新安装版本）。
 
-**仍未验证**：QSV / AMF / NVENC 的真实硬件编解码、GUI 运行时行为与首帧呈现、签名申请与发布产物。
+**仍未验证**：QSV / AMF / NVENC 的真实硬件编解码、GUI 运行时行为与首帧呈现、发布产物。
 VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码并检查产物。按方案 §12 记为“未运行”，不与通过或失败合并统计。
 
 ### 阶段进度
@@ -119,8 +119,8 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 | P5 macOS 应用 | 首条转换已跑通 | 打开文件、ffprobe 探测、核心归一化与真实流信息显示已完成；`convert` 用核心决定编码器、GOP、映射、参数、HDR 元数据 token、曲线 LUT 与色调映射，CI 里真实转出 SDR、10 位 HDR 与带 mastering display 的 PQ；曲线与 HDR→SDR 的链已生成并通过断言，但 Homebrew 的 FFmpeg 9 缺 zscale 与 libplacebo（lut3d 有），渲染在此环境被逐条明确拒绝；窗口里已能直接转换打开的文件（进度来自 FFmpeg 的 `-progress`，可取消）；预览画布与时间轴接上 AVFoundation 抽帧，可拖动定位；导出面板可选目录、命名并在覆盖前确认；共享档位走 VideoToolbox（参数由本宿主拼装，数值标注为未实测）；`doctor` 用 `execution.run` 逐步探测编码器与滤镜，是进度回调的第一个真实消费者 |
 | P6 高级媒体 | 部分完成 | 动态照片识别（含 Ultra HDR 判定）已在 macOS 实现并有合成字节单测；HDR10+ 的 SEI 读取与 `dhdr10-info` 文档生成都进了核心（`metadata.hdr10plus`、`metadata.hdr10plus_document`，逐位与逐帧测试），宿主侧的扫描与导出未做；RAW 显影的滤镜链进了核心（`plan.raw_filter`，顺序有测试），宿主侧的 RAW 解包与校准命令未做 |
 | P7 校准与优化 | 回收闭环完成 | 标识、策略、存储抽象、计划与带范围保护的删除已接线；预算测量、预设候选与长任务待做 |
-| P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
-| P9 合并发布 | 未执行 | 分支已就绪（检查全绿）；合并、标签与正式 Release 待执行，签名见 P8 |
+| P8 发布准备 | 完成 | 四语文档与隐私说明就绪；按决定**不做代码签名**，发布页给出 SHA-256 供核对 |
+| P9 合并发布 | 未执行 | 分支已就绪（检查全绿）；合并、标签与正式 Release 待执行（不带签名） |
 
 ### 与方案的已知偏差
 
@@ -282,7 +282,7 @@ every result below comes from GitHub Actions at commit `5d93e26`.
   .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).
 
 **Still unverified**: real hardware encode/decode for QSV / AMF / NVENC, GUI runtime
-behaviour and first-frame presentation, the signing application and the release artifacts.
+behaviour and first-frame presentation, and the release artifacts.
 VideoToolbox share (HEVC plus AAC) is encoded and checked on the macOS pipeline. Plan §12
 records the others as "not run" rather than folding them into pass or fail.
 
@@ -298,8 +298,8 @@ records the others as "not run" rather than folding them into pass or fail.
 | P5 macOS app | First conversion runs | Open, ffprobe probe, core normalization and real stream display work; `convert` takes encoder, GOP, mapping, parameters, the HDR metadata tokens, the curve LUT and the tone map from the core and produces SDR, 10-bit HDR and a PQ clip that keeps its mastering display in CI; the curve and HDR to SDR chains are built and asserted, but Homebrew's FFmpeg 9 has lut3d yet neither zscale nor libplacebo, so each render stops with a named refusal; the window can convert the open file directly (progress comes from FFmpeg's own `-progress` stream and the run can be cancelled); the preview canvas and timeline use AVFoundation stills and scrub; the export sheet picks the folder and name and confirms a replacement; share runs on VideoToolbox with host-built flags (the values are marked unmeasured); `doctor` probes encoders and filters through `execution.run`, the first real user of the progress sink |
 | P6 Advanced media | Partial | Motion photo recognition (with the Ultra HDR flag) is implemented on macOS and tested on composed bytes; the HDR10+ SEI reader and the `dhdr10-info` document builder are in the core (`metadata.hdr10plus`, `metadata.hdr10plus_document`, tested bit by bit and frame by frame) while the host-side scan and export are not; the RAW development chain is in the core (`plan.raw_filter`, ordering tested) while the host-side demux and calibration commands are not |
 | P7 Calibration | Reclamation closed | Identity, retention, the store seam, the plan and guarded deletion are wired; budgets, preset candidates and long jobs remain |
-| P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |
-| P9 Merge and release | Not executed | The branch is ready and green; the merge, tag and release await execution, with signing under P8 |
+| P8 Release prep | Done | Four-language docs and the privacy statement are in place; builds ship **unsigned** by decision, with a SHA-256 published for checking |
+| P9 Merge and release | Not executed | The branch is ready and green; the merge, tag and release await execution, without signing |
 
 ### Known deviations
 

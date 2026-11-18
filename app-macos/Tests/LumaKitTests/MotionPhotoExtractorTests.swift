@@ -11,9 +11,13 @@ final class MotionPhotoExtractorTests: XCTestCase {
 
         let written = try MotionPhotoExtractor.extract(from: source, to: destination)
 
-        XCTAssertEqual(written, video.count)
+        // The video region starts at its first box header, so the copy carries that too.
+        var expected = Data([0x00, 0x00, 0x00, 0x18])
+        expected += Data("ftyp".utf8)
+        expected += video
+        XCTAssertEqual(written, expected.count)
         let extracted = try Data(contentsOf: destination)
-        XCTAssertEqual(extracted, video)
+        XCTAssertEqual(extracted, expected)
         // The primary image must not leak into the video: its bytes are gone.
         XCTAssertLessThan(extracted.count, (try Data(contentsOf: source)).count)
     }

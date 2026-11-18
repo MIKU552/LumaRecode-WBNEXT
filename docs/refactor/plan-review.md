@@ -17,7 +17,6 @@
 | macOS 27 镜像 | 镜像为 macOS 27.0.1（Darwin 27.0.0），含 Xcode 27.0 / 27.1（默认）/ 27.2；YAML 标签是 `xcode-27` 或 `xcode-27-xlarge`，仅 arm64，属预览镜像 | 应用构建作业固定 `xcode-27`；`macos-latest` 是 macOS 26，无法构建 27.0 部署目标 |
 | NVIDIA Video Codec SDK 13.1 | 支持 Windows ARM64 原生构建，明确不支持 ARM64EC；驱动 610 及以上、CUDA 13.1 及以上；示例针对 FFmpeg 7.1 编译 | ARM64 版 FFmpeg、原生依赖和 SDK 桩库必须全部是 ARM64 构建 |
 | AMF 在 FFmpeg 中的设置 | `rc` 默认 -1 属内部保留，必须显式指定；`qvbr_quality_level` 需配合 `rc=qvbr`；`bf` 只适用于 H.264；页面没有 10 位说明 | AMF 的 10 位与 HDR 预设不能只依据该页，需查 AMF SDK 文档并实测 |
-| SignPath 条款 | 要求 OSI 许可且无商业双许可、已发布、首页有「Code signing policy」段落、作者/审核/批准角色、MFA、每次发布人工批准、构建可验证、产物元数据受限 | 仓库当前没有签名政策段落，P8 必须补齐后才能申请 |
 | .NET 单文件部署 | 默认只打包托管程序集；原生库需 `IncludeNativeLibrariesForSelfExtract`，且在启动前解压到 `%TEMP%/.net`；压缩会额外增加启动开销 | 方案 §10.4 已定；标识与回收规则已在 `luma-core/src/cache.rs` 实现并有测试，落盘与清理仍待 P7 |
 | macOS 27 首次打开 | 逐应用在「系统设置 → 隐私与安全性」点「仍要打开」，按钮仅在尝试打开后约一小时内可用，需输入密码；不要求全局关闭 Gatekeeper | 与方案 §14.1 一致，分发说明按此撰写 |
 | Liquid Glass | 用新 SDK 重建即自动采用标准控件的材质；自定义背景会干扰效果；`UIDesignRequiresCompatibility` 可临时保留旧外观；应用图标改为分层设计 | 现有 SwiftUI 骨架的自定义背景需要移除，图标需用 Icon Composer 重制 |
@@ -27,7 +26,6 @@
 1. **单 EXE 与解包缓存**（已由补充方案回答）：§10.4 保留单 EXE 并要求缓存索引、构建标识复用与空间回收。仍需确定的是构建标识的取值（源码提交 + 工具链？）、缓存根目录与保留预算，这三项要在 P3 定标识、P7 测量后定数值。
 2. **macOS 预览镜像**：`xcode-27` 是预览镜像，不在 Actions SLA 内。正式发布构建是否允许使用预览镜像，还是等 macOS 27 转正后再发？
 3. **Swift 与 Xcode 对应关系**：方案写 Swift 6.4 系列，需在镜像上以 `swift --version` 确认实际版本并写入构建记录。
-4. **签名政策位置**：SignPath 要求的「Code signing policy」放在根 README，还是单独页面并在 README 链接？
 5. **预设字段含义**：方案 §5.1 的「TU4」与 `recommended-presets.json` 里的 `"preset": "4"` 是否同一含义？建议在预设表增加说明字段，避免后续按其他后端的 TU 语义误读。
 6. **macOS 的 FFmpeg 来源**：方案 §14.3 说 FFmpeg 由用户提供，但 macOS 从 Finder 启动时没有终端 PATH；查找顺序（应用内、`/usr/local/bin`、`/opt/homebrew/bin`、用户设置）需要在 P5 明确。
 
@@ -54,7 +52,6 @@ conclusions, as the plan itself states.
 | macOS 27 image | Image runs macOS 27.0.1 (Darwin 27.0.0) with Xcode 27.0 / 27.1 (default) / 27.2; the YAML label is `xcode-27` or `xcode-27-xlarge`, arm64 only, preview status | The app job pins `xcode-27`; `macos-latest` is macOS 26 and cannot build a 27.0 deployment target |
 | NVIDIA Video Codec SDK 13.1 | Native Windows ARM64 builds are supported; ARM64EC is explicitly not; driver 610+, CUDA 13.1+; samples built against FFmpeg 7.1 | ARM64 FFmpeg, native dependencies and SDK stubs must all be ARM64 builds |
 | AMF settings in FFmpeg | `rc` defaults to -1 and is reserved, so it must be set explicitly; `qvbr_quality_level` requires `rc=qvbr`; `bf` applies to H.264 only; the page says nothing about 10-bit | AMF 10-bit and HDR presets cannot rely on that page; the SDK docs plus measurement are required |
-| SignPath terms | Requires an OSI license without commercial dual-licensing, a released project, a "Code signing policy" section on the home page, author/reviewer/approver roles, MFA, manual approval per release, verifiable builds and restricted artifact metadata | The repository has no signing policy section yet; P8 must add it before applying |
 | .NET single-file | Bundles managed assemblies only; native libraries need `IncludeNativeLibrariesForSelfExtract`, which extracts to `%TEMP%/.net` before start; compression adds startup cost | §10.4 decides it; the identity and retention rules now live in `luma-core/src/cache.rs` with tests, while extraction and deletion wait for P7 |
 | macOS 27 first open | Per-app override in System Settings → Privacy & Security → "Open Anyway", available for about an hour after the attempt, password required; no global Gatekeeper override | Matches plan §14.1; distribution notes should say exactly this |
 | Liquid Glass | Standard controls adopt the material when rebuilt with the new SDK; custom backgrounds interfere; `UIDesignRequiresCompatibility` keeps the old look temporarily; app icons move to layered artwork | The SwiftUI shell's custom backgrounds must go; the icon needs Icon Composer artwork |

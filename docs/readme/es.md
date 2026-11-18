@@ -141,7 +141,7 @@ licenses/  Licencias, avisos y procedencia de componentes de terceros
 
 ## Code signing policy
 
-Las compilaciones de Windows no están firmadas por ahora. Antes de la versión se solicitará la firma gratuita de código abierto de SignPath Foundation; si se aprueba, SignPath.io compila y firma el paquete con un certificado emitido a SignPath Foundation, sin comprar certificados comerciales. Mientras tanto, la página de descarga indica «sin firmar» y el proyecto no cambia a una opción de pago.
+Las compilaciones de Windows se distribuyen **sin firmar**; es una decisión del proyecto y no se solicitará ningún certificado de firma. La página de la versión publica un SHA-256 del paquete para poder comprobarlo, y el aviso de SmartScreen al ejecutarlo por primera vez es esperado: no hace falta desactivar la protección del sistema.
 
 La versión de macOS usa una firma ad-hoc gratuita: sin Apple Developer ID y sin notarización. En el primer inicio, elige «Abrir de todos modos» en Ajustes del Sistema → Privacidad y seguridad; las notas de distribución indican ese paso y nunca piden desactivar Gatekeeper.
 

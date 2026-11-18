@@ -141,7 +141,7 @@ licenses/  第三方许可、声明与来源清单
 
 ## Code signing policy（代码签名政策）
 
-Windows 发布包目前未签名。接近发布时会申请 SignPath Foundation 的免费开源签名；获批后，安装包由 SignPath.io 构建并签名、证书由 SignPath Foundation 签发，不购买商业证书。未获批或尚未完成时，下载页会标明“未签名”，不转向收费方案。
+Windows 发布包**不签名**，这是项目的明确决定，不再申请代码签名证书。发布页给出安装包的 SHA-256，下载后可自行核对来源；首次运行出现的 SmartScreen 提示属预期行为，无需关闭系统防护。
 
 macOS 版本使用免费 ad-hoc 签名，不使用 Apple Developer ID，也未经过公证。首次打开需在“系统设置 → 隐私与安全性”中选择“仍要打开”，分发说明会写明该步骤，不要求关闭 Gatekeeper。
 
