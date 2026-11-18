@@ -208,7 +208,8 @@ jobs:
             -c:a pcm_s16le -shortest -y "$work/hlg.mkv"
 
           binary="app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode"
-          export LUMARECODE_PRESETS="$GITHUB_WORKSPACE/Assets/recommended-presets.json"
+          # The share rows name a backend, and on this host that is VideoToolbox.
+          export LUMARECODE_PRESETS="$GITHUB_WORKSPACE/Assets/recommended-presets-macos.json"
           "$binary" convert "$work/source.mp4" -o "$work/out.mkv" \
             --purpose archive --codec hevc --input-kind sdr
           # No --input-kind here either: the clip's own tags must say HLG.
