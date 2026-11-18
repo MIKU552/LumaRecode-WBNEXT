@@ -3,6 +3,7 @@
 
 use luma_core::domain::{Codec, Purpose, Variant};
 use luma_core::presets::{AudioDefault, PresetRegistry, SampleRate};
+use serde_json::Value;
 
 const ASSET: &str = include_str!("../../../../Assets/recommended-presets.json");
 
@@ -162,4 +163,29 @@ fn malformed_documents_are_rejected_with_a_stable_code() {
             .code(),
         "preset.invalid"
     );
+}
+
+const MAC_ASSET: &str = include_str!("../../../../Assets/recommended-presets-macos.json");
+
+#[test]
+fn the_macos_table_names_videotoolbox_for_share() {
+    let registry = PresetRegistry::parse(MAC_ASSET).expect("macOS tables parse");
+
+    let preset = registry
+        .video(Purpose::Share, Codec::Hevc, Variant::Standard)
+        .expect("share HEVC");
+    assert_eq!(preset.encoder, "hevc_videotoolbox");
+    // VideoToolbox has no effort knob, so the table leaves the field out entirely.
+    assert_eq!(preset.preset, "");
+    assert_eq!(preset.quality, 60);
+    assert_eq!(
+        preset.parameters.get("realtime").map(Value::to_string),
+        Some("1".to_owned())
+    );
+
+    // VideoToolbox has no AV1 encoder, so that row stays software and the host refuses it.
+    let av1 = registry
+        .video(Purpose::Share, Codec::Av1, Variant::Standard)
+        .expect("share AV1");
+    assert_eq!(av1.encoder, "libsvtav1");
 }

@@ -82,6 +82,14 @@ fn map_text(map: &Map<String, Value>, key: &str, path: &str) -> CoreResult<Strin
     }
 }
 
+/// Effort name for a backend that has one.
+///
+/// Some backends take no effort knob at all — VideoToolbox has `-q:v` and nothing like
+/// `-preset` — so the field is optional rather than a name the host has to invent.
+fn optional_text(map: &Map<String, Value>, key: &str) -> String {
+    map.get(key).and_then(Value::as_str).unwrap_or_default().to_owned()
+}
+
 fn map_int(map: &Map<String, Value>, key: &str, path: &str) -> CoreResult<i64> {
     match map.get(key) {
         Some(Value::Number(number)) => number
@@ -179,7 +187,7 @@ impl PresetRegistry {
         Ok(VideoPreset {
             selector: selector.clone(),
             encoder: text_field(table, "encoder", &selector)?,
-            preset: text_field(table, "preset", &selector)?,
+            preset: optional_text(require_object(table, &selector)?, "preset"),
             quality: int_field(table, "quality", &selector)?,
             declared_pixel_format: table
                 .get("pixel_format")

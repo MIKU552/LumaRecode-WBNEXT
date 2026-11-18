@@ -51,7 +51,6 @@
  "share": {
   "avc": {
    "encoder": "h264_videotoolbox",
-   "preset": "",
    "quality": 65,
    "pixel_format": "yuv420p",
    "encoder_parameters": {
@@ -61,12 +60,24 @@
   },
   "hevc": {
    "encoder": "hevc_videotoolbox",
-   "preset": "",
    "quality": 60,
    "pixel_format": "yuv420p",
    "encoder_parameters": {
     "realtime": 1,
     "allow_sw": 1
+   }
+  },
+  "av1": {
+   "encoder": "libsvtav1",
+   "preset": "6",
+   "quality": 30,
+   "pixel_format": "yuv420p",
+   "tune": 0,
+   "lp": 4,
+   "encoder_parameters": {
+    "enable-qm": 1,
+    "qm-min": 8,
+    "qm-max": 15
    }
   }
  },
@@ -95,5 +106,5 @@
   "av1_compatibility_audio": "aac",
   "note": "有损预设为双声道；AV1默认Opus192K，另保留AAC256K兼容项。归档默认复制全部原音轨。音频不与视频编码器技术绑定。"
  },
- "note": "macOS 表：archive 与共享表一致（软件编码器）；share 走 VideoToolbox。VideoToolbox 没有 AV1，share-av1 在 macOS 上不可用。两档 quality 是 -q:v（1–100，越大越好）的起始值，等同“适合分享”的意图，按方案 §4 的实机验证未完成，属未实测默认值，拿到 M 系列记录后再校准。"
+ "note": "macOS 表：archive 与共享表一致（软件编码器）；share 的 HEVC/H.264 走 VideoToolbox，没有 effort 一类参数，所以不写 preset 字段，参数用 -q:v 加 realtime/allow_sw。VideoToolbox 没有 AV1，share/av1 只能留在软件 SVT-AV1——本宿主会拒绝该档并提示改选 HEVC。两档 quality 是 -q:v（1–100，越大越好）的起始值，按方案 §4 的实机验证未完成，属未实测默认值。"
 }
