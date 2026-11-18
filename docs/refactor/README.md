@@ -148,16 +148,13 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 **已完成**：`Interop` 与 `qa/NativeChecks` 已加入 `LumaRecode.slnx` 与 `.sln`，`windows` 作业会读回
 两份文件核对，IDE 与命令行现在是同一入口。
 
-1. **执行层是合并前唯一的架构性缺口**：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描需要子进程与
-   带任务 ID、序号的进度事件（方案 §3.3）；ABI 1 的 JSON 信封只承载规划调用，事件要走类型化结构体
-   与回调。做完这一项，P6 的四个模块才有地方落。
-2. 跨制式渲染需要带 `zscale` / `lut3d` / `libplacebo` 的 FFmpeg，以及（对 libplacebo 而言）可用的
-   Vulkan 设备。Homebrew 的 ffmpeg 9 缺 `zscale` 与 `libplacebo`（`lut3d` 有），托管 Windows runner 的 full 构建虽带滤镜
-   却没有 Vulkan（实测 `FFmpeg conversion failed`），所以两处都断言到「计划完整」与「缺哪个滤镜」
-   为止；本机（full 构建 + GPU）用同一条链可以正常出片。
-3. SDR→HDR 仍未接（核心显式拒绝，属产品决策）；宿主侧的预览缩放、动态照片补边、RAW 显影与整条链
-   的顺序按设计留在宿主。
-4. P6 的四个模块（动态照片、RAW 显影、HDR10+ 提取、Ultra HDR 图片）尚未开始，前两项依赖第 1 条。
+1. **合并与发布（P9）**：合并到 `main`、打标签、写 Release 说明；按决定不带签名，发布页给出 SHA-256。
+2. 跨制式渲染的真实出片仍需要一件事：一个带 `zscale` 与 `libplacebo` 的 FFmpeg 构建（Homebrew 的
+   ffmpeg 9 只有 `lut3d`），以及（对 libplacebo 而言）可用的 Vulkan。两处流水线现在断言到「计划完整」
+   与「缺哪个滤镜」为止；本机（full 构建 + GPU）用同一条链可以正常出片。
+3. SDR→HDR 未开放（核心显式拒绝，属产品决策）；宿主侧的预览缩放、动态照片补边与整条链的顺序按设计
+   留在宿主。
+4. 按范围决定暂不做的两项：ProRes RAW 的宿主解包（需要真实素材）与 P7 的预设候选（需要实测吞吐）。
 
 ## English
 
@@ -334,10 +331,8 @@ records the others as "not run" rather than folding them into pass or fail.
 **Done**: `Interop` and `qa/NativeChecks` are in both `LumaRecode.slnx` and `.sln`; the `windows`
 job reads each file back, so the IDE and the command line now open the same projects.
 
-1. **The execution layer is the one architectural gap before the merge**: `DynamicHdr.ExtractAsync`
-   and the HDR10+ bitstream scan need subprocesses and progress events carrying a task id and a
-   sequence number (plan §3.3). The revision-1 JSON envelope only carries planning calls, so events
-   need typed structs and a callback; until that lands P6's four modules have nowhere to go.
+1. **Merge and release (P9)**: merge to `main`, tag, write the release notes; unsigned by decision,
+   with a SHA-256 published on the release page.
 2. Both platforms build the HDR to SDR chain from the core. Rendering it needs two things:
    an FFmpeg with libplacebo and a usable Vulkan device. Homebrew's formula has no such
    filter, and the hosted Windows runner's full build has the filter but no Vulkan device
