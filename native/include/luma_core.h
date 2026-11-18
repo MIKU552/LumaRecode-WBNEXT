@@ -15,9 +15,10 @@
  *   {"ok":false,"error":{"code":"policy.hdr_depth","detail":null}}
  * NULL means allocation failed; treat it as a fatal host error.
  *
- * The envelope transport is the revision-1 contract for planning calls. Frame
- * progress events stay outside it: those move to typed structs with explicit
- * sequence numbers before the first release build.
+ * The envelope transport is the revision-1 contract for planning calls.
+ * Progress events are modelled in the core (luma-core's ProgressEvent: task id,
+ * sequence number, step index, fraction) but are not on this surface yet; the
+ * callback entry point is the remaining half of the plan's section 3.3.
  */
 #ifndef LUMARECODE_LUMA_CORE_H
 #define LUMARECODE_LUMA_CORE_H

@@ -126,7 +126,9 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 
 1. **跨语言传输**：ABI 1 的全部规划调用走单个 `luma_call_json` 入口与 JSON 信封。
    方案 §3.3 要求进度事件带任务 ID 与顺序信息并可靠送达终态，这需要类型化结构体与
-   回调注册；在 P2 完成前不会把进度事件塞进这个信封。头文件已注明该边界。
+   回调注册；在 P2 完成前不会把进度事件塞进这个信封。核心侧的事件形状已就绪
+   （`ProgressEvent`：任务 ID、序号、步号、比例，失败步自行上报），C 表面（回调注册）
+   是剩下的另一半。
 2. **单 EXE 与解包缓存**：补充后的方案 §10.4 已给出取舍——保留单 EXE，但要求把解包内容
    最小化、按构建标识复用、只保留当前与近期回退构建、在首屏就绪后异步回收，并提供缓存
    占用与清理入口；§11.3 还要求测试使用独立的解包缓存。当前 App 仍使用 `PublishSingleFile` + `IncludeAllContentForSelfExtract`（.NET 已把全量提取标注为不推荐），
@@ -304,8 +306,9 @@ records the others as "not run" rather than folding them into pass or fail.
 1. **Transport**: every ABI 1 planning call goes through one `luma_call_json`
    entry with a JSON envelope. Progress events need task ids, ordering and
    guaranteed terminal delivery, which requires typed structs and callback
-   registration; they will not be pushed into this envelope. The header states
-   the boundary.
+   registration; they will not be pushed into this envelope. The core shape exists now
+   (`ProgressEvent`: task id, sequence, step, fraction, with the failing step reporting
+   itself); the C surface is the remaining half, and the header states that boundary.
 2. **Single EXE and the extraction cache**: the supplemented §10.4 decides this —
    keep the single file, but minimise what is written, reuse an extraction result
    per build identity, retain only the current and a few fallback builds, reclaim
