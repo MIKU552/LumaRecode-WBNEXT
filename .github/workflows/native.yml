@@ -353,7 +353,10 @@ jobs:
           # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
           # that filter, so this step asserts the plan and the refusal here, and renders only
           # when the build actually has it.
-          if ffmpeg -hide_banner -filters 2>/dev/null | grep -q " libplacebo "; then
+          # Presence is not usability: a build can list libplacebo and still fail to open a
+          # device, which is exactly what a hosted runner does. The probe decides the branch.
+          if ffmpeg -hide_banner -v error -f lavfi -i color=red:s=32x32:d=0.1 \
+               -vf "libplacebo=format=yuv420p" -f null - >/dev/null 2>&1; then
             "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
               --purpose archive --codec hevc --output sdr | tee build-info/convert-hdr-to-sdr.txt
             ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
