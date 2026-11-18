@@ -34,6 +34,7 @@
 - 执行层补上类型化进度事件（任务 ID、序号、步号、比例）；失败步会自行上报，比例只在全部成功时到 1。
 - 新增 `luma_set_progress_sink` 与 `execution.run`：宿主给出命令序列，核心按步执行并把事件送回回调。
 - macOS 新增 `doctor`：逐步探测 FFmpeg 的编码器与滤镜并列出缺项，是进度回调的第一个真实消费者。
+- P6 起步：macOS 能识别动态照片与 Ultra HDR（合成字节单测）；核心新增 HDR10+ SEI 读取与 RAW 显影滤镜链（逐位/顺序测试）。扫描、`dhdr10-info` 导出与 RAW 解包仍待做。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -334,6 +335,7 @@
 - The execution layer now has typed progress events (task id, sequence, step, fraction); a failing step reports itself and the fraction reaches one only on success.
 - `luma_set_progress_sink` and `execution.run` let a host hand over a sequence of commands and hear every finished step.
 - macOS gains `doctor`: it probes the FFmpeg encoders and filters step by step and lists what is missing, as the first real user of the progress sink.
+- P6 begins: macOS recognises motion photos and Ultra HDR (tested on composed bytes), and the core gains the HDR10+ SEI reader and the RAW development chain (bit-level and ordering tests). The scan, the `dhdr10-info` export and the RAW demux remain.
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

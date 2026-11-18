@@ -63,7 +63,9 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.render_filters` | `log`、`tone_map`、`dolby_render`、`drop_dynamic_metadata`、`vpp` | 曲线 LUT、色调映射、Dolby 渲染、元数据删除与 VPP，按需返回 |
 | `plan.color_tags` | `kind`、`output`、`rgb`、`dolby_profile5`、`source_range`、`output_range`、`primaries`、`transfer`、`space` | 源侧与输出侧两套色彩标签，以及源侧的 `setparams` 条目 |
 | `plan.log_profile` | `profile` | 曲线的 LUT 文件名、矩阵与范围 |
-| `execution.run` | `task_id`、`commands`（`program` + `arguments`） | 逐步执行的结果；每步结束调用已注册的进度回调 |
+| `execution.run` | `task_id`、`commands`（`program` + `arguments`）、`capture_stdout` | 逐步执行的结果；每步结束调用已注册的进度回调 |
+| `metadata.hdr10plus` | `payload`（字节数组） | FFprobe 紧凑写法的单行元数据 |
+| `plan.raw_filter` | `width`、`height`、`crop`、`matrix`、`commands`、`preview_size` | RAW 显影的 `-vf` 链 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -145,7 +147,9 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.render_filters` | `log`, `tone_map`, `dolby_render`, `drop_dynamic_metadata`, `vpp` | Curve LUT, tone mapping, Dolby render, metadata drop and VPP, only the ones that apply |
 | `plan.color_tags` | `kind`, `output`, `rgb`, `dolby_profile5`, `source_range`, `output_range`, `primaries`, `transfer`, `space` | The source tags, the output tags and the source entry |
 | `plan.log_profile` | `profile` | The curve's LUT file, matrix and range |
-| `execution.run` | `task_id`, `commands` (`program` + `arguments`) | One outcome per step; the registered sink hears every finished step |
+| `execution.run` | `task_id`, `commands` (`program` + `arguments`), `capture_stdout` | One outcome per step; the registered sink hears every finished step |
+| `metadata.hdr10plus` | `payload` (byte array) | One metadata line in FFprobe's compact spelling |
+| `plan.raw_filter` | `width`, `height`, `crop`, `matrix`, `commands`, `preview_size` | The `-vf` chain that develops a RAW frame |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.

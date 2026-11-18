@@ -131,8 +131,11 @@ int32_t LUMA_CALL luma_set_progress_sink(
  *   plan.color_tags      {kind, output, rgb?, dolby_profile5?, source_range, output_range,
  *                        primaries?, transfer?, space?} -> {source, target, source_filter}
  *   plan.log_profile     {profile} -> {profile, file, matrix, range}
- *   execution.run        {task_id?, commands:[{program, arguments}]} -> {ok, stopped_early,
- *                        outcomes}
+ *   execution.run        {task_id?, commands:[{program, arguments}], capture_stdout?}
+ *                        -> {ok, stopped_early, outcomes}
+ *   metadata.hdr10plus   {payload:[u8]} -> {line}
+ *   plan.raw_filter      {width, height, crop:[4], matrix:[12], commands?, preview_size?}
+ *                        -> {filter}
  *
  * Progress: luma_set_progress_sink(callback, user_data) registers a sink that
  * execution.run calls once per finished step; pass a null callback to clear it.
