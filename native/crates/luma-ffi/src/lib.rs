@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 28] = [
+const OPERATIONS: [&str; 29] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -69,9 +69,67 @@ const OPERATIONS: [&str; 28] = [
     "plan.render_filters",
     "plan.color_tags",
     "plan.log_profile",
+    "execution.run",
 ];
 
 /// Returns the ABI revision the loaded library implements.
+/// Progress callback: called once for every finished step.
+///
+/// `sequence` increases within a task, so a host that runs two sequences at once can drop
+/// a late event instead of showing progress going backwards.
+pub type LumaProgressCallback =
+    unsafe extern "C" fn(u64, u64, u32, u32, f32, *mut std::ffi::c_void);
+
+struct ProgressSink {
+    callback: LumaProgressCallback,
+    user_data: *mut std::ffi::c_void,
+}
+
+// SAFETY: the host owns the context pointer and keeps it valid until it clears the sink.
+unsafe impl Send for ProgressSink {}
+
+static PROGRESS_SINK: std::sync::Mutex<Option<ProgressSink>> = std::sync::Mutex::new(None);
+
+/// Registers the progress sink; pass a null callback to clear it. Returns 0 on success.
+///
+/// # Safety
+///
+/// `user_data` must stay valid until the sink is cleared or replaced.
+#[unsafe(no_mangle)]
+pub extern "C" fn luma_set_progress_sink(
+    callback: Option<LumaProgressCallback>,
+    user_data: *mut std::ffi::c_void,
+) -> i32 {
+    let mut sink = match PROGRESS_SINK.lock() {
+        Ok(sink) => sink,
+        Err(_) => return -1,
+    };
+    *sink = callback.map(|callback| ProgressSink { callback, user_data });
+    0
+}
+
+/// Copies the sink out before calling it, so a callback that runs another sequence cannot
+/// deadlock on this lock.
+fn emit_progress(event: &luma_core::execution::ProgressEvent) {
+    let copied = match PROGRESS_SINK.lock() {
+        Ok(sink) => sink.as_ref().map(|sink| (sink.callback, sink.user_data)),
+        Err(_) => None,
+    };
+    if let Some((callback, user_data)) = copied {
+        // SAFETY: the host registered this pointer and keeps it valid (see the setter).
+        unsafe {
+            callback(
+                event.task_id,
+                event.sequence,
+                event.step,
+                event.total,
+                event.fraction,
+                user_data,
+            );
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn luma_abi_version() -> u32 {
     ABI_VERSION
@@ -187,6 +245,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.render_filters" => plan_render_filters(&payload),
         "plan.color_tags" => plan_color_tags(&payload),
         "plan.log_profile" => plan_log_profile(&payload),
+        "execution.run" => execution_run(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -742,6 +801,57 @@ struct VppDto {
     out_range: String,
     #[serde(default)]
     sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct RunRequest {
+    #[serde(default)]
+    task_id: u64,
+    commands: Vec<CommandDto>,
+}
+
+#[derive(Deserialize)]
+struct CommandDto {
+    program: String,
+    #[serde(default)]
+    arguments: Vec<String>,
+}
+
+fn execution_run(payload: &Value) -> CoreResult<Value> {
+    use luma_core::execution::{Outcome, ProcessRunner, run_with_progress};
+
+    let request: RunRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "execution"))?;
+    let steps: Vec<luma_core::process::Command> = request
+        .commands
+        .into_iter()
+        .map(|command| {
+            let mut step = luma_core::process::Command::new(command.program);
+            for argument in command.arguments {
+                step = step.arg(argument);
+            }
+            step
+        })
+        .collect();
+
+    let mut runner = ProcessRunner;
+    let mut sink = |event: luma_core::execution::ProgressEvent| emit_progress(&event);
+    let report = run_with_progress(&mut runner, &steps, request.task_id, &mut sink);
+    let outcomes: Vec<Value> = report
+        .outcomes
+        .iter()
+        .map(|outcome| match outcome {
+            Outcome::Succeeded { exit_code, .. } => json!({"ok": true, "exit_code": exit_code}),
+            Outcome::Failed { exit_code, message } => {
+                json!({"ok": false, "exit_code": exit_code, "message": message})
+            }
+        })
+        .collect();
+    Ok(json!({
+        "ok": report.succeeded(),
+        "stopped_early": report.stopped_early,
+        "outcomes": outcomes,
+    }))
 }
 
 #[derive(Deserialize)]

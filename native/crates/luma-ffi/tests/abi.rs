@@ -1,8 +1,11 @@
 //! Boundary tests: envelope shape, ownership and failure codes.
 
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, c_void};
+use std::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
-use lumacore::{luma_abi_version, luma_call_json, luma_core_version, luma_string_free};
+use lumacore::{
+    luma_abi_version, luma_call_json, luma_core_version, luma_set_progress_sink, luma_string_free,
+};
 use serde_json::Value;
 
 fn call(op: &str, request: &str) -> Value {
@@ -469,4 +472,48 @@ fn presets_audio_names_the_share_encoder() {
     assert_eq!(preset["channels"], 2);
     // The table follows the source rate for AAC, so there is no fixed rate to pass on.
     assert_eq!(preset["sample_rate"], Value::Null);
+}
+
+static EVENTS: AtomicUsize = AtomicUsize::new(0);
+static LAST_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+static LAST_FRACTION_BITS: AtomicU32 = AtomicU32::new(0);
+
+unsafe extern "C" fn count_event(
+    _task: u64,
+    sequence: u64,
+    _step: u32,
+    _total: u32,
+    fraction: f32,
+    _user: *mut c_void,
+) {
+    EVENTS.fetch_add(1, Ordering::SeqCst);
+    LAST_SEQUENCE.store(sequence, Ordering::SeqCst);
+    LAST_FRACTION_BITS.store(fraction.to_bits(), Ordering::SeqCst);
+}
+
+#[test]
+fn execution_run_reports_to_the_registered_sink() {
+    assert_eq!(
+        luma_set_progress_sink(Some(count_event), std::ptr::null_mut()),
+        0
+    );
+
+    // A command that exists on every runner and exits zero.
+    let command = if cfg!(windows) {
+        serde_json::json!({"program": "cmd", "arguments": ["/c", "exit 0"]})
+    } else {
+        serde_json::json!({"program": "true"})
+    };
+    let request = serde_json::json!({ "task_id": 11, "commands": [command] }).to_string();
+    let report = data("execution.run", &request);
+
+    assert_eq!(report["ok"], Value::Bool(true));
+    assert_eq!(EVENTS.load(Ordering::SeqCst), 1);
+    assert_eq!(LAST_SEQUENCE.load(Ordering::SeqCst), 1);
+    assert_eq!(f32::from_bits(LAST_FRACTION_BITS.load(Ordering::SeqCst)), 1.0);
+
+    // Clearing the sink must stop the callbacks.
+    assert_eq!(luma_set_progress_sink(None, std::ptr::null_mut()), 0);
+    data("execution.run", &request);
+    assert_eq!(EVENTS.load(Ordering::SeqCst), 1);
 }
