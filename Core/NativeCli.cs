@@ -200,7 +200,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             report = new CliReporter(args.Has("json"), args.Has("verbose"), T);
             if (args.Version)
             {
-                Console.Out.WriteLine("LumaRecode " + context.Version);
+                Console.Out.WriteLine("LumaRecode " + context.Version + " WBNEXT");
                 return 0;
             }
             if (args.Help || args.Command is null)
