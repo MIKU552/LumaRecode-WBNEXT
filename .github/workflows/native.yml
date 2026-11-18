@@ -194,6 +194,9 @@ jobs:
           app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode doctor \
             | tee build-info/doctor-full.txt
           grep -q "Resources/bin/ffmpeg" build-info/doctor-full.txt
+          # Put the plain package back: the steps below assert what a user without a bundled
+          # FFmpeg sees, and they run the same binary.
+          bash app-macos/scripts/build-macos.sh --skip-dmg
 
       - name: Record versions and signature
         run: |
