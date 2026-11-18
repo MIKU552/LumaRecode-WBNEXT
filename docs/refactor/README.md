@@ -333,15 +333,13 @@ job reads each file back, so the IDE and the command line now open the same proj
 
 1. **Merge and release (P9)**: merge to `main`, tag, write the release notes; unsigned by decision,
    with a SHA-256 published on the release page.
-2. Both platforms build the HDR to SDR chain from the core. Rendering it needs two things:
-   an FFmpeg with libplacebo and a usable Vulkan device. Homebrew's formula has no such
-   filter, and the hosted Windows runner's full build has the filter but no Vulkan device
-   (observed as `FFmpeg conversion failed`), so both jobs assert the complete plan and the
-   refusal instead; the same chain renders fine on a machine with a GPU. Homebrew's ffmpeg 9
-   has **none** of `zscale`, `lut3d` or `libplacebo`, so every colour conversion there stops
-   at the plan. The curve LUT now runs on macOS (the core names the LUT file, its matrix and
-   its range for all five curves); SDR to HDR is still missing, and the host's preview
-   scaling, motion-photo padding, RAW development and chain order have not moved either.
+2. Both platforms build the colour chains from the core. The curve chain now renders for real
+   in CI through Homebrew's `ffmpeg-full` (keg-only, with `zscale` and `lut3d`) and the output
+   is asserted. The tone map stays a plan assertion: `ffmpeg-full` carries `libplacebo`, but a
+   hosted runner exposes no usable Vulkan device (observed as `Generic error in an external
+   library` on macOS and `FFmpeg conversion failed` on Windows), so the same chain stops at the
+   plan there and renders fine on a machine with a GPU. SDR to HDR is still missing, and the
+   host's preview scaling, motion-photo padding and chain order have not moved either.
 3. macOS still needs a VideoToolbox share table; static HDR metadata and the colour
    tag derivation both live in the core now. Cross-transfer conversion only needs the
    macOS side to call `plan.render_filters` and pick a curve.
