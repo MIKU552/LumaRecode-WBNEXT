@@ -1,0 +1,15 @@
+{
+  "note": "Windows packages that carry FFmpeg use these exact files. The hash is recorded here rather than followed from upstream, so a rebuild fails the build until someone bumps this file on purpose.",
+  "source": "https://github.com/BtbN/FFmpeg-Builds",
+  "licence": "GPL-3.0-or-later",
+  "packages": {
+    "x64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-gpl-9.0.zip",
+      "sha256": "2d6b258b36d699dc1da71ca8a065e5f9831006aadeb88ae4e12bab0679677b3d"
+    },
+    "arm64": {
+      "url": "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-winarm64-gpl-9.0.zip",
+      "sha256": "05e3f418f03ea6abc0a18825191bbe3313cdabc1c91bc2cf9c38941b758e191a"
+    }
+  }
+}

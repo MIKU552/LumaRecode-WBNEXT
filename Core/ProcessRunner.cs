@@ -222,6 +222,13 @@ public static class ProcessRunner
         }
 
         var executable = OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name + ".exe" : name;
+        // A package that carries FFmpeg keeps it beside the executable. That copy wins over
+        // PATH, so the package behaves the same on a machine that has another build installed.
+        var bundled = Path.Combine(AppContext.BaseDirectory, "tools", executable);
+        if (File.Exists(bundled))
+        {
+            return bundled;
+        }
         foreach (var folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             var path = Path.Combine(folder.Trim('"'), executable);
