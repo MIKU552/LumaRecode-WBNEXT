@@ -377,11 +377,16 @@ jobs:
             grep -q "setparams=color_primaries=bt2020:color_trc=arib-std-b67" build-info/convert-hdr-to-sdr.txt
             grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
             grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
-            if [ "$status" -ne 3 ]; then
-              echo "expected exit 3 without libplacebo, got $status" >&2
+            # Two honest outcomes: the build has no filter (exit 3), or it lists one but
+            # cannot open a device on this machine (exit 2, the run fails instead of lying).
+            if [ "$status" -eq 3 ]; then
+              grep -q "has no libplacebo filter" build-info/hdr-to-sdr.err
+            elif [ "$status" -eq 2 ]; then
+              grep -qiE "libplacebo|external library|device" build-info/hdr-to-sdr.err
+            else
+              echo "unexpected exit $status for a tone map without a device" >&2
               exit 1
             fi
-            grep -q "has no libplacebo filter" build-info/hdr-to-sdr.err
           fi
 
       - name: Archive app bundle
