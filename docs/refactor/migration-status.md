@@ -17,21 +17,21 @@
 | `Core/Models.cs`（`EncodeOptions`） | `luma-core/src/domain.rs` | 完成 | `tests/policy.rs` |
 | `Core/Models.cs`（`MediaInfo`） | `luma-core/src/source.rs` | 首片 | 仅保留规则所需字段 |
 | `Core/DynamicHdr.cs`（`Validate`、`Preserve`） | `luma-core/src/policy.rs` | 完成 | `tests/policy.rs` |
-| `Core/DynamicHdr.cs`（`ExtractAsync`） | 未迁移 | 未开始 | 依赖执行层 |
+| `Core/DynamicHdr.cs`（`ExtractAsync`） | 规则已在 `policy`；编排保留在宿主 | 按设计保留 | 帧字节不过 ABI；宿主用 `execution.run` 跑扫描 |
 | `Core/Transcoder.cs`（HDR 元数据参数组合、`HdrMetadata`） | `luma-core/src/metadata.rs` | 完成（`plan.hdr_metadata` 桥接） | `tests/metadata.rs`；`qa/NativeChecks` 逐编码器对照参数串 |
 | `Core/Transcoder.cs`（`ResolveFormat`、`Validate`） | `luma-core/src/policy.rs` | 首片（ResolveFormat 与 Validate 已接原生桥） | `qa/NativeChecks` 对照与桥接回放 |
 | `Core/Transcoder.cs`（FFmpeg 参数生成） | 保留在平台后端 | 未开始 | 方案 §3.2 明确归属后端 |
-| `Core/Transcoder.cs`（执行、原子发布） | 执行层（P2 后续） | 未开始 | — |
-| `Core/MediaProbe.cs` | 探测适配器（P2 后续） | 未开始 | — |
-| `Core/FrameExporter.cs`、`FramePreview*.cs` | 帧服务（P2 后续） | 未开始 | — |
-| `Core/MotionPhoto.cs` | 动态照片（P6） | 未开始 | — |
-| `Core/RawDevelopment.cs` | RAW 显影（P6） | 未开始 | — |
-| `Core/Hdr10Plus*.cs` | 动态 HDR（P6） | 未开始 | — |
-| `Core/UltraHdrCodec.cs` | 图片编码（P6） | 未开始 | — |
-| `Core/ProcessRunner.cs` | 执行层（P2 后续） | 未开始 | — |
+| `Core/Transcoder.cs`（执行、原子发布） | `luma-core/src/execution.rs` | 核心侧完成 | 顺序执行、逐步事件与回调已就位；进程启动仍归宿主 |
+| `Core/MediaProbe.cs` | 归一化在 `probe.rs` | 完成 | ffprobe 调用保留在宿主（文件与子进程） |
+| `Core/FrameExporter.cs`、`FramePreview*.cs` | 保留在宿主 | 按设计保留 | 帧字节不过 ABI；macOS 预览已用 AVFoundation |
+| `Core/MotionPhoto.cs` | 保留在宿主（帧字节不过 ABI） | 大部分完成 | 识别、提取与 Ultra HDR 判定已在 macOS 实现并有合成字节测试；写入仍在 Windows |
+| `Core/RawDevelopment.cs` | 滤镜链在 `raw.rs`，解包在宿主 | 部分完成 | `plan.raw_filter` 有顺序测试；宿主侧 RAW 解包与校准命令未做 |
+| `Core/Hdr10Plus*.cs` | SEI 读取与文档生成在 `sei.rs` | 部分完成 | `metadata.hdr10plus`、`metadata.hdr10plus_document` 各有测试；扫描编排在宿主 |
+| `Core/UltraHdrCodec.cs` | 保留在宿主 | 部分完成 | 判定已在 macOS 实现；图像级编解码需要解码器，留在宿主 |
+| `Core/ProcessRunner.cs` | `luma-core/src/execution.rs` | 核心侧完成 | 宿主可改用 `execution.run`；Windows 仍用自己的实现 |
 | `Core/CliArguments.cs`、`CliReporter.cs`、`NativeCli*.cs` | 保留在宿主，规则调用核心 | 未开始 | P3 |
-| `Core/InputFiles.cs` | 文件身份与覆盖保护 | 未开始 | P2 后续 |
-| `Core/ToolReportCache.cs` | 能力缓存 | 未开始 | P4 |
+| `Core/InputFiles.cs` | 保留在宿主 | 按设计保留 | 目录枚举与通配符属文件系统，无规则可迁 |
+| `Core/ToolReportCache.cs` | 保留在宿主 | 按设计保留 | 缓存键是进程与文件状态 |
 | — | `luma-core/src/capability.rs` | 新增 | 对应方案 §4；`qa/NativeChecks` 对照 C# 后端映射 |
 | — | `luma-core/src/plan.rs` | 新增 | 对应方案 §3.2「任务规划」，无基线 |
 | — | `luma-core/src/cache.rs` | 新增（§10.4 标识与回收策略） | `tests/cache.rs`；`doctor` 输出计划，`cache --purge` 执行删除，CI 校验 |
@@ -63,21 +63,21 @@ comparison and regression work finish, as plan §16.2 requires.
 | `Core/Models.cs` (`EncodeOptions`) | `luma-core/src/domain.rs` | Done | `tests/policy.rs` |
 | `Core/Models.cs` (`MediaInfo`) | `luma-core/src/source.rs` | First slice | Only fields the rules need |
 | `Core/DynamicHdr.cs` (`Validate`, `Preserve`) | `luma-core/src/policy.rs` | Done | `tests/policy.rs` |
-| `Core/DynamicHdr.cs` (`ExtractAsync`) | Not migrated | Not started | Needs the execution layer |
+| `Core/DynamicHdr.cs` (`ExtractAsync`) | Rules are in `policy`; the orchestration stays in the host | Stays by design | Frame bytes never cross the ABI; the host scans with `execution.run` |
 | `Core/Transcoder.cs` (HDR metadata parameters, `HdrMetadata`) | `luma-core/src/metadata.rs` | Done (bridged as `plan.hdr_metadata`) | `tests/metadata.rs`; `qa/NativeChecks` compares the parameter string per encoder |
 | `Core/Transcoder.cs` (`ResolveFormat`, `Validate`) | `luma-core/src/policy.rs` | First slice (ResolveFormat and Validate bridged) | `qa/NativeChecks` parity and bridge replay |
 | `Core/Transcoder.cs` (FFmpeg arguments) | Stays in the platform backend | Not started | Plan §3.2 assigns this to the backend |
-| `Core/Transcoder.cs` (execution, atomic publish) | Execution layer, later in P2 | Not started | — |
-| `Core/MediaProbe.cs` | Probe adapter, later in P2 | Not started | — |
-| `Core/FrameExporter.cs`, `FramePreview*.cs` | Frame services, later in P2 | Not started | — |
-| `Core/MotionPhoto.cs` | Motion photos (P6) | Not started | — |
-| `Core/RawDevelopment.cs` | RAW development (P6) | Not started | — |
-| `Core/Hdr10Plus*.cs` | Dynamic HDR (P6) | Not started | — |
+| `Core/Transcoder.cs` (execution, atomic publish) | `luma-core/src/execution.rs` | Core side done | Ordered runs, per-step events and the sink exist; starting a process stays with the host |
+| `Core/MediaProbe.cs` | Normalization in `probe.rs` | Done | The ffprobe call stays in the host (files and subprocesses) |
+| `Core/FrameExporter.cs`, `FramePreview*.cs` | Stays in the host | Stays by design | Frame bytes never cross the ABI; the macOS preview uses AVFoundation |
+| `Core/MotionPhoto.cs` | Stays in the host (frame bytes) | Mostly done | Recognition, extraction and the Ultra HDR flag exist on macOS with composed-byte tests; writing remains on Windows |
+| `Core/RawDevelopment.cs` | Chain in `raw.rs`, demux in the host | Partial | `plan.raw_filter` has ordering tests; the host-side demux and calibration commands are not done |
+| `Core/Hdr10Plus*.cs` | SEI reader and document builder in `sei.rs` | Partial | `metadata.hdr10plus` and `metadata.hdr10plus_document` are tested; the scan orchestration stays in the host |
 | `Core/UltraHdrCodec.cs` | Image encoding (P6) | Not started | — |
-| `Core/ProcessRunner.cs` | Execution layer, later in P2 | Not started | — |
+| `Core/ProcessRunner.cs` | `luma-core/src/execution.rs` | Core side done | A host may move to `execution.run`; Windows keeps its own |
 | `Core/CliArguments.cs`, `CliReporter.cs`, `NativeCli*.cs` | Stays in the host, calls the core for rules | Not started | P3 |
-| `Core/InputFiles.cs` | File identity and overwrite protection | Not started | Later in P2 |
-| `Core/ToolReportCache.cs` | Capability cache | Not started | P4 |
+| `Core/InputFiles.cs` | Stays in the host | Stays by design | Directory walking and globs are file system work, not rules |
+| `Core/ToolReportCache.cs` | Stays in the host | Stays by design | The cache key is process and file state |
 | — | `luma-core/src/capability.rs` | New | Plan §4; `qa/NativeChecks` compares the C# backend table |
 | — | `luma-core/src/plan.rs` | New | Plan §3.2 "task planning", no baseline |
 | — | `luma-core/src/cache.rs` | New (§10.4 identity and retention) | `tests/cache.rs`; `doctor` emits the plan, `cache --purge` deletes, CI checks both |
