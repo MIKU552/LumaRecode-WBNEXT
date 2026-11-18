@@ -105,7 +105,10 @@ fn a_sequence_reports_one_event_per_step() {
         vec![1, 2, 3]
     );
     // Every event names its task, so two sequences can share a sink.
-    assert!(seen.iter().all(|event| event.task_id == 7 && event.total == 3));
+    assert!(
+        seen.iter()
+            .all(|event| event.task_id == 7 && event.total == 3)
+    );
     assert!((seen[0].fraction - 1.0 / 3.0).abs() < 1e-6);
     assert_eq!(seen.last().map(|event| event.fraction), Some(1.0));
 }
