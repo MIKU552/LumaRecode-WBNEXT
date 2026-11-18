@@ -554,7 +554,11 @@ public struct CoreClient: Sendable {
             "metadata.hdr10plus_document",
             request: ["lines": lines]
         )
-        return payload["document"] ?? [:]
+        let envelope = try JSONSerialization.jsonObject(with: payload)
+        guard let object = envelope as? [String: Any], let document = object["document"] else {
+            throw CoreError.malformedResponse
+        }
+        return document
     }
 
     /// The `-i` block and stream selection.
