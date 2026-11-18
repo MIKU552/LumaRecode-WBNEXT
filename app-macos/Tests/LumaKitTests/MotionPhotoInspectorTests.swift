@@ -58,10 +58,16 @@ private enum Fixture {
     /// A complete JPEG: start marker, one comment segment with the payload, end marker.
     static func jpeg(payload: Int) -> Data {
         var data = Data([0xFF, 0xD8])
-        let length = payload + 2
-        data += Data([0xFF, 0xFE, UInt8(length >> 8), UInt8(length & 0xFF)])
-        data += Data(repeating: 0x11, count: payload)
+        data += comment(payload)
         data += Data([0xFF, 0xD9])
+        return data
+    }
+
+    /// One comment segment; a JPEG may hold several, and this keeps the markers honest.
+    static func comment(_ payload: Int) -> Data {
+        let length = payload + 2
+        var data = Data([0xFF, 0xFE, UInt8(length >> 8), UInt8(length & 0xFF)])
+        data += Data(repeating: 0x11, count: payload)
         return data
     }
 
@@ -72,9 +78,12 @@ private enum Fixture {
         motionPhoto: String? = "1",
         box: String = "ftyp"
     ) -> FixtureFile {
+        // The primary image is one JPEG and holds the XMP packet; the gain map, when there
+        // is one, is a second JPEG right after it.
         var file = Data([0xFF, 0xD8])
         file += app1(xmp(ultra: ultra, timestamp: timestamp, motionPhoto: motionPhoto))
-        file += jpeg(payload: 24)
+        file += comment(24)
+        file += Data([0xFF, 0xD9])
         if ultra {
             file += jpeg(payload: 16)
         }
