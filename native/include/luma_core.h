@@ -134,6 +134,7 @@ int32_t LUMA_CALL luma_set_progress_sink(
  *   execution.run        {task_id?, commands:[{program, arguments}], capture_stdout?}
  *                        -> {ok, stopped_early, outcomes}
  *   metadata.hdr10plus   {payload:[u8]} -> {line}
+ *   metadata.hdr10plus_document {lines:[string]} -> {document}
  *   plan.raw_filter      {width, height, crop:[4], matrix:[12], commands?, preview_size?}
  *                        -> {filter}
  *

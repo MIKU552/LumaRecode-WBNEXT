@@ -65,6 +65,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.log_profile` | `profile` | 曲线的 LUT 文件名、矩阵与范围 |
 | `execution.run` | `task_id`、`commands`（`program` + `arguments`）、`capture_stdout` | 逐步执行的结果；每步结束调用已注册的进度回调 |
 | `metadata.hdr10plus` | `payload`（字节数组） | FFprobe 紧凑写法的单行元数据 |
+| `metadata.hdr10plus_document` | `lines`（每帧一行） | `dhdr10-info` 文档：场景分组、三个索引与 profile |
 | `plan.raw_filter` | `width`、`height`、`crop`、`matrix`、`commands`、`preview_size` | RAW 显影的 `-vf` 链 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
@@ -149,6 +150,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.log_profile` | `profile` | The curve's LUT file, matrix and range |
 | `execution.run` | `task_id`, `commands` (`program` + `arguments`), `capture_stdout` | One outcome per step; the registered sink hears every finished step |
 | `metadata.hdr10plus` | `payload` (byte array) | One metadata line in FFprobe's compact spelling |
+| `metadata.hdr10plus_document` | `lines` (one per frame) | The `dhdr10-info` document: scene grouping, the three indices and the profile |
 | `plan.raw_filter` | `width`, `height`, `crop`, `matrix`, `commands`, `preview_size` | The `-vf` chain that develops a RAW frame |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
