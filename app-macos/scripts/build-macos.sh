@@ -98,7 +98,15 @@ if [[ $with_ffmpeg -eq 1 ]]; then
         exit 1
     fi
     mkdir -p "$app/Contents/Resources/bin" "$app/Contents/Resources/licenses"
-    cp "$full/bin/ffmpeg" "$full/bin/ffprobe" "$app/Contents/Resources/bin/"
+    # Homebrew's bin entries are symlinks into the Cellar; copy what they point at.
+    cp -L "$full/bin/ffmpeg" "$full/bin/ffprobe" "$app/Contents/Resources/bin/"
+    for binary in ffmpeg ffprobe; do
+        size="$(stat -f%z "$app/Contents/Resources/bin/$binary")"
+        if [[ $size -lt 1000000 ]]; then
+            echo "embedded $binary is only $size bytes; the copy took a link, not the file" >&2
+            exit 1
+        fi
+    done
     # The bundle ships GPL binaries, so their licence travels with them.
     for licence in "$full"/COPYING* "$full"/LICENSE*; do
         [[ -f "$licence" ]] && cp "$licence" "$app/Contents/Resources/licenses/"

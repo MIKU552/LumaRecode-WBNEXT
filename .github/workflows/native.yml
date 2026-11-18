@@ -189,6 +189,8 @@ jobs:
           fi
           bash app-macos/scripts/build-macos.sh --skip-dmg --with-ffmpeg
           test -x app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg
+          # A symlink would pass -x and add nothing to the package.
+          test "$(stat -f%z app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg)" -gt 1000000
           test -x app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffprobe
           # The bundled copy wins, so the package behaves the same on any machine.
           app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode doctor \
