@@ -303,6 +303,7 @@
 ### WBNEXT (refactor preview)
 
 - Derived from upstream 4.4.3 and renamed to the WBNEXT refactor preview on the independent `next` branch; not an official release.
+- Merged to `main`: the rules, parameters and colour decisions live in the shared core, both hosts call it over the C ABI, and the tag waits for signing.
 - The shared core moves to Rust; Windows and macOS use the same Rust 1.100.0 toolchain, with new `native` and `windows` Actions workflows.
 - Development assistance: WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context); later commits carry no co-author trailer.
 - Add the Windows / macOS code signing policy and privacy statement for the free signing application.
