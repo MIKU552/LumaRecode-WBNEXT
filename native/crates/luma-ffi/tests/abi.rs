@@ -563,7 +563,7 @@ struct BitWriter {
 impl BitWriter {
     fn write(&mut self, value: u32, count: u32) -> &mut Self {
         for bit in (0..count).rev() {
-            if self.used % 8 == 0 {
+            if self.used.is_multiple_of(8) {
                 self.bytes.push(0);
             }
             if (value >> bit) & 1 == 1 {
@@ -576,7 +576,7 @@ impl BitWriter {
     }
 
     fn pad(&mut self) -> &mut Self {
-        while self.used % 8 != 0 {
+        while !self.used.is_multiple_of(8) {
             self.write(0, 1);
         }
         self
