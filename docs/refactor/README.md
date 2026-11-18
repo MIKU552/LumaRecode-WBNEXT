@@ -143,19 +143,19 @@ macOS 统一使用 `xcode-27` 镜像）；
 
 ### 下一步
 
-1. 在能构建 Windows App SDK 的环境里，把 `Interop` 与 `qa/NativeChecks` 加入
-   `LumaRecode.slnx` 与 `.sln`，让 IDE 与命令行构建使用同一入口。
-2. HDR→SDR 与曲线链两个平台都由核心生成，真正的渲染需要两件事：带 `zscale` / `lut3d` /
-   `libplacebo` 的 FFmpeg，以及（对 libplacebo 而言）可用的 Vulkan 设备。Homebrew 的 ffmpeg 9
-   **三个滤镜都没有**，托管 Windows runner 的 full 构建虽带滤镜却没有可用的 Vulkan（实测
-   `FFmpeg conversion failed`），所以两处都断言到「计划完整」与「缺哪个滤镜」为止；本机
-   （full 构建 + GPU）用同一条链可以正常出片。
-   曲线 LUT 已在 macOS 上接通（五条曲线由核心给出文件名、矩阵与范围）；SDR→HDR 仍未接，
-   宿主的预览缩放、动态照片补边、RAW 显影与整条链的顺序也未迁移。
-3. macOS 的共享档位已接（`Assets/recommended-presets-macos.json`，VideoToolbox 参数由宿主拼装）；
-   跨制式转换只剩 macOS 侧接入 `plan.render_filters` 与曲线选择。
-4. 执行层：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描依赖子进程与进度事件，
-   属于 P2 的类型化接口，不在 JSON 信封里做。
+**已完成**：`Interop` 与 `qa/NativeChecks` 已加入 `LumaRecode.slnx` 与 `.sln`，`windows` 作业会读回
+两份文件核对，IDE 与命令行现在是同一入口。
+
+1. **执行层是合并前唯一的架构性缺口**：`DynamicHdr.ExtractAsync` 与 HDR10+ 码流扫描需要子进程与
+   带任务 ID、序号的进度事件（方案 §3.3）；ABI 1 的 JSON 信封只承载规划调用，事件要走类型化结构体
+   与回调。做完这一项，P6 的四个模块才有地方落。
+2. 跨制式渲染需要带 `zscale` / `lut3d` / `libplacebo` 的 FFmpeg，以及（对 libplacebo 而言）可用的
+   Vulkan 设备。Homebrew 的 ffmpeg 9 **三个滤镜都没有**，托管 Windows runner 的 full 构建虽带滤镜
+   却没有 Vulkan（实测 `FFmpeg conversion failed`），所以两处都断言到「计划完整」与「缺哪个滤镜」
+   为止；本机（full 构建 + GPU）用同一条链可以正常出片。
+3. SDR→HDR 仍未接（核心显式拒绝，属产品决策）；宿主侧的预览缩放、动态照片补边、RAW 显影与整条链
+   的顺序按设计留在宿主。
+4. P6 的四个模块（动态照片、RAW 显影、HDR10+ 提取、Ultra HDR 图片）尚未开始，前两项依赖第 1 条。
 
 ## English
 
@@ -328,9 +328,13 @@ than folding them into pass or fail.
 
 ### Next steps
 
-1. Add `Interop` and `qa/NativeChecks` to `LumaRecode.slnx` and `.sln` from a
-   machine that can build Windows App SDK projects, so the IDE and the command
-   line use one entry point.
+**Done**: `Interop` and `qa/NativeChecks` are in both `LumaRecode.slnx` and `.sln`; the `windows`
+job reads each file back, so the IDE and the command line now open the same projects.
+
+1. **The execution layer is the one architectural gap before the merge**: `DynamicHdr.ExtractAsync`
+   and the HDR10+ bitstream scan need subprocesses and progress events carrying a task id and a
+   sequence number (plan §3.3). The revision-1 JSON envelope only carries planning calls, so events
+   need typed structs and a callback; until that lands P6's four modules have nowhere to go.
 2. Both platforms build the HDR to SDR chain from the core. Rendering it needs two things:
    an FFmpeg with libplacebo and a usable Vulkan device. Homebrew's formula has no such
    filter, and the hosted Windows runner's full build has the filter but no Vulkan device
