@@ -170,6 +170,11 @@ jobs:
           xcodebuild -version
           rustup show active-toolchain
 
+      # Keg-only, used by the package variant and by the CPU colour chains; installed once so
+      # the steps below never disagree about which binary exists.
+      - name: Install the full FFmpeg
+        run: brew install ffmpeg-full
+
       - name: Build, test and package
         run: bash app-macos/scripts/build-macos.sh --skip-dmg --test
 
@@ -218,7 +223,6 @@ jobs:
           # the ffmpeg on PATH.
           # The full build is keg-only and used only where it helps: zscale and lut3d run on
           # the CPU, while libplacebo needs a Vulkan device this runner does not expose.
-          brew install ffmpeg-full
           work="$(mktemp -d)"
           # Two sources: an 8-bit SDR clip, and a 10-bit HLG clip with audio. The HLG tags go
           # into the x265 VUI so the clip describes itself, exactly like a camera file.
