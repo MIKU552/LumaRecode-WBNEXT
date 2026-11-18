@@ -14,6 +14,7 @@ The target ends up with bin/, lib/, Licenses/, SOURCES.txt and MoltenVK_icd.json
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -68,7 +69,7 @@ class Bundle:
             resolved = path.resolve(strict=True)
             library = self.libraries / resolved.name
             self.copy(resolved, library)
-            replacement = "@loader_path/" + str(library.relative_to(target.parent))
+            replacement = "@loader_path/" + os.path.relpath(library, target.parent)
             if dependency != replacement:
                 changes.extend(("-change", dependency, replacement))
         if changes:
