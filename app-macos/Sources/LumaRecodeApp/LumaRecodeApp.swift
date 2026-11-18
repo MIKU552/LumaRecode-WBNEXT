@@ -31,6 +31,11 @@ struct LumaRecodeApp: App {
             exit(DoctorCommand.run(Array(arguments.dropFirst(2))))
         }
 
+        // The HDR10+ document a clip carries, in the shape x265 reads back.
+        if arguments.count > 1, arguments[1] == "hdr10plus" {
+            exit(HDR10PlusCommand.run(Array(arguments.dropFirst(2))))
+        }
+
         // A motion photo already contains its video, so this is a copy, not a conversion.
         if arguments.count > 1, arguments[1] == "motionphoto" {
             exit(MotionPhotoCommand.run(Array(arguments.dropFirst(2))))

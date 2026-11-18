@@ -548,6 +548,15 @@ public struct CoreClient: Sendable {
         return try JSONDecoder().decode(FrameCount.self, from: payload).frames
     }
 
+    /// Builds the `dhdr10-info` document from one FFprobe line per frame.
+    public func hdr10PlusDocument(lines: [String]) throws -> Any {
+        let payload = try call(
+            "metadata.hdr10plus_document",
+            request: ["lines": lines]
+        )
+        return payload["document"] ?? [:]
+    }
+
     /// The `-i` block and stream selection.
     public func inputMap(
         input: String,

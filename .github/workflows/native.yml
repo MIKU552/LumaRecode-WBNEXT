@@ -277,6 +277,23 @@ jobs:
           cat build-info/share-audio.txt
           grep -q '^aac' build-info/share-audio.txt
 
+          # HDR10+ round trip: x265 writes the document the app exports, so the clip really
+          # carries the metadata and the scan is checked against known values.
+          cat > "$work/dhdr10.json" <<'JSON'
+          {"SceneInfo":[{"TargetedSystemDisplayMaximumLuminance":1000,"Maxscl":[0,0,0],
+            "AverageMaxRGB":0,"FractionBrightPixels":0}],
+           "JSONInfo":{"HDR10plusProfile":"A","Version":"1.0"}}
+          JSON
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 \
+            -c:v libx265 -pix_fmt yuv420p10le \
+            -x265-params "dhdr10-info=$work/dhdr10.json:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc" \
+            -y "$work/hdr10plus.mkv"
+          "$binary" hdr10plus "$work/hdr10plus.mkv" -o "$work/hdr10plus-out.json" \
+            | tee build-info/hdr10plus.txt
+          grep -q '"TargetedSystemDisplayMaximumLuminance"' "$work/hdr10plus-out.json"
+          grep -q ': 1000' "$work/hdr10plus-out.json"
+          grep -q '"SequenceFrameIndex"' "$work/hdr10plus-out.json"
+
           # doctor runs the probes through the core and prints every finished step, which
           # is the progress sink doing its job on a real path.
           "$binary" doctor | tee build-info/doctor.txt

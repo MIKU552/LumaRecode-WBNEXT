@@ -11,6 +11,18 @@ enum FFmpegLocator {
         "/usr/bin/ffmpeg",
     ]
 
+    /// The FFprobe that ships beside whichever FFmpeg the app runs.
+    static func locateProbe() -> String? {
+        guard let ffmpeg = locate() else {
+            return nil
+        }
+        let probe = URL(fileURLWithPath: ffmpeg)
+            .deletingLastPathComponent()
+            .appendingPathComponent("ffprobe")
+            .path
+        return FileManager.default.isExecutableFile(atPath: probe) ? probe : nil
+    }
+
     static func locate() -> String? {
         if let configured = ProcessInfo.processInfo.environment["LUMARECODE_FFMPEG"],
            FileManager.default.isExecutableFile(atPath: configured) {
