@@ -93,25 +93,9 @@ done
 
 if [[ $with_ffmpeg -eq 1 ]]; then
     echo "==> Embedding FFmpeg"
-    full="$(brew --prefix ffmpeg-full 2>/dev/null || true)"
-    if [[ -z "$full" || ! -x "$full/bin/ffmpeg" ]]; then
-        echo "ffmpeg-full is not installed; brew install ffmpeg-full" >&2
-        exit 1
-    fi
-    mkdir -p "$app/Contents/Resources/bin" "$app/Contents/Resources/licenses"
-    # Homebrew's bin entries are symlinks into the Cellar; copy what they point at.
-    cp -L "$full/bin/ffmpeg" "$full/bin/ffprobe" "$app/Contents/Resources/bin/"
-    for binary in ffmpeg ffprobe; do
-        size="$(stat -f%z "$app/Contents/Resources/bin/$binary")"
-        if [[ $size -lt 1000000 ]]; then
-            echo "embedded $binary is only $size bytes; the copy took a link, not the file" >&2
-            exit 1
-        fi
-    done
-    # The bundle ships GPL binaries, so their licence travels with them.
-    for licence in "$full"/COPYING* "$full"/LICENSE*; do
-        [[ -f "$licence" ]] && cp "$licence" "$app/Contents/Resources/licenses/"
-    done
+    # Homebrew links FFmpeg dynamically, so the tools and every library they need are
+    # relocated together, with the Vulkan driver libplacebo requires on macOS.
+    python3 "$app_dir/../Packaging/relocate-brew-tools.py" "$app/Contents/Resources/tools"
 fi
 
 echo "==> Signing with $identity"

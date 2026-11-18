@@ -34,7 +34,7 @@ enum FFmpegLocator {
         let candidate = executable
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Resources/bin/ffmpeg")
+            .appendingPathComponent("Resources/tools/bin/ffmpeg")
             .path
         return FileManager.default.isExecutableFile(atPath: candidate) ? candidate : nil
     }
