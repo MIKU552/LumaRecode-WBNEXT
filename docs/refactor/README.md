@@ -348,3 +348,5 @@ job reads each file back, so the IDE and the command line now open the same proj
    not to the JSON envelope.
 
 文档专用流程：仅修改 Markdown 或 `docs/` 时，构建工作流会被路径过滤跳过，只运行结构检查。
+
+`release` 工作流由标签触发（也支持手动试跑，只产出产物不建发布）：每个架构两个包——不内嵌 FFmpeg 的，与内嵌 FFmpeg n9.0 的。内嵌包按 `Packaging/ffmpeg-windows.json` 里钉死的 SHA-256 校验下载物，随包附 GPL 文本与 NOTICE，写明应用是 MIT、FFmpeg 是独立程序；Windows 侧 `ProcessRunner` 优先用可执行文件旁的 `tools/` 副本。

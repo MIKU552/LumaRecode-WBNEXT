@@ -4,7 +4,11 @@
 
 ## 简体中文
 
-### WBNEXT（重构预览）
+### WBNEXT 5.0.0（首个发布）
+
+- 版本号 5.0.0；产品名统一为「映码 · LumaRecode WBNEXT」（窗口标题、终端横幅、DMG 名）。
+- 每个架构两个包：不内嵌 FFmpeg 的，与内嵌 FFmpeg n9.0（GPL）的；内嵌包按仓库内钉死的 SHA-256 校验，随包附许可证与 NOTICE，应用本身仍为 MIT。
+- `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS DMG，并生成 SHA256SUMS。
 
 - 由上游 4.4.3 派生并重命名为 WBNEXT 重构版，位于独立分支 `next`，非正式发布。
 - 重构分支已就绪（三条流水线全绿），等待合并到 `main`；标签与正式 Release 待签名就绪后执行。
