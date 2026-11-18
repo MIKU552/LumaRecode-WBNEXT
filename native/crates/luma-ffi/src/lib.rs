@@ -381,8 +381,8 @@ fn presets_audio(payload: &Value) -> CoreResult<Value> {
         "bitrate_kbps": preset.bitrate_kbps,
         "channels": preset.channels,
         "sample_rate": match preset.sample_rate {
-            luma_core::SampleRate::Source => Value::Null,
-            luma_core::SampleRate::Fixed(rate) => json!(rate),
+            luma_core::presets::SampleRate::Source => Value::Null,
+            luma_core::presets::SampleRate::Fixed(rate) => json!(rate),
         },
         "vbr": preset.vbr,
         "application": preset.application,
