@@ -50,7 +50,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Select-String -Path App/VideoConverter.WinUI.csproj -Pattern '<Version>([^<]+)</Version>').Matches[0].Groups[1].Value
-          $meta = Get-Content packaging/ffmpeg-windows.json -Raw | ConvertFrom-Json
+          $meta = Get-Content Packaging/ffmpeg-windows.json -Raw | ConvertFrom-Json
           $entry = $meta.packages.${{ matrix.arch }}
           New-Item -ItemType Directory -Force dist | Out-Null
 
