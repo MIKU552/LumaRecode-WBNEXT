@@ -33,6 +33,7 @@
 - macOS 共享档在 CI 里用 VideoToolbox 真机编码（HEVC + AAC）并检查产物，不再是仅计划层断言。
 - 执行层补上类型化进度事件（任务 ID、序号、步号、比例）；失败步会自行上报，比例只在全部成功时到 1。
 - 新增 `luma_set_progress_sink` 与 `execution.run`：宿主给出命令序列，核心按步执行并把事件送回回调。
+- macOS 新增 `doctor`：逐步探测 FFmpeg 的编码器与滤镜并列出缺项，是进度回调的第一个真实消费者。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -332,6 +333,7 @@
 - The macOS share path encodes with VideoToolbox in CI (HEVC plus AAC) and the artifacts are checked, not just the plan.
 - The execution layer now has typed progress events (task id, sequence, step, fraction); a failing step reports itself and the fraction reaches one only on success.
 - `luma_set_progress_sink` and `execution.run` let a host hand over a sequence of commands and hear every finished step.
+- macOS gains `doctor`: it probes the FFmpeg encoders and filters step by step and lists what is missing, as the first real user of the progress sink.
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

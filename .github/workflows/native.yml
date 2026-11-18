@@ -277,6 +277,13 @@ jobs:
           cat build-info/share-audio.txt
           grep -q '^aac' build-info/share-audio.txt
 
+          # doctor runs the probes through the core and prints every finished step, which
+          # is the progress sink doing its job on a real path.
+          "$binary" doctor | tee build-info/doctor.txt
+          grep -q "\[1/3\] version" build-info/doctor.txt
+          grep -q "hevc_videotoolbox" build-info/doctor.txt
+          grep -q "zscale" build-info/doctor.txt
+
           # A camera curve: the LUT path, the matrix it was graded in and the HLG retag all
           # come from the core; only the file itself is the repository's. Homebrew's ffmpeg 9
           # has no zscale or lut3d, so the plan is what is asserted here.
