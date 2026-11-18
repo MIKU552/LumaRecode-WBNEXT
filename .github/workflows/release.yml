@@ -36,6 +36,11 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Add Rust target
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: rustup target add aarch64-pc-windows-msvc
+
       - name: Build core and stage the native library
         shell: pwsh
         run: ./tools/Build-Native.ps1 -Configuration Release -Target ${{ matrix.target }}
@@ -88,9 +93,17 @@ jobs:
           if-no-files-found: error
 
   macos:
-    runs-on: macos-15
+    runs-on: xcode-27
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "27.0"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          latest="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
+          swift --version
 
       - name: Install the full FFmpeg
         run: brew install ffmpeg-full
