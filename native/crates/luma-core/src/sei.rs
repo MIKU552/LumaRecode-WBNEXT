@@ -49,7 +49,12 @@ pub fn t35_line(payload: &[u8]) -> CoreResult<String> {
     }
     field(&mut line, "average_maxrgb", bits.read(17)?, Some(100_000));
     let count = bits.read(4)?;
-    field(&mut line, "num_distribution_maxrgb_percentiles", count, None);
+    field(
+        &mut line,
+        "num_distribution_maxrgb_percentiles",
+        count,
+        None,
+    );
     for _ in 0..count {
         field(
             &mut line,
@@ -64,7 +69,12 @@ pub fn t35_line(payload: &[u8]) -> CoreResult<String> {
             Some(100_000),
         );
     }
-    field(&mut line, "fraction_bright_pixels", bits.read(10)?, Some(1000));
+    field(
+        &mut line,
+        "fraction_bright_pixels",
+        bits.read(10)?,
+        Some(1000),
+    );
     if bits.read(1)? != 0 {
         return Err(CoreError::new(codes::METADATA_HDR10PLUS));
     }
@@ -74,7 +84,12 @@ pub fn t35_line(payload: &[u8]) -> CoreResult<String> {
         let anchors = bits.read(4)?;
         field(&mut line, "num_bezier_curve_anchors", anchors, None);
         for _ in 0..anchors {
-            field(&mut line, "bezier_curve_anchors", bits.read(10)?, Some(1023));
+            field(
+                &mut line,
+                "bezier_curve_anchors",
+                bits.read(10)?,
+                Some(1023),
+            );
         }
     }
     if bits.read(1)? != 0 {

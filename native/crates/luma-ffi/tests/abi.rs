@@ -528,9 +528,20 @@ fn metadata_hdr10plus_reads_a_payload_the_host_extracted() {
     // One window, application version 4, no percentiles and no bezier curve.
     let mut bits: Vec<u8> = Vec::new();
     let mut writer = BitWriter::default();
-    writer.write(4, 8).write(1, 2).write(1000, 27).write(0, 1)
-        .write(1000, 17).write(2000, 17).write(3000, 17).write(500, 17)
-        .write(0, 4).write(100, 10).write(0, 1).write(0, 1).write(0, 1)
+    writer
+        .write(4, 8)
+        .write(1, 2)
+        .write(1000, 27)
+        .write(0, 1)
+        .write(1000, 17)
+        .write(2000, 17)
+        .write(3000, 17)
+        .write(500, 17)
+        .write(0, 4)
+        .write(100, 10)
+        .write(0, 1)
+        .write(0, 1)
+        .write(0, 1)
         .pad();
     bits.extend_from_slice(&[0xb5, 0x00, 0x3c, 0x00, 0x01, 0x04]);
     bits.extend_from_slice(&writer.bytes);

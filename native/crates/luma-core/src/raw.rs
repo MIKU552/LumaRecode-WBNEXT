@@ -13,8 +13,12 @@ const MATRIX_SCALE: u32 = 1024;
 pub fn development_filter(geometry: &RawGeometry, commands: &str, preview_size: u32) -> String {
     let crop = format!(
         "crop={}:{}:{}:{}:exact=1",
-        geometry.width.saturating_sub(geometry.crop[0] + geometry.crop[1]),
-        geometry.height.saturating_sub(geometry.crop[2] + geometry.crop[3]),
+        geometry
+            .width
+            .saturating_sub(geometry.crop[0] + geometry.crop[1]),
+        geometry
+            .height
+            .saturating_sub(geometry.crop[2] + geometry.crop[3]),
         geometry.crop[0],
         geometry.crop[2]
     );
