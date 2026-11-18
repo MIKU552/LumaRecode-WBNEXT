@@ -108,15 +108,20 @@ jobs:
       - name: Install the full FFmpeg
         run: brew install ffmpeg-full
 
-      # One package for now: Homebrew's FFmpeg is dynamically linked, so copying the
-      # binary alone yields a program that cannot start on another machine. A -full
-      # package needs a static build, which is a separate decision.
-      - name: Build the package
+      # Two packages: the second carries FFmpeg, relocated with every library it needs
+      # (Homebrew links it dynamically) and the Vulkan driver libplacebo asks for.
+      - name: Build both packages
         run: |
           bash app-macos/scripts/build-macos.sh --configuration release
+          bash app-macos/scripts/build-macos.sh --configuration release --with-ffmpeg
           mkdir -p dist
           mv app-macos/dist/*.dmg dist/
-          ls -l dist
+          ls -lh dist
+          # A carrying package that is not clearly larger is a broken relocation.
+          plain=$(ls dist/*-arm64.dmg)
+          full=$(ls dist/*-arm64-full.dmg)
+          test "$(stat -f%z "$full")" -gt "$(stat -f%z "$plain")"
+
 
       - uses: actions/upload-artifact@v4
         with:
