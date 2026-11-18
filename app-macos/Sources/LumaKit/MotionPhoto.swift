@@ -131,7 +131,8 @@ public enum MotionPhotoInspector {
     /// Length of the primary image: its segments up to and including the end marker.
     static func primaryLength(_ data: Data) throws -> Int {
         var index = 2
-        while index + 4 <= data.count {
+        // Two bytes are enough for the end marker itself; only a segment needs its length.
+        while index + 2 <= data.count {
             guard data[index] == 0xFF else {
                 throw MotionPhotoError.malformedJPEG
             }
@@ -142,6 +143,9 @@ public enum MotionPhotoInspector {
             if marker == 0x01 || (0xD0...0xD7).contains(marker) {
                 index += 2
                 continue
+            }
+            guard index + 4 <= data.count else {
+                throw MotionPhotoError.malformedJPEG
             }
             let length = Int(data[index + 2]) << 8 | Int(data[index + 3])
             guard length >= 2 else {
