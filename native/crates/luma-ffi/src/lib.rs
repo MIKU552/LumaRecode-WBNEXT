@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 30] = [
+const OPERATIONS: [&str; 31] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -71,6 +71,7 @@ const OPERATIONS: [&str; 30] = [
     "plan.log_profile",
     "execution.run",
     "metadata.hdr10plus",
+    "plan.raw_filter",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -251,6 +252,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.log_profile" => plan_log_profile(&payload),
         "execution.run" => execution_run(&payload),
         "metadata.hdr10plus" => metadata_hdr10plus(&payload),
+        "plan.raw_filter" => plan_raw_filter(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -806,6 +808,37 @@ struct VppDto {
     out_range: String,
     #[serde(default)]
     sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct RawFilterRequest {
+    width: u32,
+    height: u32,
+    crop: [u32; 4],
+    matrix: [f64; 12],
+    #[serde(default)]
+    commands: String,
+    #[serde(default)]
+    preview_size: u32,
+}
+
+/// The `-vf` chain that develops a RAW frame into HLG.
+fn plan_raw_filter(payload: &Value) -> CoreResult<Value> {
+    let request: RawFilterRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "plan"))?;
+    let geometry = luma_core::domain::RawGeometry {
+        width: request.width,
+        height: request.height,
+        crop: request.crop,
+        matrix: request.matrix,
+    };
+    Ok(json!({
+        "filter": luma_core::raw::development_filter(
+            &geometry,
+            &request.commands,
+            request.preview_size,
+        ),
+    }))
 }
 
 #[derive(Deserialize)]

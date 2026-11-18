@@ -184,6 +184,19 @@ impl LogProfile {
     }
 }
 
+/// The frame geometry and white balance a RAW development needs.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RawGeometry {
+    /// Sensor width in pixels.
+    pub width: u32,
+    /// Sensor height in pixels.
+    pub height: u32,
+    /// Left, right, top and bottom borders the demosaic leaves out.
+    pub crop: [u32; 4],
+    /// Row-major 3x4 matrix the camera reported, applied per channel.
+    pub matrix: [f64; 12],
+}
+
 /// How the input's color encoding is interpreted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SourceKind {
