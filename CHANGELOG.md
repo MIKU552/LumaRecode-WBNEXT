@@ -35,6 +35,7 @@
 - 新增 `luma_set_progress_sink` 与 `execution.run`：宿主给出命令序列，核心按步执行并把事件送回回调。
 - macOS 新增 `doctor`：逐步探测 FFmpeg 的编码器与滤镜并列出缺项，是进度回调的第一个真实消费者。
 - macOS 新增 `motionphoto`：从动态照片里取出内嵌视频（按声明区间复制，短读即报错）。
+- macOS 新增 `hdr10plus`：从片段导出 `dhdr10-info` 文档；CI 用 x265 造片段做往返回读验证。
 - 按决定取消 Windows 代码签名：不再申请签名证书，四语文档改为「不签名 + 发布 SHA-256」，P8 收口。
 - P6 起步：macOS 能识别动态照片与 Ultra HDR（合成字节单测）；核心新增 HDR10+ SEI 读取、`dhdr10-info` 文档生成与 RAW 显影滤镜链（逐位/逐帧/顺序测试）。宿主侧的扫描与 RAW 解包仍待做。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
