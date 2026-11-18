@@ -8,7 +8,8 @@ name: native
 
 on:
   push:
-    branches: [next]
+    # `main` is in the list so a merge is built before anyone trusts it.
+    branches: [next, main]
     # A documentation-only push cannot change the binaries; the docs workflow
     # checks the Markdown instead of rebuilding everything.
     paths-ignore:
