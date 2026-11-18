@@ -120,7 +120,7 @@ macOS 统一使用 `xcode-27` 镜像）；
 | P6 高级媒体 | 未开始 | HDR 图片、Live Photo、动态 HDR 元数据 |
 | P7 校准与优化 | 回收闭环完成 | 标识、策略、存储抽象、计划与带范围保护的删除已接线；预算测量、预设候选与长任务待做 |
 | P8 发布准备 | 进行中 | 四语文档、签名政策与隐私说明已就绪；SignPath 申请待提交 |
-| P9 合并发布 | 进行中 | 已合并到 `main`；标签与正式 Release 待签名（P8） |
+| P9 合并发布 | 未执行 | 分支已就绪（检查全绿）；合并、标签与正式 Release 待执行，签名见 P8 |
 
 ### 与方案的已知偏差
 
@@ -297,7 +297,7 @@ than folding them into pass or fail.
 | P6 Advanced media | Not started | HDR images, Live Photo, dynamic HDR metadata |
 | P7 Calibration | Reclamation closed | Identity, retention, the store seam, the plan and guarded deletion are wired; budgets, preset candidates and long jobs remain |
 | P8 Release prep | In progress | Four-language docs, signing policy and privacy statement in place; the SignPath application is pending |
-| P9 Merge and release | In progress | Merged to `main`; the tag and the release await signing (P8) |
+| P9 Merge and release | Not executed | The branch is ready and green; the merge, tag and release await execution, with signing under P8 |
 
 ### Known deviations
 

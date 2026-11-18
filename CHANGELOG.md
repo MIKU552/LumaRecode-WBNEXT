@@ -7,7 +7,7 @@
 ### WBNEXT（重构预览）
 
 - 由上游 4.4.3 派生并重命名为 WBNEXT 重构版，位于独立分支 `next`，非正式发布。
-- 已合并到 `main`：规则、参数与色彩判定都在共享核心，两个宿主通过 C ABI 调用；签名就绪后再打标签。
+- 重构分支已就绪（三条流水线全绿），等待合并到 `main`；标签与正式 Release 待签名就绪后执行。
 - 共享核心迁移到 Rust，Windows 与 macOS 使用同一 Rust 1.100.0 工具链；新增 `native`、`windows` 两条 Actions 工作流。
 - 开发协助：WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）；此后的提交不再添加协作者记录。
 - 补充 Windows / macOS 签名政策与隐私说明，为免费签名申请准备公开条款。
@@ -303,7 +303,7 @@
 ### WBNEXT (refactor preview)
 
 - Derived from upstream 4.4.3 and renamed to the WBNEXT refactor preview on the independent `next` branch; not an official release.
-- Merged to `main`: the rules, parameters and colour decisions live in the shared core, both hosts call it over the C ABI, and the tag waits for signing.
+- The refactor branch is ready and green, awaiting the merge to `main`; the tag and the release wait for signing.
 - The shared core moves to Rust; Windows and macOS use the same Rust 1.100.0 toolchain, with new `native` and `windows` Actions workflows.
 - Development assistance: WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context); later commits carry no co-author trailer.
 - Add the Windows / macOS code signing policy and privacy statement for the free signing application.
