@@ -30,6 +30,11 @@ struct LumaRecodeApp: App {
         if arguments.count > 1, arguments[1] == "doctor" {
             exit(DoctorCommand.run(Array(arguments.dropFirst(2))))
         }
+
+        // A motion photo already contains its video, so this is a copy, not a conversion.
+        if arguments.count > 1, arguments[1] == "motionphoto" {
+            exit(MotionPhotoCommand.run(Array(arguments.dropFirst(2))))
+        }
     }
 
     var body: some Scene {
