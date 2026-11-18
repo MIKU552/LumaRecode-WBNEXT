@@ -11,6 +11,7 @@ make_dmg=1
 stage_only=0
 run_tests=0
 identity="-"
+with_ffmpeg=0
 
 usage() {
     cat <<'EOF'
@@ -21,6 +22,7 @@ usage: build-macos.sh [options]
   --stage-only                     Only build and stage the Rust library
   --test                           Run the Swift package tests after staging
   --identity <identity>            codesign identity (default: ad-hoc "-")
+  --with-ffmpeg                    Embed the full FFmpeg (keg-only) in the bundle
   -h, --help                       Show this help
 EOF
 }
@@ -32,6 +34,7 @@ while [[ $# -gt 0 ]]; do
         --stage-only) stage_only=1; shift ;;
         --test) run_tests=1; shift ;;
         --identity) identity="${2:?missing value}"; shift 2 ;;
+        --with-ffmpeg) with_ffmpeg=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) echo "unknown option: $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -87,6 +90,21 @@ for bundle in "$bin_path"/*.bundle; do
     cp -R "$bundle" "$app/Contents/Resources/"
 done
 
+if [[ $with_ffmpeg -eq 1 ]]; then
+    echo "==> Embedding FFmpeg"
+    full="$(brew --prefix ffmpeg-full 2>/dev/null || true)"
+    if [[ -z "$full" || ! -x "$full/bin/ffmpeg" ]]; then
+        echo "ffmpeg-full is not installed; brew install ffmpeg-full" >&2
+        exit 1
+    fi
+    mkdir -p "$app/Contents/Resources/bin" "$app/Contents/Resources/licenses"
+    cp "$full/bin/ffmpeg" "$full/bin/ffprobe" "$app/Contents/Resources/bin/"
+    # The bundle ships GPL binaries, so their licence travels with them.
+    for licence in "$full"/COPYING* "$full"/LICENSE*; do
+        [[ -f "$licence" ]] && cp "$licence" "$app/Contents/Resources/licenses/"
+    done
+fi
+
 echo "==> Signing with $identity"
 codesign --force --sign "$identity" --timestamp=none "$app"
 codesign --verify --strict --verbose=2 "$app"
@@ -95,7 +113,9 @@ version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/
 
 if [[ $make_dmg -eq 1 ]]; then
     echo "==> Packaging DMG"
-    dmg="$app_dir/dist/LumaRecode-$version-arm64.dmg"
+    suffix=""
+    [[ $with_ffmpeg -eq 1 ]] && suffix="-full"
+    dmg="$app_dir/dist/LumaRecode-$version-arm64$suffix.dmg"
     rm -f "$dmg"
     hdiutil create -volname "LumaRecode" -srcfolder "$app" -ov -format UDZO "$dmg" >/dev/null
     echo "DMG: $dmg"

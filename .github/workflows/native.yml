@@ -173,6 +173,22 @@ jobs:
       - name: Build, test and package
         run: bash app-macos/scripts/build-macos.sh --skip-dmg --test
 
+      # Two packages: one expects FFmpeg on the machine, one carries it. Both are built here
+      # so a missing binary or a bundle that ignores its own copy fails the job.
+      - name: Both package variants
+        run: |
+          if [[ -e app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg ]]; then
+            echo "the plain package must not carry FFmpeg" >&2
+            exit 1
+          fi
+          bash app-macos/scripts/build-macos.sh --skip-dmg --with-ffmpeg
+          test -x app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg
+          test -x app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffprobe
+          # The bundled copy wins, so the package behaves the same on any machine.
+          app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode doctor \
+            | tee build-info/doctor-full.txt
+          grep -q "Resources/bin/ffmpeg" build-info/doctor-full.txt
+
       - name: Record versions and signature
         run: |
           mkdir -p build-info

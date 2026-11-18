@@ -23,7 +23,26 @@ enum FFmpegLocator {
         return FileManager.default.isExecutableFile(atPath: probe) ? probe : nil
     }
 
+    /// The binary that travelled inside the app bundle, when this build carried one.
+    ///
+    /// A release can ship two packages: one that expects FFmpeg on the machine, and one that
+    /// carries it. The bundled copy wins so the second package behaves the same everywhere.
+    static func bundled() -> String? {
+        guard let executable = Bundle.main.executableURL?.resolvingSymlinksInPath() else {
+            return nil
+        }
+        let candidate = executable
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources/bin/ffmpeg")
+            .path
+        return FileManager.default.isExecutableFile(atPath: candidate) ? candidate : nil
+    }
+
     static func locate() -> String? {
+        if let bundled = bundled() {
+            return bundled
+        }
         if let configured = ProcessInfo.processInfo.environment["LUMARECODE_FFMPEG"],
            FileManager.default.isExecutableFile(atPath: configured) {
             return configured
