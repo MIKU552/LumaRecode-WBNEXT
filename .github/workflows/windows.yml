@@ -68,6 +68,21 @@ jobs:
           dotnet build Interop/LumaRecode.Native.csproj -c Release -p:LumaRecodeArchitecture=x64
           dotnet build qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64
 
+      # The IDE and the command line must open the same set of projects, so both solution
+      # files are read back here; a project missing from either one fails the build.
+      - name: Solution entry points
+        shell: pwsh
+        run: |
+          foreach ($file in @('LumaRecode.slnx', 'LumaRecode.sln')) {
+            $listed = (dotnet sln $file list) -join "`n"
+            $listed
+            foreach ($project in @('LumaRecode.Native.csproj', 'NativeChecks.csproj')) {
+              if ($listed -notmatch [regex]::Escape($project)) {
+                throw "$project is missing from $file."
+              }
+            }
+          }
+
       - name: Check formatting
         shell: pwsh
         run: |
