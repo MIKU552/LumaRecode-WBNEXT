@@ -108,11 +108,12 @@ jobs:
       - name: Install the full FFmpeg
         run: brew install ffmpeg-full
 
-      - name: Build both packages
+      # One package for now: Homebrew's FFmpeg is dynamically linked, so copying the
+      # binary alone yields a program that cannot start on another machine. A -full
+      # package needs a static build, which is a separate decision.
+      - name: Build the package
         run: |
           bash app-macos/scripts/build-macos.sh --configuration release
-          bash app-macos/scripts/build-macos.sh --configuration release --with-ffmpeg
-          # The script names them apart: …-arm64.dmg and …-arm64-full.dmg.
           mkdir -p dist
           mv app-macos/dist/*.dmg dist/
           ls -l dist

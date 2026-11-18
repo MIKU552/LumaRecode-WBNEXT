@@ -22,7 +22,8 @@ usage: build-macos.sh [options]
   --stage-only                     Only build and stage the Rust library
   --test                           Run the Swift package tests after staging
   --identity <identity>            codesign identity (default: ad-hoc "-")
-  --with-ffmpeg                    Embed the full FFmpeg (keg-only) in the bundle
+  --with-ffmpeg                    Embed the full FFmpeg (keg-only; dynamic, so it only
+                                   runs where its libraries are)
   -h, --help                       Show this help
 EOF
 }
