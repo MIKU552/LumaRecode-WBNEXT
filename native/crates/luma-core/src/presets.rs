@@ -87,7 +87,10 @@ fn map_text(map: &Map<String, Value>, key: &str, path: &str) -> CoreResult<Strin
 /// Some backends take no effort knob at all — VideoToolbox has `-q:v` and nothing like
 /// `-preset` — so the field is optional rather than a name the host has to invent.
 fn optional_text(map: &Map<String, Value>, key: &str) -> String {
-    map.get(key).and_then(Value::as_str).unwrap_or_default().to_owned()
+    map.get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned()
 }
 
 fn map_int(map: &Map<String, Value>, key: &str, path: &str) -> CoreResult<i64> {
