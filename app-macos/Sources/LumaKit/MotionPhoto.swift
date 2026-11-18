@@ -93,7 +93,7 @@ public enum MotionPhotoInspector {
         guard packet.motionPhoto == "1", packet.version == "1" else {
             throw MotionPhotoError.missingMetadata
         }
-        guard let timestamp = Int(packet.timestamp), timestamp >= 0 else {
+        guard let raw = packet.timestamp, let timestamp = Int(raw), timestamp >= 0 else {
             throw MotionPhotoError.missingMetadata
         }
         let items = packet.items
