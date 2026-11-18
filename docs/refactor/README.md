@@ -279,10 +279,10 @@ every result below comes from GitHub Actions at commit `5d93e26`.
 - Toolchain: Rust 1.100.0 (one `rust-toolchain.toml` shared by both hosts),
   .NET 11.0.100, Swift 6.4.2 with Xcode 27.2 (newest installed on the image).
 
-**Still unverified**: real hardware encode/decode (QSV / AMF / NVENC /
-VideoToolbox), GUI runtime behaviour and first-frame presentation, signing
-application and release artifacts. Plan §12 records these as "not run" rather
-than folding them into pass or fail.
+**Still unverified**: real hardware encode/decode for QSV / AMF / NVENC, GUI runtime
+behaviour and first-frame presentation, the signing application and the release artifacts.
+VideoToolbox share (HEVC plus AAC) is encoded and checked on the macOS pipeline. Plan §12
+records the others as "not run" rather than folding them into pass or fail.
 
 ### Phase status
 
