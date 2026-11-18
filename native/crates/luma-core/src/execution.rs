@@ -14,6 +14,8 @@ pub enum Outcome {
     /// The process exited with status zero.
     Succeeded {
         exit_code: i32,
+        /// Everything the command wrote to stdout, where FFmpeg prints reports.
+        stdout: String,
         /// Last part of stderr, where FFmpeg writes progress and warnings.
         stderr_tail: String,
     },
@@ -131,6 +133,7 @@ impl Runner for ProcessRunner {
                 if output.status.success() {
                     Outcome::Succeeded {
                         exit_code: code,
+                        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                         stderr_tail: tail(&stderr),
                     }
                 } else {

@@ -810,6 +810,9 @@ struct VppDto {
 struct RunRequest {
     #[serde(default)]
     task_id: u64,
+    /// Include what each step wrote to stdout; a report is worth carrying, a full log is not.
+    #[serde(default)]
+    capture_stdout: bool,
     commands: Vec<CommandDto>,
 }
 
@@ -844,7 +847,15 @@ fn execution_run(payload: &Value) -> CoreResult<Value> {
         .outcomes
         .iter()
         .map(|outcome| match outcome {
-            Outcome::Succeeded { exit_code, .. } => json!({"ok": true, "exit_code": exit_code}),
+            Outcome::Succeeded {
+                exit_code, stdout, ..
+            } => {
+                if request.capture_stdout {
+                    json!({"ok": true, "exit_code": exit_code, "stdout": stdout})
+                } else {
+                    json!({"ok": true, "exit_code": exit_code})
+                }
+            }
             Outcome::Failed { exit_code, message } => {
                 json!({"ok": false, "exit_code": exit_code, "message": message})
             }

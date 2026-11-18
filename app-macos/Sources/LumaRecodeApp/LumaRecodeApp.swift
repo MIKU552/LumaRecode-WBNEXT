@@ -24,6 +24,12 @@ struct LumaRecodeApp: App {
         if arguments.count > 1, arguments[1] == "convert" {
             exit(ConvertCommand.run(Array(arguments.dropFirst(2))))
         }
+
+        // `doctor` answers "why can't it convert": the same probes the pipeline runs,
+        // printed one step at a time.
+        if arguments.count > 1, arguments[1] == "doctor" {
+            exit(DoctorCommand.run(Array(arguments.dropFirst(2))))
+        }
     }
 
     var body: some Scene {

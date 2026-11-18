@@ -396,6 +396,75 @@ public struct ColorFilterSet: Decodable, Sendable, Equatable {
     public let filters: [String]
 }
 
+/// What one step of a sequence did.
+public struct StepOutcome: Decodable, Sendable, Equatable {
+    public let ok: Bool
+    public let exitCode: Int?
+    public let stdout: String?
+    public let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok, stdout, message
+        case exitCode = "exit_code"
+    }
+}
+
+/// The result of a sequence the host asked the core to run.
+public struct RunReport: Decodable, Sendable, Equatable {
+    public let ok: Bool
+    public let stoppedEarly: Bool
+    public let outcomes: [StepOutcome]
+
+    enum CodingKeys: String, CodingKey {
+        case ok, outcomes
+        case stoppedEarly = "stopped_early"
+    }
+}
+
+/// Receives the core's progress events while a sequence runs.
+public final class ProgressSink {
+    public typealias Handler = (_ step: Int, _ total: Int, _ fraction: Double) -> Void
+
+    private let handler: Handler
+
+    public init(_ handler: @escaping Handler) {
+        self.handler = handler
+    }
+
+    /// Registers this sink with the core.
+    @discardableResult
+    public func install() -> Bool {
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        return luma_set_progress_sink(lumaProgressTrampoline, context) == 0
+    }
+
+    /// Removes whatever sink is registered.
+    @discardableResult
+    public static func clear() -> Bool {
+        luma_set_progress_sink(nil, nil) == 0
+    }
+
+    fileprivate func deliver(step: Int, total: Int, fraction: Double) {
+        handler(step, total, fraction)
+    }
+}
+
+/// C entry point: the core calls this once per finished step.
+private func lumaProgressTrampoline(
+    _ task: UInt64,
+    _ sequence: UInt64,
+    _ step: UInt32,
+    _ total: UInt32,
+    _ fraction: Float,
+    _ context: UnsafeMutableRawPointer?
+) {
+    guard let context else {
+        return
+    }
+    let sink = Unmanaged<ProgressSink>.fromOpaque(context).takeUnretainedValue()
+    sink.deliver(step: Int(step), total: Int(total), fraction: Double(fraction))
+}
+
 /// Typed access to the C ABI.
 ///
 /// The transport is a JSON envelope, which keeps a single entry point for every
@@ -531,6 +600,28 @@ public struct CoreClient: Sendable {
     public func filterChain(_ filters: [String]) throws -> String {
         let payload = try call("plan.filter_chain", request: ["filters": filters])
         return try JSONDecoder().decode(TextResult.self, from: payload).text
+    }
+
+    /// Runs a sequence the caller spelled, capturing stdout when the report needs it.
+    public func run(
+        commands: [[String]],
+        taskId: Int = 0,
+        captureStdout: Bool = false
+    ) throws -> RunReport {
+        let payload = try call(
+            "execution.run",
+            request: [
+                "task_id": taskId,
+                "capture_stdout": captureStdout,
+                "commands": commands.map { command in
+                    [
+                        "program": command.first ?? "",
+                        "arguments": Array(command.dropFirst()),
+                    ]
+                },
+            ]
+        )
+        return try JSONDecoder().decode(RunReport.self, from: payload)
     }
 
     /// Derives the tags to read with and the tags to write.

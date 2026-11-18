@@ -58,6 +58,30 @@ char *LUMA_CALL luma_call_json(const char *op, const char *request);
 void LUMA_CALL luma_string_free(char *value);
 
 /*
+ * Progress callback: called once for every finished step of execution.run.
+ *
+ * task_id identifies the sequence, sequence increases from one within it, and
+ * fraction reaches 1.0 only when the last step succeeded. The callback runs on
+ * the thread that called execution.run.
+ */
+typedef void (LUMA_CALL *luma_progress_callback)(
+    uint64_t task_id,
+    uint64_t sequence,
+    uint32_t step,
+    uint32_t total,
+    float fraction,
+    void *user_data);
+
+/*
+ * Registers the sink; pass a NULL callback to clear it. Returns 0 on success.
+ *
+ * user_data must stay valid until the sink is cleared or replaced.
+ */
+int32_t LUMA_CALL luma_set_progress_sink(
+    luma_progress_callback callback,
+    void *user_data);
+
+/*
  * Operations (request -> data):
  *
  *   core.info            {} -> {abi, core_version, target_arch, target_os, operations}

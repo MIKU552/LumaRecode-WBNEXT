@@ -16,6 +16,7 @@ impl Runner for Fake {
 fn ok() -> Outcome {
     Outcome::Succeeded {
         exit_code: 0,
+        stdout: String::new(),
         stderr_tail: String::new(),
     }
 }
