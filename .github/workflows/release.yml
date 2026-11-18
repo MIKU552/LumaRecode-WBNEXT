@@ -105,20 +105,29 @@ jobs:
           if [ -n "$latest" ]; then sudo xcode-select -s "$latest"; fi
           swift --version
 
+      # The plain package is built before FFmpeg and its 63 dependencies are poured: a full
+      # disk makes hdiutil fail with a misleading "No such file or directory".
+      - name: Build the plain package
+        run: |
+          df -h /
+          bash app-macos/scripts/build-macos.sh --configuration release
+          mkdir -p dist
+          mv app-macos/dist/*.dmg dist/
+          df -h /
+
       - name: Install the full FFmpeg
         run: brew install ffmpeg-full molten-vk
 
-      # Two packages: the second carries FFmpeg, relocated with every library it needs
+      # The second package carries FFmpeg, relocated with every library it needs
       # (Homebrew links it dynamically) and the Vulkan driver libplacebo asks for.
-      - name: Build both packages
+      - name: Build the package that carries FFmpeg
         run: |
-          bash app-macos/scripts/build-macos.sh --configuration release
+          df -h /
           bash app-macos/scripts/build-macos.sh --configuration release --with-ffmpeg
-          mkdir -p dist
           mv app-macos/dist/*.dmg dist/
           ls -lh dist
           # A carrying package that is not clearly larger is a broken relocation.
-          plain=$(ls dist/*-arm64.dmg)
+          plain=$(ls dist/*-arm64.dmg | grep -v full)
           full=$(ls dist/*-arm64-full.dmg)
           test "$(stat -f%z "$full")" -gt "$(stat -f%z "$plain")"
 
