@@ -149,9 +149,9 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 两份文件核对，IDE 与命令行现在是同一入口。
 
 1. **合并与发布（P9）**：合并到 `main`、打标签、写 Release 说明；按决定不带签名，发布页给出 SHA-256。
-2. 跨制式渲染的真实出片仍需要一件事：一个带 `zscale` 与 `libplacebo` 的 FFmpeg 构建（Homebrew 的
-   ffmpeg 9 只有 `lut3d`），以及（对 libplacebo 而言）可用的 Vulkan。两处流水线现在断言到「计划完整」
-   与「缺哪个滤镜」为止；本机（full 构建 + GPU）用同一条链可以正常出片。
+2. 跨制式渲染：曲线链已用 Homebrew 的 `ffmpeg-full`（keg-only，带 `zscale` 与 `lut3d`）**真渲染**并通过断言；
+   色调映射仍只能断言计划——`ffmpeg-full` 虽然带 `libplacebo`，但托管 runner 没有可用的 Vulkan 设备（实测
+   `Generic error in an external library`），与 Windows runner 同一结局。本机（GPU）可正常出片。
 3. SDR→HDR 未开放（核心显式拒绝，属产品决策）；宿主侧的预览缩放、动态照片补边与整条链的顺序按设计
    留在宿主。
 4. 按范围决定暂不做的两项：ProRes RAW 的宿主解包（需要真实素材）与 P7 的预设候选（需要实测吞吐）。
