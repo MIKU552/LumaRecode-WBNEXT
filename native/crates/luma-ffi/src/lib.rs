@@ -104,7 +104,10 @@ pub extern "C" fn luma_set_progress_sink(
         Ok(sink) => sink,
         Err(_) => return -1,
     };
-    *sink = callback.map(|callback| ProgressSink { callback, user_data });
+    *sink = callback.map(|callback| ProgressSink {
+        callback,
+        user_data,
+    });
     0
 }
 

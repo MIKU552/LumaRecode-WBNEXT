@@ -510,7 +510,10 @@ fn execution_run_reports_to_the_registered_sink() {
     assert_eq!(report["ok"], Value::Bool(true));
     assert_eq!(EVENTS.load(Ordering::SeqCst), 1);
     assert_eq!(LAST_SEQUENCE.load(Ordering::SeqCst), 1);
-    assert_eq!(f32::from_bits(LAST_FRACTION_BITS.load(Ordering::SeqCst)), 1.0);
+    assert_eq!(
+        f32::from_bits(LAST_FRACTION_BITS.load(Ordering::SeqCst)),
+        1.0
+    );
 
     // Clearing the sink must stop the callbacks.
     assert_eq!(luma_set_progress_sink(None, std::ptr::null_mut()), 0);
