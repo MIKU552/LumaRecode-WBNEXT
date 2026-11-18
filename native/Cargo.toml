@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["crates/luma-core", "crates/luma-ffi"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT"
+repository = "https://github.com/MIKU552/LumaRecode"
+
+[workspace.dependencies]
+luma-core = { path = "crates/luma-core", version = "0.1.0" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+# Release builds keep unwinding so the C ABI can turn a panic into a stable
+# error code instead of aborting the host process.
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "unwind"
+opt-level = 3

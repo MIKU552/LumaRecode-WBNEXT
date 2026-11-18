@@ -30,8 +30,6 @@ public sealed partial class Transcoder
         ["applelog"] = ("Apple Log", "Apple_Log_to_Rec2100_HLG.cube", "2020_ncl", "limited"),
         ["applelog2"] = ("Apple Log 2", "Apple_Log_2_to_Rec2100_HLG.cube", "2020_ncl", "limited")
     };
-    private static JsonObject Rec709() => new() { ["color_primaries"] = "bt709", ["color_transfer"] = "bt709", ["color_space"] = "bt709", ["color_range"] = "tv" };
-    private static JsonObject Hlg() => new() { ["color_primaries"] = "bt2020", ["color_transfer"] = "arib-std-b67", ["color_space"] = "bt2020nc", ["color_range"] = "tv" };
     private static readonly (string Key, string Flag)[] colorFlags = [("color_primaries", "-color_primaries"), ("color_transfer", "-color_trc"), ("color_space", "-colorspace"), ("color_range", "-color_range")];
     private static bool IsHdr(string kind) => kind is "hlg" or "pq";
     private static void Require(bool condition, string message)
@@ -52,6 +50,21 @@ public sealed partial class Transcoder
     /// <remarks>Call before using PixelFormat or Depth; their values must be concrete.</remarks>
     public EncodeOptions ResolveFormat(EncodeOptions options, MediaInfo media)
     {
+        var shared = SharedCore.Resolver;
+        if (shared is not null)
+        {
+            SharedResolution resolution = shared(options, media);
+            if (resolution.Options is not null)
+            {
+                return resolution.Options;
+            }
+
+            if (SharedCore.Message(resolution.Code, resolution.Detail) is { } text)
+            {
+                throw new InvalidDataException(text);
+            }
+        }
+
         Require(options.Purpose is "share" or "archive" && options.Codec is "hevc" or "av1" or "avc", "请选择有效的用途和编码器。");
         Require(options.Output != "hdr" || options.Codec != "avc", "HDR 输出请选择 HEVC 或 AV1。");
         Require(options.Sampling is "auto" or "source" or "420" or "422" or "444" or "gray", "请选择自动、保持原采样、4:2:0、4:2:2 或 4:4:4。");
@@ -87,6 +100,22 @@ public sealed partial class Transcoder
     /// <remarks>A manual SourceKind overrides detection; a Log profile is only valid for Log transforms.</remarks>
     public string Validate(EncodeOptions options, MediaInfo media)
     {
+        var validator = SharedCore.Validator;
+        if (validator is not null)
+        {
+            SharedValidation validation = validator(options, media);
+            if (validation.Kind is not null)
+            {
+                return validation.Kind;
+            }
+
+            string? text = SharedCore.Message(validation.Code, validation.Detail);
+            if (text is not null)
+            {
+                throw new InvalidDataException(text);
+            }
+        }
+
         options = ResolveFormat(options, media);
         Require(options.Container is "auto" or "mp4" or "mkv", "请选择自动、MP4 或 MKV 封装。");
         Require(options.Output is "sdr" or "hdr", "请选择 SDR 或 HDR 输出。");
@@ -135,30 +164,206 @@ public sealed partial class Transcoder
     private static string FrameTags(JsonObject colors) => "setparams=" + string.Join(':',
         new[] { ("color_primaries", "color_primaries"), ("color_transfer", "color_trc"), ("color_space", "colorspace"), ("color_range", "range") }
         .Where(p => !JsonFields.Unspecified(colors.Text(p.Item1))).Select(p => p.Item2 + "=" + (p.Item1 == "color_range" ? colors.Text(p.Item1) switch { "pc" => "full", "tv" => "limited", var v => v } : colors.Text(p.Item1))));
-    private static string ToneMap(string range, bool dolby = false) => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={range}:tonemapping=bt.2390:apply_dolbyvision={(dolby ? 1 : 0)},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
-    // Expand sample range before the RGB LUT, retain float intermediates,
-    // then convert the HLG RGB result to BT.2020 YCbCr. Quantize only at output.
-    private static string LogFilter(JsonObject video, string profile)
+    private static double Fps(JsonObject v) => new[] { v.Text("avg_frame_rate"), v.Text("r_frame_rate") }.Select(s => JsonFields.Number(s)).FirstOrDefault(n => n > 0, 30);
+    // Fallback for a machine without the native library: keep high-frame-rate inputs
+    // below the long-GOP range associated with device failures on some Arc drivers
+    // (Intel article 000095403). Halves round away from zero, as the core does; the
+    // default banker's rounding would answer one frame differently on an exact tie.
+    private static long ManagedGop(double frameRate, bool share, bool motionPhoto) => share
+        ? (long)Math.Clamp(Math.Round(2 * frameRate, MidpointRounding.AwayFromZero), 1, 240)
+        : (long)Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * frameRate, MidpointRounding.AwayFromZero));
+    // Fallback for a machine without the native library: the same rules the core applies.
+    private static IReadOnlyList<string> ManagedColorFilters(ColorFilterRequest request)
     {
-        var p = Profiles[profile];
-        var matrix = video.Text("color_space") switch
+        if (request.PreserveDynamic)
+        {
+            return [];
+        }
+
+        var conversion = new List<string> { "range=" + request.ConversionRange, "dither=error_diffusion" };
+        foreach (var (value, target) in new[] { (request.Primaries, "primaries"), (request.Transfer, "transfer"), (request.Space, "matrix") })
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                conversion.Add(target + "=" + value);
+            }
+        }
+
+        // FrameTags already owns the tag spelling, including the range words, so give it the
+        // same shape it reads on the resolved colours.
+        JsonObject tags = new()
+        {
+            ["color_primaries"] = request.Primaries,
+            ["color_transfer"] = request.Transfer,
+            ["color_space"] = request.Space,
+            ["color_range"] = request.Range,
+        };
+        string format = request.Purpose == "share" && request.Depth == 10 ? "p010le" : request.PixelFormat;
+        return ["zscale=" + string.Join(':', conversion), "format=" + format, FrameTags(tags)];
+    }
+    // Fallback for a machine without the native library: the same derivation the core applies.
+    private static ColorTagSet ManagedColorTags(ColorTagsRequest request)
+    {
+        ColorTagsValue source = new(request.Primaries, request.Transfer, request.Space, RangeWord(request.SourceRange));
+        if (request.Kind is "hlg" or "pq")
+        {
+            source = source with { Transfer = request.Kind == "hlg" ? "arib-std-b67" : "smpte2084" };
+            source = Fill(source, "bt2020", "arib-std-b67", "bt2020nc");
+        }
+        else if (request.Kind == "sdr")
+        {
+            source = Fill(source, "bt709", "bt709", "bt709");
+        }
+
+        if (request.DolbyProfile5)
+        {
+            source = source with { Space = "ipt-c2" };
+        }
+        if (request.Rgb)
+        {
+            source = source with { Space = "gbr" };
+        }
+
+        ColorTagsValue target = request.Output == "sdr"
+            ? new ColorTagsValue("bt709", "bt709", "bt709", null)
+            : request.Kind is "log" or "raw" ? new ColorTagsValue("bt2020", "arib-std-b67", "bt2020nc", null) : source;
+        if (target.Space == "gbr")
+        {
+            target = target with { Space = request.Output == "hdr" ? "bt2020nc" : "bt709" };
+        }
+
+        return new ColorTagSet(
+            source with { Range = RangeWord(request.SourceRange) },
+            target with { Range = RangeWord(request.OutputRange) });
+    }
+
+    private static ColorTagsValue Fill(ColorTagsValue tags, string primaries, string transfer, string space)
+        => tags with
+        {
+            Primaries = string.IsNullOrEmpty(tags.Primaries) ? primaries : tags.Primaries,
+            Transfer = string.IsNullOrEmpty(tags.Transfer) ? transfer : tags.Transfer,
+            Space = string.IsNullOrEmpty(tags.Space) ? space : tags.Space
+        };
+
+    private static string RangeWord(string range) => range == "full" ? "pc" : "tv";
+
+    private static void ApplyTags(JsonObject video, ColorTagsValue tags)
+    {
+        if (tags.Primaries is not null)
+        {
+            video["color_primaries"] = tags.Primaries;
+        }
+        if (tags.Transfer is not null)
+        {
+            video["color_transfer"] = tags.Transfer;
+        }
+        if (tags.Space is not null)
+        {
+            video["color_space"] = tags.Space;
+        }
+        if (tags.Range is not null)
+        {
+            video["color_range"] = tags.Range;
+        }
+    }
+    // Fallback for a machine without the native library. These strings are the interface
+    // between the hosts, so they are spelled exactly the way the core spells them.
+    private static RenderFilters ManagedRenderFilters(RenderFiltersRequest request)
+    {
+        return new RenderFilters(
+            request.Log is { } curve ? ManagedLogFilter(curve) : null,
+            request.ToneMap is { } tone ? ManagedToneMap(tone) : null,
+            request.DolbyRender is { } dolby ? ManagedDolbyRender(dolby) : null,
+            request.DropDynamicMetadata ? ManagedDynamicMetadataDrop : null,
+            request.Vpp is { } vpp ? ManagedVpp(vpp) : null);
+    }
+
+    // Fallback for a machine without the native library: the same escaping the core applies.
+    // A path with a comma would otherwise split the filter chain.
+    private static string Quoted(string value)
+        => value.IndexOfAny([',', ':', ';', '[', ']', '\'', '\\', ' ']) >= 0
+            ? "'" + value.Replace("'", "'\\''") + "'"
+            : value;
+
+    private static string ManagedLogFilter(LogFilterRequest request)
+    {
+        string matrix = request.SourceSpace switch
         {
             "gbr" => "gbr",
             "bt709" => "709",
             "bt2020nc" => "2020_ncl",
             "smpte170m" => "170m",
             "bt470bg" => "470bg",
-            _ => p.Matrix
+            _ => request.Matrix
         };
-        var range = video.Text("color_range") switch
+        string range = request.SourceRange switch
         {
             "pc" => "full",
             "tv" => "limited",
-            _ => p.Range
+            _ => request.Range
         };
-        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={p.File}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
+        return $"zscale=matrixin={matrix}:rangein={range}:range=full,format=gbrpf32le,lut3d=file={Quoted(request.File)}:interp=tetrahedral,setparams=range=full:color_primaries=bt2020:color_trc=arib-std-b67:colorspace=gbr,zscale=matrix=2020_ncl:rangein=full:range=limited:dither=error_diffusion,format=yuv444p16le";
     }
-    private static double Fps(JsonObject v) => new[] { v.Text("avg_frame_rate"), v.Text("r_frame_rate") }.Select(s => JsonFields.Number(s)).FirstOrDefault(n => n > 0, 30);
+
+    private static string ManagedToneMap(ToneMapRequest request)
+        => $"libplacebo=format=yuv444p16le:colorspace=bt709:color_primaries=bt709:color_trc=bt709:range={request.Range}:tonemapping=bt.2390:apply_dolbyvision={(request.ApplyDolbyVision ? 1 : 0)},sidedata=delete:type=MASTERING_DISPLAY_METADATA,sidedata=delete:type=CONTENT_LIGHT_LEVEL,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+
+    private static string ManagedDolbyRender(DolbyRenderRequest request)
+    {
+        string trc = request.Kind == "hlg" ? "arib-std-b67" : "smpte2084";
+        return $"libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={trc}:range={request.Range}:apply_dolbyvision=1";
+    }
+
+    private static string ManagedVpp(VppFilterRequest request)
+    {
+        string surface = request.Depth == 10 ? "p010le" : "nv12";
+        string colorOptions = ":out_range=" + request.OutRange;
+        if (request.Sdr)
+        {
+            colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
+        }
+
+        return "vpp_qsv=format=" + surface + colorOptions;
+    }
+
+    private const string ManagedDynamicMetadataDrop = "sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS";
+
+    private static void AddIfAny(List<string> filters, string? entry)
+    {
+        if (!string.IsNullOrEmpty(entry))
+        {
+            filters.Add(entry);
+        }
+    }
+
+    // Fallback for a machine without the native library. Static tokens are only re-declared
+    // for PQ output, and only for encoders that can carry them; an SDR target keeps the
+    // dynamic payload but drops the mastering declaration.
+    private static HdrMetadataArguments ManagedHdrMetadata(HdrMetadataRequest request)
+    {
+        var parameters = new List<ParameterPair>();
+        if (request.PreserveDynamic && request.DolbyVisionProfile is not null && request.Codec == "hevc")
+        {
+            parameters.Add(new("vbv-maxrate", "100000"));
+            parameters.Add(new("vbv-bufsize", "100000"));
+        }
+        if (request.PreserveDynamic && request.Hdr10Plus)
+        {
+            parameters.Add(new("dhdr10-info", "hdr10plus.json"));
+        }
+
+        string[] appended = request.Output == "hdr" && request.SourceKind == "pq" && request.Codec is "hevc" or "av1"
+            ? HdrMetadata(request.SideData, request.Codec)
+            : [];
+        if (request.Codec == "hevc" && appended.Length > 0)
+        {
+            parameters.Add(new("hdr10", "1"));
+            parameters.Add(new("hdr10-opt", "1"));
+            parameters.Add(new("repeat-headers", "1"));
+        }
+
+        return new HdrMetadataArguments(parameters, appended);
+    }
     // ffprobe reports rational SI values. x265 expects chromaticity in
     // 1/50000 and luminance in 1/10000 cd/m²; SVT-AV1 accepts decimal values.
     private static string[] HdrMetadata(IEnumerable<JsonObject> side, string codec)
@@ -170,7 +375,7 @@ public sealed partial class Transcoder
         var result = new List<string>();
         if (md is not null && fields.All(md.ContainsKey))
         {
-            var values = fields.Select((f, i) => codec == "hevc" ? FormatNumber(Math.Round(JsonFields.Number(md.Text(f)) * (i < 8 ? 50000 : 10000))) : JsonFields.Number(md.Text(f)).ToString("F8", CultureInfo.InvariantCulture)).ToArray();
+            var values = fields.Select((f, i) => codec == "hevc" ? FormatNumber(Math.Round(JsonFields.Number(md.Text(f)) * (i < 8 ? 50000 : 10000), MidpointRounding.AwayFromZero)) : JsonFields.Number(md.Text(f)).ToString("F8", CultureInfo.InvariantCulture)).ToArray();
             result.Add((codec == "hevc" ? "master-display" : "mastering-display") + $"=G({values[0]},{values[1]})B({values[2]},{values[3]})R({values[4]},{values[5]})WP({values[6]},{values[7]})L({values[8]},{values[9]})");
         }
         if (cl is not null && cl.ContainsKey("max_content") && cl.ContainsKey("max_average"))
@@ -196,56 +401,30 @@ public sealed partial class Transcoder
         var kind = Validate(requestedOptions, media);
         var options = ResolveFormat(FrameOptions(media, requestedOptions, window is not null, motionPhoto), media);
         var video = media.Video.DeepClone().AsObject();
-        video["color_range"] = OutputPolicy.SourceRange(media, kind == "log" ? Profiles[options.Profile!].Range : null) == "full" ? "pc" : "tv";
-        if (IsHdr(kind))
-        {
-            video["color_transfer"] = kind == "hlg" ? "arib-std-b67" : "smpte2084";
-            foreach (var p in Hlg())
-            {
-                if (JsonFields.Unspecified(video.Text(p.Key)))
-                {
-                    video[p.Key] = p.Value?.DeepClone();
-                }
-            }
-        }
-        else if (kind == "sdr")
-        {
-            foreach (var p in Rec709())
-            {
-                if (JsonFields.Unspecified(video.Text(p.Key)))
-                {
-                    video[p.Key] = p.Value?.DeepClone();
-                }
-            }
-        }
-
         bool preserveDynamic = DynamicHdr.Preserve(media, options);
         bool developRaw = media.Raw is not null;
         bool renderDolby = media.DolbyVision is not null && !preserveDynamic;
-        if (preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5)
+        // Which defaults fill a silent container, how an RGB or profile 5 surface is named, and
+        // what the output should carry all live in the core; this file applies the answer.
+        ColorTagsRequest tagsRequest = new(
+            kind,
+            options.Output,
+            OutputPolicy.IsRgb(media),
+            preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5,
+            OutputPolicy.SourceRange(media, kind == "log" ? Profiles[options.Profile!].Range : null),
+            options.ColorRange,
+            JsonFields.Unspecified(video.Text("color_primaries")) ? null : video.Text("color_primaries"),
+            JsonFields.Unspecified(video.Text("color_transfer")) ? null : video.Text("color_transfer"),
+            JsonFields.Unspecified(video.Text("color_space")) ? null : video.Text("color_space"));
+        ColorTagSet tagSet = SharedCore.ColorTagsBuilder?.Invoke(tagsRequest) ?? ManagedColorTags(tagsRequest);
+        ApplyTags(video, tagSet.Source);
+        JsonObject colors = new()
         {
-            video["color_space"] = "ipt-c2";
-        }
-        if (OutputPolicy.IsRgb(media))
-        {
-            video["color_space"] = "gbr";
-        }
-
-        var colors = options.Output == "sdr" ? Rec709() : kind is "log" or "raw" ? Hlg() : new JsonObject();
-        if (colors.Count == 0)
-        {
-            foreach (var (key, _) in colorFlags)
-            {
-                colors[key] = video[key]?.DeepClone();
-            }
-        }
-
-        if (colors.Text("color_space") == "gbr")
-        {
-            colors["color_space"] = options.Output == "hdr" ? "bt2020nc" : "bt709";
-        }
-
-        colors["color_range"] = options.ColorRange == "full" ? "pc" : "tv";
+            ["color_primaries"] = tagSet.Target.Primaries,
+            ["color_transfer"] = tagSet.Target.Transfer,
+            ["color_space"] = tagSet.Target.Space,
+            ["color_range"] = tagSet.Target.Range,
+        };
 
         var config = (motionPhoto ? MotionConfig[options.Purpose]?[options.Codec] : options.Variant == "fast" ? Config["archive_fast_av1"] : Config[options.Purpose]?[options.Codec])!.AsObject();
         bool colorConversion = colors.Any(p => video.Text(p.Key) != p.Value?.ToString());
@@ -293,8 +472,35 @@ public sealed partial class Transcoder
         {
             args.AddRange(["-seek_timestamp", "1", "-ss", FormatNumber(window.SeekSeconds)]);
         }
-        args.AddRange(["-i", media.Path, "-map", "0:" + video.Text("index"), "-map", motionPhoto ? "0:a:0?" : "0:a?", "-map_metadata", motionPhoto || options.Transform.StartsWith("log-") ? "-1" : "0", "-map_chapters", motionPhoto || window is not null ? "-1" : "0", "-sn", "-dn"]);
+        string audioMap = motionPhoto ? "0:a:0?" : "0:a?";
+        bool keepMetadata = !(motionPhoto || options.Transform.StartsWith("log-"));
+        bool keepChapters = !(motionPhoto || window is not null);
+        var mapping = new InputMapRequest(media.Path, video.Integer("index"), audioMap, keepMetadata, keepChapters);
+        if (SharedCore.InputBuilder?.Invoke(mapping) is { Count: > 0 } shared)
+        {
+            args.AddRange(shared);
+        }
+        else
+        {
+            args.AddRange(["-i", media.Path, "-map", "0:" + video.Integer("index"), "-map", audioMap, "-map_metadata", keepMetadata ? "0" : "-1", "-map_chapters", keepChapters ? "0" : "-1", "-sn", "-dn"]);
+        }
         var filters = new List<string>();
+        LogFilterRequest? curve = null;
+        if (kind == "log" && Profiles.TryGetValue(options.Profile ?? "", out var profile))
+        {
+            curve = new LogFilterRequest(profile.File, profile.Matrix, profile.Range,
+                JsonFields.Unspecified(video.Text("color_space")) ? null : video.Text("color_space"),
+                JsonFields.Unspecified(video.Text("color_range")) ? null : video.Text("color_range"));
+        }
+
+        bool toneMapping = options.Transform is "hdr-sdr" or "log-sdr" || developRaw && options.Output == "sdr";
+        RenderFiltersRequest contentRequest = new(
+            curve,
+            toneMapping ? new ToneMapRequest(options.ColorRange == "full" ? "pc" : "tv", renderDolby) : null,
+            renderDolby && options.Output == "hdr" ? new DolbyRenderRequest(kind, options.ColorRange == "full" ? "pc" : "tv") : null,
+            media.DynamicHdr && !preserveDynamic,
+            gpu && !timingCompatibility ? new VppFilterRequest(options.Depth, colors.Text("color_range"), options.Output == "sdr") : null);
+        RenderFilters content = SharedCore.RenderFilterBuilder?.Invoke(contentRequest) ?? ManagedRenderFilters(contentRequest);
         if (window is not null)
         {
             filters.Add($"trim=start_frame={window.Start - window.SeekFrame}:end_frame={window.End - window.SeekFrame}");
@@ -326,10 +532,7 @@ public sealed partial class Transcoder
         }
         else if (renderDolby)
         {
-            if (options.Output == "hdr")
-            {
-                filters.Add($"libplacebo=format=yuv444p16le:colorspace=bt2020nc:color_primaries=bt2020:color_trc={(kind == "hlg" ? "arib-std-b67" : "smpte2084")}:range={(options.ColorRange == "full" ? "pc" : "tv")}:apply_dolbyvision=1");
-            }
+            AddIfAny(filters, content.DolbyRender);
         }
         else if (kind == "log")
         {
@@ -338,7 +541,7 @@ public sealed partial class Transcoder
                 filters.Add("format=gbrpf32le");
             }
 
-            filters.Add(LogFilter(video, options.Profile!));
+            AddIfAny(filters, content.Log);
         }
         else if (!gpu)
         {
@@ -349,15 +552,8 @@ public sealed partial class Transcoder
 
             filters.Add(FrameTags(video));
         }
-        if (options.Transform is "hdr-sdr" or "log-sdr" || developRaw && options.Output == "sdr")
-        {
-            filters.Add(ToneMap(options.ColorRange == "full" ? "pc" : "tv", renderDolby));
-        }
-
-        if (media.DynamicHdr && !preserveDynamic)
-        {
-            filters.Add("sidedata=delete:type=DOVI_RPU_BUFFER,sidedata=delete:type=DOVI_METADATA,sidedata=delete:type=DYNAMIC_HDR_PLUS");
-        }
+        AddIfAny(filters, content.ToneMap);
+        AddIfAny(filters, content.DroppedMetadata);
         if (gpu)
         {
             if (timingCompatibility)
@@ -366,29 +562,18 @@ public sealed partial class Transcoder
             }
             else
             {
-                var colorOptions = ":out_range=" + colors.Text("color_range");
-                if (options.Output == "sdr")
-                {
-                    colorOptions += ":out_color_matrix=bt709:out_color_primaries=bt709:out_color_transfer=bt709";
-                }
-
-                filters.Add($"vpp_qsv=format={(options.Depth == 10 ? "p010le" : "nv12")}{colorOptions}");
+                AddIfAny(filters, content.Vpp);
             }
         }
         else if (!preserveDynamic)
         {
-            var conversion = new List<string> { "range=" + options.ColorRange, "dither=error_diffusion" };
-            foreach (var (key, target) in new[] { ("color_primaries", "primaries"), ("color_transfer", "transfer"), ("color_space", "matrix") })
-            {
-                if (!JsonFields.Unspecified(colors.Text(key)))
-                {
-                    conversion.Add(target + "=" + colors.Text(key));
-                }
-            }
-
-            filters.Add("zscale=" + string.Join(':', conversion));
-            filters.Add("format=" + (options.Purpose == "share" && options.Depth == 10 ? "p010le" : options.PixelFormat));
-            filters.Add(FrameTags(colors));
+            ColorFilterRequest colorRequest = new(
+                JsonFields.Unspecified(colors.Text("color_primaries")) ? null : colors.Text("color_primaries"),
+                JsonFields.Unspecified(colors.Text("color_transfer")) ? null : colors.Text("color_transfer"),
+                JsonFields.Unspecified(colors.Text("color_space")) ? null : colors.Text("color_space"),
+                JsonFields.Unspecified(colors.Text("color_range")) ? null : colors.Text("color_range"),
+                options.ColorRange, options.PixelFormat, options.Purpose, options.Depth, preserveDynamic);
+            filters.AddRange(SharedCore.ColorFilterBuilder?.Invoke(colorRequest) ?? ManagedColorFilters(colorRequest));
         }
         if (motionPhoto && motionSize != "source")
         {
@@ -398,26 +583,47 @@ public sealed partial class Transcoder
         {
             filters.Add("setpts=PTS-STARTPTS");
         }
-        args.AddRange(["-vf", string.Join(',', filters), "-c:v", config.Text("encoder"), "-preset", config.Text("preset")]);
-        if (options.Purpose == "share")
+        string filterChain = SharedCore.FilterBuilder?.Invoke(filters) ?? string.Join(',', filters);
+        args.AddRange(["-vf", filterChain]);
+        bool share = options.Purpose == "share";
+        double frameRate = Fps(video);
+        // The rule itself lives in the shared core; this file only supplies the rate.
+        long gop = SharedCore.Gop?.Invoke(new GopRequest(frameRate, share, motionPhoto))
+            ?? ManagedGop(frameRate, share, motionPhoto);
+        var encoderRequest = new EncoderRequest(config.Text("encoder"), config.Text("preset"), config.Text("quality"), share,
+            options.Codec, options.Depth, gop, autoLowPower, timingCompatibility, config.Text("async_depth", "4"), options.PixelFormat);
+        var sharedEncoder = SharedCore.EncoderBuilder?.Invoke(encoderRequest);
+        if (share)
         {
-            // Keep high-frame-rate inputs below the long-GOP range associated
-            // with device failures on some Arc drivers (Intel article 000095403).
-            args.AddRange(["-global_quality:v", config.Text("quality"), "-low_power", autoLowPower ? "-1" : "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(Math.Clamp(Math.Round(2 * Fps(video)), 1, 240))]);
-            if (timingCompatibility && options.Codec is "avc" or "hevc")
+            if (sharedEncoder is { Count: > 0 } shareArguments)
             {
-                // Some QSV runtimes derive reordered DTS from a fixed cadence.
-                // I/P-only encoding preserves VFR PTS without that reordering.
-                args.AddRange(["-bf:v", "0"]);
+                args.AddRange(shareArguments);
             }
-            if (options.Codec == "hevc")
+            else
             {
-                args.AddRange(["-profile:v", options.Depth == 10 ? "main10" : "main"]);
+                args.AddRange(["-c:v", config.Text("encoder"), "-preset", config.Text("preset"), "-global_quality:v", config.Text("quality"), "-low_power", autoLowPower ? "-1" : "1", "-async_depth", config.Text("async_depth", "4"), "-g", FormatNumber(gop)]);
+                if (timingCompatibility && options.Codec is "avc" or "hevc")
+                {
+                    // Some QSV runtimes derive reordered DTS from a fixed cadence.
+                    // I/P-only encoding preserves VFR PTS without that reordering.
+                    args.AddRange(["-bf:v", "0"]);
+                }
+                if (options.Codec == "hevc")
+                {
+                    args.AddRange(["-profile:v", options.Depth == 10 ? "main10" : "main"]);
+                }
             }
         }
         else
         {
-            args.AddRange(["-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(Math.Max(1, Math.Round((motionPhoto ? 2 : 8) * Fps(video))))]);
+            if (sharedEncoder is { Count: > 0 } archiveArguments)
+            {
+                args.AddRange(archiveArguments);
+            }
+            else
+            {
+                args.AddRange(["-c:v", config.Text("encoder"), "-preset", config.Text("preset"), "-crf", config.Text("quality"), "-pix_fmt", options.PixelFormat, "-g", FormatNumber(gop)]);
+            }
             var extra = new JsonObject();
             if (options.Codec == "hevc")
             {
@@ -434,26 +640,21 @@ public sealed partial class Transcoder
                 extra[p.Key] = p.Value?.DeepClone();
             }
 
-            if (preserveDynamic && media.DolbyVision is not null && options.Codec == "hevc")
+            HdrMetadataRequest hdrRequest = new(options.Codec, options.Output, kind, preserveDynamic,
+                media.DolbyVision?.Integer("dv_profile"), media.Hdr10Plus, media.SideData.ToList());
+            HdrMetadataArguments hdr = SharedCore.HdrMetadata?.Invoke(hdrRequest) ?? ManagedHdrMetadata(hdrRequest);
+            foreach (ParameterPair pair in hdr.Parameters)
             {
-                extra["vbv-maxrate"] = 100000;
-                extra["vbv-bufsize"] = 100000;
+                extra[pair.Key] = pair.Value;
             }
-            if (preserveDynamic && media.Hdr10Plus)
-            {
-                extra["dhdr10-info"] = "hdr10plus.json";
-            }
-            var metadata = options.Output == "hdr" && kind == "pq" && options.Codec is "hevc" or "av1" ? HdrMetadata(media.SideData, options.Codec) : [];
-            if (options.Codec == "hevc" && metadata.Length > 0)
-            {
-                extra["hdr10"] = 1;
-                extra["hdr10-opt"] = 1;
-                extra["repeat-headers"] = 1;
-            }
+
+            var metadata = hdr.Appended.ToArray();
             if (extra.Count > 0 || options.Codec is "hevc" or "av1")
             {
-                args.AddRange([options.Codec switch { "hevc" => "-x265-params", "av1" => "-svtav1-params", _ => "-x264-params" },
-                    string.Join(':', extra.Select(p => p.Key + "=" + p.Value).Concat(metadata))]);
+                var pairs = extra.Select(p => new ParameterPair(p.Key, p.Value?.ToString() ?? "")).ToList();
+                string joined = SharedCore.ParameterBuilder?.Invoke(pairs, metadata)
+                    ?? string.Join(':', extra.Select(p => p.Key + "=" + p.Value).Concat(metadata));
+                args.AddRange([options.Codec switch { "hevc" => "-x265-params", "av1" => "-svtav1-params", _ => "-x264-params" }, joined]);
             }
         }
         if (media.DolbyVision is not null && options.Purpose == "archive" && options.Codec is "hevc" or "av1")
@@ -464,11 +665,25 @@ public sealed partial class Transcoder
         {
             args.AddRange(["-strict", "unofficial"]);
         }
-        foreach (var (key, flag) in colorFlags)
+        bool suppressDv5 = preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5;
+        ColorTagRequest tags = new(
+            JsonFields.Unspecified(colors.Text("color_primaries")) ? null : colors.Text("color_primaries"),
+            JsonFields.Unspecified(colors.Text("color_transfer")) ? null : colors.Text("color_transfer"),
+            JsonFields.Unspecified(colors.Text("color_space")) ? null : colors.Text("color_space"),
+            JsonFields.Unspecified(colors.Text("color_range")) ? null : colors.Text("color_range"),
+            suppressDv5);
+        if (SharedCore.ColorBuilder?.Invoke(tags) is { } sharedColorArguments)
         {
-            if (!JsonFields.Unspecified(colors.Text(key)) && !(preserveDynamic && media.DolbyVision?.Integer("dv_profile") == 5))
+            args.AddRange(sharedColorArguments);
+        }
+        else
+        {
+            foreach (var (key, flag) in colorFlags)
             {
-                args.AddRange([flag, colors.Text(key)]);
+                if (!JsonFields.Unspecified(colors.Text(key)) && !suppressDv5)
+                {
+                    args.AddRange([flag, colors.Text(key)]);
+                }
             }
         }
 

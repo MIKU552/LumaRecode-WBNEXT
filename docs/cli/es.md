@@ -37,11 +37,12 @@ Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa 
 | `frames INPUT` | Número de fotogramas, duración y base de tiempo |
 | `image INPUT` | Exportar una imagen HDR / SDR o Motion Photo |
 | `doctor` | Versiones de herramientas y listas de codificadores y filtros; los modos de hardware dependen de la GPU y del controlador |
+| `cache [--purge]` | Inventario y plan de retención; `--purge` solo borra dentro de la raíz de caché del programa |
 | `license [--text]` | Licencia MIT, condiciones de los componentes, directorio de avisos y manifiesto |
 | `plan INPUT...` | Vista previa de las opciones, argumentos de FFmpeg, directorio de trabajo y color de salida |
 | `convert INPUT...` | Convierte secuencialmente archivos, un directorio o coincidencias de comodines y verifica la salida |
 
-Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, diagnóstico y licencias son JSON. El progreso en texto se escribe en stderr; los resultados, en stdout.
+Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, diagnóstico, caché y licencias son JSON. El progreso en texto se escribe en stderr; los resultados, en stdout.
 
 ## Opciones de codificación y color
 

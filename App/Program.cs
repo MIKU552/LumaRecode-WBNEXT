@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using VideoConverter.Native;
 
 namespace VideoConverter;
 
@@ -13,6 +14,31 @@ internal static class Program
         {
             return exitCode;
         }
+        // Resolve output formats through the shared core when its native library is
+        // present; the managed rules stay authoritative otherwise. LUMARECODE_CORE
+        // pins the choice for support and for the CI fallback check.
+        string coreChoice = Environment.GetEnvironmentVariable("LUMARECODE_CORE") ?? "auto";
+        bool shared = !coreChoice.Equals("managed", StringComparison.OrdinalIgnoreCase)
+            && SharedCoreBridge.Install();
+        if (!shared)
+        {
+            SharedCoreBridge.Uninstall();
+        }
+
+        if (coreChoice.Equals("shared", StringComparison.OrdinalIgnoreCase) && !shared)
+        {
+            Console.Error.WriteLine("core: shared requested but unavailable");
+            return 4;
+        }
+        if (Environment.GetEnvironmentVariable("LUMARECODE_DIAGNOSTICS") == "1")
+        {
+            // Support and CI use this line to prove which rules answered; it stays
+            // silent unless the variable is set, so normal output is unchanged.
+            Console.Error.WriteLine(shared
+                ? $"core: shared {SharedCoreBridge.Version}"
+                : "core: managed");
+        }
+
         if (StartupMode.IsCommandLine(args))
         {
             return CommandLineHost.RunAsync(args[0] == "--cli" ? args[1..] : args).GetAwaiter().GetResult();

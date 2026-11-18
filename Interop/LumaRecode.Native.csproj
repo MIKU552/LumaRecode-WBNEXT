@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RootNamespace>VideoConverter.Native</RootNamespace>
+    <AssemblyName>LumaRecode.Native</AssemblyName>
+    <Version>5.0.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsAotCompatible>true</IsAotCompatible>
+    <LumaNativeLibraryDirectory Condition="'$(LumaNativeLibraryDirectory)' == ''">$(MSBuildThisFileDirectory)..\artifacts\native\$(LumaRecodeArchitecture)</LumaNativeLibraryDirectory>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The probe adapter reads the existing snapshot model. The reference goes
+         away when probing itself moves into the core. -->
+    <ProjectReference Include="../Core/LumaRecode.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- tools/Build-Native.ps1 writes the DLL here. Absent during a managed-only
+         build so this project stays compilable without a Rust toolchain. -->
+    <None Include="$(LumaNativeLibraryDirectory)\lumacore.dll" Condition="Exists('$(LumaNativeLibraryDirectory)\lumacore.dll')" Link="lumacore.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="$(LumaNativeLibraryDirectory)\lumacore.pdb" Condition="Exists('$(LumaNativeLibraryDirectory)\lumacore.pdb')" Link="lumacore.pdb" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

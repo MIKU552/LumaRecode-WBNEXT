@@ -1,0 +1,10 @@
+[toolchain]
+# P0 records the exact patch release used for a build; this file is the single
+# place that decides which compiler the workspace uses.
+#
+# 1.100.0 is the latest stable release and the one both hosts use; Windows and
+# macOS share this single pin. Releases before 1.99 produced proc-macro dylibs
+# that dyld on macOS 27 rejected with "mis-aligned LINKEDIT string pool".
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

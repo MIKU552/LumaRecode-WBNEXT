@@ -78,7 +78,7 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
-        Title = L.T("映码 · LumaRecode");
+        Title = L.T("映码 · LumaRecode WBNEXT");
         // Compiled XBF avoids runtime XML parsing and reflection over controls.
         // Appearance selects the appropriate native Mica host once the view exists.
         root = new MainView();

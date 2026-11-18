@@ -1,9 +1,11 @@
 <p align="center">
   <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode icon" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
+
+> **WBNEXT refactor preview**: this branch is an independent cross-platform rewrite based on [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), developed with WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context). It is **not an official release** and carries no support commitment from upstream. Builds come from GitHub Actions artifacts; progress is tracked in the [refactor record](../refactor/README.md#english).
 
 Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
@@ -136,6 +138,16 @@ qa/        Automated checks and memory sampling
 docs/      User guides, development notes, and benchmark data
 licenses/  Third-party licenses, notices, and provenance
 ```
+
+## Code signing policy
+
+Windows builds ship **unsigned**; that is the project's decision and no code signing certificate will be requested. The release page publishes a SHA-256 for the package so a download can be checked against it, and the SmartScreen prompt on first run is expected — no system protection needs to be turned off.
+
+The macOS build uses a free ad-hoc signature: no Apple Developer ID and no notarization. On first launch, choose "Open Anyway" in System Settings → Privacy & Security; the distribution notes state that step and never ask you to disable Gatekeeper.
+
+Roles: MIKU552 maintains the project and approves releases; committer and reviewer are the same account (single-maintainer project). Every formal signing is approved manually.
+
+Privacy: the program has no telemetry and uploads no diagnostics or footage; it reaches the network only when you open an external link or use a system share action. FFmpeg / ffprobe are supplied by you and are never downloaded on your behalf.
 
 ## Development and license
 

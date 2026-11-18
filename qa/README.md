@@ -49,6 +49,15 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 
 这些检查覆盖四种语言的选择、翻译资源与格式占位符、XAML 映射、设置格式、命令行 JSON 格式和生成的 LUT。可给 `check_cli_languages.py` 传入 `--exe dist/SelfContained/LumaRecode.exe`，检查打包后的 CLI 语言资源。
 
+### 共享核心对照
+
+```powershell
+./tools/Build-Native.ps1 -Configuration Release -Target Native
+dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
+```
+
+先构建 Rust 原生库。对照检查用 12 组源描述与 12 组用途、编码器、输出组合，比较 C# `OutputPolicy` 与共享核心的采样、位深、范围、可选值、默认值，以及 `ResolveFormat` 的接受与拒绝结果，最后输出比较次数和不一致数量。退出码 3 表示原生库未构建，应与通过、失败分别记录。
+
 ### CLI 与转换核心
 
 先运行 `./build.ps1`，再执行集成检查：
@@ -186,6 +195,20 @@ dotnet run --project qa/BackendChecks/BackendChecks.csproj -c Release -- --resou
 This check generates a timestamp index for 12 hours at 60 fps and streams 100 million characters of simulated metadata.
 
 These checks cover language selection for all four languages, translation resources and format placeholders, XAML mappings, settings formats, CLI JSON contracts and generated LUTs. Pass `--exe dist/SelfContained/LumaRecode.exe` to `check_cli_languages.py` to check packaged CLI language resources.
+
+### Shared core parity
+
+```powershell
+./tools/Build-Native.ps1 -Configuration Release -Target Native
+dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release
+```
+
+Build the Rust native library first. The parity check compares C# `OutputPolicy`
+with the shared core across 12 source descriptions and 12 purpose/codec/output
+combinations: sampling, depth, range, option lists, defaults, and whether
+`ResolveFormat` accepts or rejects the request. It reports the comparison and
+mismatch counts. Exit code 3 means the native library was not built and must be
+recorded separately from pass and fail.
 
 ### CLI and conversion core
 

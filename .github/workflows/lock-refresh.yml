@@ -1,0 +1,52 @@
+# Regenerates the NuGet lock files on a hosted runner.
+#
+# Adding or removing a project reference makes --locked-mode restore fail with
+# NU1004, and the lock files must not be hand-edited. Run this workflow from the
+# branch that changed the dependency graph, download the artifact, commit the
+# four files, then let the normal workflows verify locked restore again.
+name: lock-refresh
+
+on:
+  workflow_dispatch:
+  # workflow_dispatch only appears in the UI once the file is on the default
+  # branch, so also react to the files that change the dependency graph.
+  push:
+    branches: [next]
+    paths:
+      - '.github/workflows/lock-refresh.yml'
+      - 'App/VideoConverter.WinUI.csproj'
+      - 'Interop/LumaRecode.Native.csproj'
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Regenerate lock files
+        shell: pwsh
+        run: |
+          $project = "App/VideoConverter.WinUI.csproj"
+          dotnet restore $project --force-evaluate -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw "x64 restore failed." }
+          dotnet restore $project --force-evaluate -p:Platform=ARM64 -p:LumaRecodeArchitecture=arm64
+          if ($LASTEXITCODE -ne 0) { throw "arm64 restore failed." }
+          dotnet restore $project --force-evaluate -p:Platform=x64 -p:PublishAot=true
+          if ($LASTEXITCODE -ne 0) { throw "x64 AOT restore failed." }
+          dotnet restore $project --force-evaluate -p:Platform=ARM64 -p:LumaRecodeArchitecture=arm64 -p:PublishAot=true
+          if ($LASTEXITCODE -ne 0) { throw "arm64 AOT restore failed." }
+          Get-ChildItem App/packages*.lock.json | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-lockfiles
+          path: App/packages*.lock.json
+          if-no-files-found: error

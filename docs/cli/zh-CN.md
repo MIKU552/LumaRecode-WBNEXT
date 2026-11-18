@@ -37,11 +37,12 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `frames INPUT` | 显示帧数、时长与时间基 |
 | `image INPUT` | 导出所选帧的 HDR / SDR 图片或动态照片 |
 | `doctor` | 工具版本及编码器、滤镜列表；硬件模式由显卡与驱动决定 |
+| `cache [--purge]` | 缓存清单与回收计划；`--purge` 按计划删除，仅限本程序缓存根目录 |
 | `license [--text]` | 项目许可、第三方条款、完整许可目录与清单 |
 | `plan INPUT...` | 预览转换选项、FFmpeg 参数、工作目录和输出色彩 |
 | `convert INPUT...` | 单文件或顺序批量转换，完成后校验输出 |
 
-各命令均可使用 `--help`。`presets`、`profiles`、`probe`、`doctor`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
+各命令均可使用 `--help`。`presets`、`profiles`、`probe`、`doctor`、`cache`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
 
 ## 编码与色彩选项
 

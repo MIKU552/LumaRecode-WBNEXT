@@ -1,0 +1,409 @@
+# Windows build and parity gate.
+#
+# Everything here runs on a hosted runner: the repository is not built or tested
+# on a developer machine. The job proves three things in order — the Rust core
+# builds and passes its tests on Windows, the managed layers compile against it,
+# and the existing WinUI application still builds with the baseline core.
+name: windows
+
+on:
+  push:
+    branches: [next]
+    # A documentation-only push cannot change the binaries; the docs workflow
+    # checks the Markdown instead of rebuilding everything.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build and parity (x64)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Toolchain
+        shell: pwsh
+        run: |
+          rustup show active-toolchain
+          rustc -Vv
+          dotnet --version
+          New-Item -ItemType Directory -Path build-info -Force | Out-Null
+          rustc -Vv | Out-File build-info/rust.txt
+          dotnet --version | Out-File build-info/dotnet.txt
+
+      - name: Build core and stage the native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target X64 -Test
+
+      - name: Restore application (locked)
+        shell: pwsh
+        run: dotnet restore App/VideoConverter.WinUI.csproj --locked-mode -p:Platform=x64
+
+      - name: Build application
+        shell: pwsh
+        run: dotnet build App/VideoConverter.WinUI.csproj -c Release -p:Platform=x64 --no-restore
+
+      - name: Build managed interop
+        shell: pwsh
+        run: |
+          dotnet build Interop/LumaRecode.Native.csproj -c Release -p:LumaRecodeArchitecture=x64
+          dotnet build qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64
+
+      # The IDE and the command line must open the same set of projects, so both solution
+      # files are read back here; a project missing from either one fails the build.
+      - name: Solution entry points
+        shell: pwsh
+        run: |
+          foreach ($file in @('LumaRecode.slnx', 'LumaRecode.sln')) {
+            $listed = (dotnet sln $file list) -join "`n"
+            $listed
+            foreach ($project in @('LumaRecode.Native.csproj', 'NativeChecks.csproj')) {
+              if ($listed -notmatch [regex]::Escape($project)) {
+                throw "$project is missing from $file."
+              }
+            }
+          }
+
+      - name: Check formatting
+        shell: pwsh
+        run: |
+          # Apply the formatter and print what it changed: a failure then shows the
+          # exact rewrite instead of only "formatting differs".
+          dotnet format Interop/LumaRecode.Native.csproj --verbosity quiet
+          if ($LASTEXITCODE -ne 0) { throw "Interop formatting failed." }
+          dotnet format qa/NativeChecks/NativeChecks.csproj --verbosity quiet
+          if ($LASTEXITCODE -ne 0) { throw "NativeChecks formatting failed." }
+          $diff = git --no-pager diff
+          if ($diff) {
+            $diff | Select-Object -First 200
+            throw "Formatting differs; the diff above is what the formatter expects."
+          }
+
+      - name: Parity check
+        shell: pwsh
+        run: |
+          dotnet run --project qa/NativeChecks/NativeChecks.csproj -c Release -p:LumaRecodeArchitecture=x64 *> build-info/parity.log
+          if ($LASTEXITCODE -ne 0) {
+            Get-Content build-info/parity.log | Select-Object -Last 60
+            throw "Parity check failed."
+          }
+          Get-Content build-info/parity.log | Select-Object -Last 5
+
+      - name: CLI smoke
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Select-Object -First 1
+          if ($null -eq $exe) { throw "LumaRecode.exe was not built." }
+          $env:LUMARECODE_DIAGNOSTICS = "1"
+          # The application is a GUI-subsystem binary, so "&" neither waits nor sets
+          # $LASTEXITCODE. Start it, wait, and capture the redirected streams.
+          $stdout = Join-Path $env:RUNNER_TEMP "cli-stdout.txt"
+          $stderr = Join-Path $env:RUNNER_TEMP "cli-stderr.txt"
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList '--cli', '--version' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
+          $text
+          if ($process.ExitCode -ne 0) { throw "CLI --version failed with $($process.ExitCode)." }
+          if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
+          if ($text -notmatch 'LumaRecode 5\.0\.0 WBNEXT') { throw "Unexpected version output." }
+
+          # Help must stay in step with the command list: a missing description used
+          # to read past the array, so run it and require the newest command to appear.
+          $helpOut = Join-Path $env:RUNNER_TEMP "cli-help.txt"
+          $helpErr = Join-Path $env:RUNNER_TEMP "cli-help-err.txt"
+          $help = Start-Process -FilePath $exe.FullName -ArgumentList '--help' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $helpOut -RedirectStandardError $helpErr
+          $helpText = (Get-Content $helpOut -Raw) + (Get-Content $helpErr -Raw)
+          if ($help.ExitCode -ne 0) { $helpText; throw "CLI --help failed with $($help.ExitCode)." }
+          if ($helpText -notmatch 'cache') { throw "Help does not list the cache command." }
+
+          # The fallback must work too: force the managed rules and require the
+          # CLI to stay usable when the native library is deliberately ignored.
+          $env:LUMARECODE_CORE = "managed"
+          $managedOut = Join-Path $env:RUNNER_TEMP "cli-managed-out.txt"
+          $managedErr = Join-Path $env:RUNNER_TEMP "cli-managed-err.txt"
+          $managed = Start-Process -FilePath $exe.FullName -ArgumentList '--cli', '--version' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $managedOut -RedirectStandardError $managedErr
+          $managedText = (Get-Content $managedOut -Raw) + (Get-Content $managedErr -Raw)
+          $managedText
+          if ($managed.ExitCode -ne 0) { throw "Managed fallback failed with $($managed.ExitCode)." }
+          if ($managedText -notmatch 'core: managed') { throw "Managed fallback was not used." }
+          Remove-Item Env:LUMARECODE_CORE
+
+          # Presets must carry a backend for every row, otherwise the UI cannot
+          # group them without guessing from the encoder name.
+          $presetOut = Join-Path $env:RUNNER_TEMP "presets.json"
+          $presetErr = Join-Path $env:RUNNER_TEMP "presets-err.txt"
+          $presetsRun = Start-Process -FilePath $exe.FullName -ArgumentList 'presets', '--json', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $presetOut -RedirectStandardError $presetErr
+          if ($presetsRun.ExitCode -ne 0) { Get-Content $presetErr; throw "presets failed with $($presetsRun.ExitCode)." }
+          $presets = Get-Content $presetOut -Raw | ConvertFrom-Json
+          $backends = $presets.presets | ForEach-Object { $_.backend } | Sort-Object -Unique
+          $backends
+          if ($backends -contains 'unknown' -or $backends -contains $null) { throw "A preset has no backend." }
+
+      - name: Integration smoke
+        shell: pwsh
+        run: |
+          # The package feed occasionally fails to resolve; a retry is cheaper than
+          # a red build, and an already-installed package succeeds immediately.
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
+          if ($LASTEXITCODE -ne 0) { throw "FFmpeg installation failed with $LASTEXITCODE." }
+          # Resolve the executable from the package directory instead of trusting the
+          # shim: a cached package can report success without refreshing the shim.
+          $ffmpeg = Get-ChildItem "C:\ProgramData\chocolatey\lib\ffmpeg" -Recurse -Filter ffmpeg.exe -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if ($null -eq $ffmpeg) {
+            # The package feed is the flakiest part of this job; fall back to the
+            # official static build so the conversion checks still run.
+            Write-Host "Chocolatey did not provide FFmpeg; downloading a static build."
+            $archive = Join-Path $env:RUNNER_TEMP "ffmpeg.zip"
+            Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile $archive
+            Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $env:RUNNER_TEMP "ffmpeg") -Force
+            $ffmpeg = Get-ChildItem (Join-Path $env:RUNNER_TEMP "ffmpeg") -Recurse -Filter ffmpeg.exe |
+              Select-Object -First 1
+          }
+          if ($null -eq $ffmpeg) { throw "FFmpeg is unavailable." }
+          $env:PATH = "$($ffmpeg.DirectoryName);$env:PATH"
+          ffmpeg -version | Select-Object -First 1
+          $source = Join-Path $env:RUNNER_TEMP "source.mp4"
+          $target = Join-Path $env:RUNNER_TEMP "out.mkv"
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 `
+            -c:v libx264 -pix_fmt yuv420p -y $source
+          if ($LASTEXITCODE -ne 0) { throw "Synthetic source generation failed." }
+          # Keep the raw probe document: it is the fixture the shared parser is
+          # written against, including the fields ffprobe omits.
+          ffprobe -v error -print_format json -show_streams -show_format $source > build-info/ffprobe-source.json
+          if ($LASTEXITCODE -ne 0) { throw "Raw probe capture failed." }
+
+          # A second, deliberately different source: 10-bit HLG with an audio track.
+          # FFV1 keeps it encoder-independent, so the fixture does not depend on
+          # which codecs the installed FFmpeg happens to ship.
+          $hlg = Join-Path $env:RUNNER_TEMP "hlg.mkv"
+          ffmpeg -v error -f lavfi -i testsrc2=size=320x240:rate=30:duration=1 `
+            -f lavfi -i sine=frequency=440:duration=1 `
+            -c:v ffv1 -pix_fmt yuv420p10le -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc `
+            -c:a pcm_s16le -shortest -y $hlg
+          if ($LASTEXITCODE -ne 0) { throw "HLG source generation failed." }
+          ffprobe -v error -print_format json -show_streams -show_format $hlg > build-info/ffprobe-hlg.json
+          if ($LASTEXITCODE -ne 0) { throw "HLG probe capture failed." }
+
+          $exe = Get-ChildItem -Path App/bin -Recurse -Filter LumaRecode.exe -ErrorAction Stop |
+            Where-Object { $_.FullName -match '\\Release\\' } |
+            Select-Object -First 1
+          $env:LUMARECODE_DIAGNOSTICS = "1"
+          $stdout = Join-Path $env:RUNNER_TEMP "convert-stdout.txt"
+          $stderr = Join-Path $env:RUNNER_TEMP "convert-stderr.txt"
+          $process = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'convert', $source, '-o', $target, '--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'sdr', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          $text = (Get-Content $stdout -Raw) + (Get-Content $stderr -Raw)
+          $text
+          if ($process.ExitCode -ne 0) { throw "CLI convert failed with $($process.ExitCode)." }
+          if (-not (Test-Path -LiteralPath $target)) { throw "Convert did not produce the output file." }
+
+          $probe = ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 $target
+          $probe
+          if ($probe -notmatch '^hevc,yuv420p') { throw "Unexpected output stream: $probe" }
+
+          # The 10-bit HLG source must stay 10-bit through the HDR path; an 8-bit
+          # result would mean the depth policy was not applied.
+          $hlgOut = Join-Path $env:RUNNER_TEMP "hlg-out.mkv"
+          $hlgStdout = Join-Path $env:RUNNER_TEMP "hlg-stdout.txt"
+          $hlgStderr = Join-Path $env:RUNNER_TEMP "hlg-stderr.txt"
+          $hlgRun = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'convert', $hlg, '-o', $hlgOut, '--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'hlg', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $hlgStdout -RedirectStandardError $hlgStderr
+          if ($hlgRun.ExitCode -ne 0) {
+            Get-Content $hlgStdout
+            Get-Content $hlgStderr
+            throw "HDR convert failed with $($hlgRun.ExitCode)."
+          }
+          $hlgProbe = ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 $hlgOut
+          $hlgProbe
+          if ($hlgProbe -notmatch '^hevc,yuv420p10le') { throw "HDR output is not 10-bit HEVC: $hlgProbe" }
+          # Seed the cache so the retention plan has something to decide about.
+          $cacheRoot = Join-Path $env:LOCALAPPDATA "luma-recode"
+          $oldCache = Join-Path $cacheRoot "old-build"
+          $freshCache = Join-Path $cacheRoot "fresh-build"
+          New-Item -ItemType Directory -Force -Path $oldCache, $freshCache | Out-Null
+          Set-Content -Path (Join-Path $oldCache "payload.bin") -Value ("x" * 2048) -NoNewline
+          Set-Content -Path (Join-Path $freshCache "payload.bin") -Value ("x" * 512) -NoNewline
+          (Get-Item $oldCache).LastWriteTime = (Get-Date).AddDays(-60)
+
+          $doctorOut = Join-Path $env:RUNNER_TEMP "doctor.json"
+          $doctorErr = Join-Path $env:RUNNER_TEMP "doctor-err.txt"
+          $doctor = Start-Process -FilePath $exe.FullName -ArgumentList 'doctor', '--json', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $doctorOut -RedirectStandardError $doctorErr
+          if ($doctor.ExitCode -ne 0) {
+            Get-Content $doctorOut
+            Get-Content $doctorErr
+            throw "doctor failed with $($doctor.ExitCode)."
+          }
+          $report = Get-Content $doctorOut -Raw | ConvertFrom-Json
+          $report.core
+          if ($report.core.mode -ne 'shared') { throw "doctor did not report the shared core." }
+          $report.backends
+          $report.cache
+          if ($report.backends.software -lt 1) { throw "doctor reported no software encoder." }
+          # Purge through the CLI and require the old build gone while the fresh one stays.
+          $cacheOut = Join-Path $env:RUNNER_TEMP "cache-purge.json"
+          $cacheErr = Join-Path $env:RUNNER_TEMP "cache-purge-err.txt"
+          $purgeRun = Start-Process -FilePath $exe.FullName `
+            -ArgumentList 'cache', '--json', '--purge', '--no-settings', '--accept-terms' `
+            -Wait -PassThru -NoNewWindow -RedirectStandardOutput $cacheOut -RedirectStandardError $cacheErr
+          if ($purgeRun.ExitCode -ne 0) {
+            Get-Content $cacheOut
+            Get-Content $cacheErr
+            throw "cache purge failed with $($purgeRun.ExitCode)."
+          }
+          $purged = Get-Content $cacheOut -Raw | ConvertFrom-Json
+          $purged.purge
+          if ($purged.purge.removed.Count -lt 1) { throw "cache purge removed nothing." }
+          if (Test-Path -LiteralPath $oldCache) { throw "old build survived the purge." }
+          if (-not (Test-Path -LiteralPath $freshCache)) { throw "purge removed the fresh build." }
+
+          $report.capability.backends | Select-Object backend, availability | Format-Table -AutoSize | Out-String | Write-Host
+          if ($report.capability.backends.Count -ne 6) { throw "capability detection did not report six backends." }
+          $softwareStatus = $report.capability.backends | Where-Object { $_.backend -eq 'software' }
+          if ($softwareStatus.availability -ne 'available') { throw "software backend is not available." }
+          if (-not $report.cache.root) { throw "doctor reported no cache root." }
+          if ($report.cache.plan.reclaimable_bytes -lt 2048) { throw "cache plan did not reclaim the old build." }
+          $decision = $report.cache.plan.decisions | Where-Object { $_.key -eq 'old-build' } | Select-Object -First 1
+          $decision
+          if ($decision.decision -ne 'remove_too_old') { throw "unexpected cache decision: $($decision.decision)" }
+
+          # Capture real probe and plan documents. They feed the shared probe parser
+          # and the planning parity work, and they prove both commands run headless.
+          foreach ($command in @('probe', 'plan')) {
+            $out = Join-Path $env:RUNNER_TEMP "$command.json"
+            $err = Join-Path $env:RUNNER_TEMP "$command-err.txt"
+            $arguments = @($command, $source, '--json', '--no-settings', '--accept-terms')
+            if ($command -eq 'plan') {
+              $arguments += @('--purpose', 'archive', '--codec', 'hevc', '--input-kind', 'sdr')
+            }
+            $run = Start-Process -FilePath $exe.FullName -ArgumentList $arguments `
+              -Wait -PassThru -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+            if ($run.ExitCode -ne 0) { Get-Content $err; throw "$command failed with $($run.ExitCode)." }
+            $null = Get-Content $out -Raw | ConvertFrom-Json
+            Copy-Item $out "build-info/$command.json"
+            "$command ok"
+          }
+
+      - name: Record hashes
+        shell: pwsh
+        run: |
+          (Get-FileHash "artifacts/native/x64/lumacore.dll" -Algorithm SHA256).Hash |
+            Out-File build-info/lumacore.sha256
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64
+          path: |
+            artifacts/native/x64/
+            build-info/
+          if-no-files-found: warn
+
+  # The release ships x64 and ARM64 from the same project; build ARM64 on every
+  # push so architecture-specific assets and XAML problems surface early.
+  arm64:
+    name: build (arm64)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Add Rust target
+        shell: pwsh
+        run: rustup target add aarch64-pc-windows-msvc
+
+      - name: Build core for ARM64
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target Arm64
+
+      - name: Restore application (locked)
+        shell: pwsh
+        run: dotnet restore App/VideoConverter.WinUI.csproj --locked-mode -p:Platform=ARM64
+
+      - name: Build application
+        shell: pwsh
+        run: dotnet build App/VideoConverter.WinUI.csproj -c Release -p:Platform=ARM64 --no-restore
+
+  # Publishing is the shipping mode: one self-contained EXE. Verify it produces
+  # exactly one file and that the file is the expected executable.
+  publish:
+    name: publish (x64, single file)
+    runs-on: windows-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build core and stage the native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target X64
+
+      - name: Publish
+        shell: pwsh
+        run: dotnet publish App/VideoConverter.WinUI.csproj -c Release -p:Platform=x64 -o publish
+
+      - name: Check the single file
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem publish -File
+          $files | Select-Object Name, Length | Format-Table -AutoSize | Out-String | Write-Host
+          $exe = $files | Where-Object { $_.Name -eq "LumaRecode.exe" }
+          if ($null -eq $exe) { throw "LumaRecode.exe was not published." }
+          # Debug symbols may sit beside the bundle; any other sidecar means the
+          # single-file claim is not true and has to be fixed, not shipped.
+          $extra = $files | Where-Object { $_.Name -ne "LumaRecode.exe" -and $_.Extension -ne ".pdb" }
+          if ($extra) {
+            $extra | Select-Object Name | Format-Table -AutoSize | Out-String | Write-Host
+            throw "Unexpected published files: $($extra.Name -join ', ')"
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-x64-publish
+          path: publish/
+          if-no-files-found: warn

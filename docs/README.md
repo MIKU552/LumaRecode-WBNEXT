@@ -22,6 +22,7 @@
 | [代码结构](architecture.md) | 模块、任务生命周期、线程与缓存 |
 | [性能优化](performance.md) | 预览、内存与运行开销测量 |
 | [QSV 兼容性](qsv-compatibility.md) | 硬件处理策略与上游报告 |
+| [重构实施记录](refactor/README.md) | 共享核心、C ABI、迁移台账与阶段进度 |
 | [编码预设测试](benchmarks/encoding-benchmark.md) | 编码参数、画质、体积与转码速度 |
 | [测试数据](benchmarks/data/README.md) | 测量环境、参数、字段与原始结果 |
 | [开发检查](../qa/README.md) | 自动检查、集成测试与设备核对 |
@@ -65,6 +66,7 @@ Each page below provides complete Chinese and English sections, selectable at th
 | [Architecture](architecture.md#english) | Modules, job lifetimes, threads and caches |
 | [Performance](performance.md#english) | Preview, memory and runtime measurements |
 | [QSV compatibility](qsv-compatibility.md#english) | Hardware policies and upstream reports |
+| [Refactor record](refactor/README.md#english) | Shared core, C ABI, migration ledger and phase status |
 | [Encoding preset benchmark](benchmarks/encoding-benchmark.md#english) | Encoding parameters, quality, size and throughput |
 | [Benchmark data](benchmarks/data/README.md#english) | Environment, parameters, fields and raw results |
 | [Development checks](../qa/README.md#english) | Automated checks, integration tests and device verification |

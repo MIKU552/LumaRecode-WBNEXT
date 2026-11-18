@@ -18,15 +18,15 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>LumaRecode.ico</ApplicationIcon>
     <AssemblyName>LumaRecode</AssemblyName>
-    <Title>映码 · LumaRecode</Title>
-    <Product>映码 · LumaRecode</Product>
+    <Title>映码 · LumaRecode WBNEXT</Title>
+    <Product>映码 · LumaRecode WBNEXT</Product>
     <Description>视频转码与色彩转换</Description>
     <RootNamespace>VideoConverter</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>4.4.3</Version>
+    <Version>5.0.0</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.lock.json</NuGetLockFilePath>
   </PropertyGroup>
@@ -46,6 +46,7 @@
     <Content Remove="Native/**" />
     <None Remove="Native/**" />
     <ProjectReference Include="../Core/LumaRecode.Core.csproj" />
+    <ProjectReference Include="../Interop/LumaRecode.Native.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.5" />
     <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.6.5" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />

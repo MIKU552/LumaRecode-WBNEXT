@@ -1,9 +1,11 @@
 <p align="center">
   <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="Icono de LumaRecode" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 [简体中文](../../README.md) | [English](en.md) | [日本語](ja.md) | Español
+
+> **Vista previa de la reescritura WBNEXT**: esta rama es una reescritura multiplataforma independiente basada en [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), desarrollada con WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). **No es una versión oficial** y no hereda el soporte del proyecto original. Las compilaciones provienen de los artefactos de GitHub Actions; el avance se registra en el [registro de la reescritura (chino e inglés)](../refactor/README.md#english).
 
 Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
@@ -136,6 +138,16 @@ qa/        Comprobaciones automáticas y medición de memoria
 docs/      Guías, documentación de desarrollo y datos de pruebas
 licenses/  Licencias, avisos y procedencia de componentes de terceros
 ```
+
+## Code signing policy
+
+Las compilaciones de Windows se distribuyen **sin firmar**; es una decisión del proyecto y no se solicitará ningún certificado de firma. La página de la versión publica un SHA-256 del paquete para poder comprobarlo, y el aviso de SmartScreen al ejecutarlo por primera vez es esperado: no hace falta desactivar la protección del sistema.
+
+La versión de macOS usa una firma ad-hoc gratuita: sin Apple Developer ID y sin notarización. En el primer inicio, elige «Abrir de todos modos» en Ajustes del Sistema → Privacidad y seguridad; las notas de distribución indican ese paso y nunca piden desactivar Gatekeeper.
+
+Roles: MIKU552 mantiene el proyecto y aprueba las versiones; la misma cuenta actúa como committer y revisor (proyecto de un solo mantenedor). Cada firma formal se aprueba manualmente.
+
+Privacidad: el programa no incluye telemetría ni sube diagnósticos o material; solo accede a la red cuando abres un enlace externo o usas una acción de compartir del sistema. FFmpeg / ffprobe los aporta el usuario y nunca se descargan en su nombre.
 
 ## Desarrollo y licencia
 

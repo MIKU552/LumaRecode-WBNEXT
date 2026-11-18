@@ -48,9 +48,12 @@ public sealed partial class MainWindow
         using var document = JsonDocument.Parse(stream);
         return document.RootElement.Clone();
     }
+    private JsonElement PresetConfig() => Value(Variant) == "fast"
+        ? encodingConfig.GetProperty("archive_fast_av1")
+        : encodingConfig.GetProperty(Value(Purpose)).GetProperty(Value(Codec));
     private string DescribePreset()
     {
-        var preset = Value(Variant) == "fast" ? encodingConfig.GetProperty("archive_fast_av1") : encodingConfig.GetProperty(Value(Purpose)).GetProperty(Value(Codec));
+        var preset = PresetConfig();
         var encoder = preset.GetProperty("encoder").GetString() switch
         {
             "libx265" => "x265",
@@ -285,7 +288,8 @@ public sealed partial class MainWindow
                 "avc" => "H.264",
                 _ => "HEVC"
             };
-            Control<TextBlock>("PresetName").Text = $"{(Hdr ? "HDR" : "SDR")} · {codecName} · {(Value(Purpose) == "share" ? L.T("快速分享") : L.T("软件归档"))}";
+            var backend = EncoderBackends.Label(EncoderBackends.For(PresetConfig().GetProperty("encoder").GetString() ?? ""));
+            Control<TextBlock>("PresetName").Text = $"{(Hdr ? "HDR" : "SDR")} · {codecName} · {(Value(Purpose) == "share" ? L.T("快速分享") : L.T("软件归档"))} · {backend}";
             var quality = DescribePreset();
             Control<TextBlock>("PresetDetail").Text = L.T($"{quality}\n{Depth} 位 {sampling} · {Suffix[1..].ToUpperInvariant()}") + " · " + dataRange;
             Control<TextBlock>("ContainerNote").Text = Value(Container) == "auto"

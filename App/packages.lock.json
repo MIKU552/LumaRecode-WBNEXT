@@ -73,6 +73,12 @@
       },
       "lumarecode.core": {
         "type": "Project"
+      },
+      "lumarecode.native": {
+        "type": "Project",
+        "dependencies": {
+          "LumaRecode.Core": "[4.4.3, )"
+        }
       }
     },
     "net11.0-windows10.0.26100/win-x64": {

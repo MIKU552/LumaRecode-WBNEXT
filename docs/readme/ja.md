@@ -1,9 +1,11 @@
 <p align="center">
   <img src="../../Brand/LumaRecode.svg" width="104" height="104" alt="LumaRecode アイコン" />
 </p>
-<h1 align="center">映码 · LumaRecode</h1>
+<h1 align="center">映码 · LumaRecode WBNEXT</h1>
 
 [简体中文](../../README.md) | [English](en.md) | 日本語 | [Español](es.md)
+
+> **WBNEXT リファクタープレビュー版**：[LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode) を基にした独立のクロスプラットフォーム版です。WorkBuddy（DeepSeek-V4.1-Flash-1017、高推論、1M コンテキスト）の支援で開発しており、**正式リリースではありません**。ビルド成果物は GitHub Actions の Artifacts から取得し、進捗は[リファクタリング記録（中国語・英語）](../refactor/README.md#english)にまとめています。
 
 C# / .NET で開発した Windows 11 向けの動画変換・色変換ツールです。ネイティブ WinUI 3 インターフェイスとコマンドラインを備え、FFmpeg による動画圧縮、カメラ Log から HDR / SDR への変換、HDR から SDR への変換を行います。
 
@@ -136,6 +138,16 @@ qa/        自動チェックとメモリ測定
 docs/      使用方法、開発ドキュメント、ベンチマーク
 licenses/  第三者のライセンス、通知、配布元の記録
 ```
+
+## Code signing policy
+
+Windows 版は**署名しません**。これはプロジェクトの決定であり、コード署名証明書の申請も行いません。リリースページにパッケージの SHA-256 を掲載するので、ダウンロード後に照合できます。初回起動時の SmartScreen の警告は想定どおりで、システムの保護を無効にする必要はありません。
+
+macOS 版は無償の ad-hoc 署名を使用し、Apple Developer ID も公証も使いません。初回起動時は「システム設定 → プライバシーとセキュリティ」で「このまま開く」を選択します。配布資料にこの手順を記載し、Gatekeeper の無効化は求めません。
+
+役割: 保守とリリース承認は MIKU552 が担当し、コミッターとレビュアーは同一アカウントです（単独保守）。正式署名は毎回承認者が手動で確認します。
+
+プライバシー: テレメトリはなく、診断情報や素材を自動送信しません。外部リンクを開くかシステムの共有を使うときだけ通信します。FFmpeg / ffprobe は利用者が用意し、本プログラムが代わりにダウンロードすることはありません。
 
 ## 開発とライセンス
 

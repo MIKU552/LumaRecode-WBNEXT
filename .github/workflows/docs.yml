@@ -1,0 +1,30 @@
+# Documentation-only gate.
+#
+# Markdown changes skip the build workflows; this one runs the structure checks in
+# seconds, so a broken language section or anchor is still caught.
+name: docs
+
+on:
+  push:
+    branches: [next]
+    paths:
+      - 'docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Documentation checks
+        run: python3 qa/DocumentationChecks/check_docs.py

@@ -13,6 +13,11 @@
 !/LumaRecode.slnx
 !/LumaRecode.sln
 !/Directory.Build.props
+!/.github/
+!/native/
+!/app-macos/
+!/Interop/
+!/rust-toolchain.toml
 !/Packaging/
 !/pyproject.toml
 !/tools/
@@ -33,6 +38,7 @@
 !/qa/SerializationChecks/
 !/qa/FormatChecks/
 !/qa/BackendChecks/
+!/qa/NativeChecks/
 !/qa/PerformanceChecks/
 !/qa/TimingChecks/
 !/qa/HdrChecks/
@@ -46,3 +52,15 @@
 *.user
 *.suo
 .vs/
+
+# Rust workspace outputs and staged native libraries are rebuilt by the platform scripts.
+/native/target/
+/artifacts/
+**/*.rs.bk
+
+# Swift/AppKit build outputs and the staged native library inside the app package.
+/app-macos/.build/
+/app-macos/Libraries/
+/app-macos/dist/
+*.dmg
+DerivedData/

@@ -157,6 +157,8 @@
     <BuildType Solution="Release-AOT|ARM64" Project="Release" />
     <Build Solution="Release-AOT|ARM64" Project="false" />
   </Project>
+  <Project Path="Interop/LumaRecode.Native.csproj" />
+  <Project Path="qa/NativeChecks/NativeChecks.csproj" />
   <Properties Name="Visual Studio">
     <Property Name="MinimumVersion" Value="18.12.0.0" />
   </Properties>

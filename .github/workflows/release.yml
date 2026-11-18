@@ -1,0 +1,147 @@
+name: release
+
+# Two packages per architecture: one expects FFmpeg on the machine, one carries it. The
+# carrying package ships GPL binaries beside an MIT application; the release notes and the
+# licences inside the zip keep the two apart, which is what mere aggregation requires.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            platform: x64
+            target: X64
+          - arch: arm64
+            platform: ARM64
+            target: Arm64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build core and stage the native library
+        shell: pwsh
+        run: ./tools/Build-Native.ps1 -Configuration Release -Target ${{ matrix.target }}
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          dotnet publish App/VideoConverter.WinUI.csproj -c Release -p:Platform=${{ matrix.platform }} -o publish
+
+      # The zip is built from the published folder plus either nothing or a verified FFmpeg.
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path App/VideoConverter.WinUI.csproj -Pattern '<Version>([^<]+)</Version>').Matches[0].Groups[1].Value
+          $meta = Get-Content Packaging/ffmpeg-windows.json -Raw | ConvertFrom-Json
+          $entry = $meta.packages.${{ matrix.arch }}
+          New-Item -ItemType Directory -Force dist | Out-Null
+
+          # Plain package: the single file and nothing else.
+          $plain = @('publish/LumaRecode.exe') + @(Get-ChildItem publish -Filter *.pdb | ForEach-Object FullName)
+          Compress-Archive -Path $plain -DestinationPath "dist/LumaRecode-$version-win${{ matrix.arch }}.zip"
+
+          # Carrying package: the same file, the verified FFmpeg, and its licence.
+          Invoke-WebRequest -Uri $entry.url -OutFile ffmpeg.zip
+          $hash = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $entry.sha256) { throw "FFmpeg checksum mismatch: $hash" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg -Force
+          $binary = Get-ChildItem ffmpeg -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          $folder = Split-Path $binary.FullName
+          New-Item -ItemType Directory -Force full/tools, full/licenses | Out-Null
+          Copy-Item publish/LumaRecode.exe full/
+          Get-ChildItem publish -Filter *.pdb | Copy-Item -Destination full/
+          Copy-Item (Join-Path $folder 'ffmpeg.exe'), (Join-Path $folder 'ffprobe.exe') full/tools/
+          $licence = Get-ChildItem ffmpeg -Recurse -Filter LICENSE.txt | Select-Object -First 1
+          if ($null -ne $licence) { Copy-Item $licence.FullName full/licenses/ffmpeg-GPLv3.txt }
+          @"
+          LumaRecode $version (WBNEXT) carries FFmpeg n9.0 beside the application.
+
+          The application is MIT licensed. The FFmpeg binaries in tools/ are a separate
+          program, licensed GPL-3.0-or-later; they are invoked as a subprocess and are not
+          linked into the application. The licence text is in licenses/ and the corresponding
+          source is https://github.com/FFmpeg/FFmpeg/tree/n9.0
+          "@ | Set-Content full/licenses/NOTICE.txt -Encoding utf8
+          Compress-Archive -Path full/* -DestinationPath "dist/LumaRecode-$version-win${{ matrix.arch }}-full.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: dist/*.zip
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the full FFmpeg
+        run: brew install ffmpeg-full
+
+      - name: Build both packages
+        run: |
+          bash app-macos/scripts/build-macos.sh --configuration release
+          bash app-macos/scripts/build-macos.sh --configuration release --with-ffmpeg
+          # The script names them apart: …-arm64.dmg and …-arm64-full.dmg.
+          mkdir -p dist
+          mv app-macos/dist/*.dmg dist/
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name '*.zip' -o -name '*.dmg' \) -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      # A dispatch run only checks the packages; publishing waits for a real tag.
+      - name: Upload release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'NOTES'
+          LumaRecode WBNEXT 5.0.0 — the first release of the cross-platform rewrite.
+
+          Two packages per architecture: the plain one expects FFmpeg on your machine, the
+          `-full` one carries FFmpeg n9.0 and its licence. The application is MIT licensed;
+          the FFmpeg binaries are a separate GPL-3.0 program invoked as a subprocess, so the
+          two licences stay separate.
+
+          Unsigned by decision: check the download against `SHA256SUMS.txt`.
+          NOTES
+          mapfile -t files < <(find artifacts -type f \( -name '*.zip' -o -name '*.dmg' -o -name 'SHA256SUMS.txt' \))
+          printf '%s\n' "${files[@]}"
+          gh release create "v5.0.0" --draft --title "LumaRecode WBNEXT 5.0.0" \
+            --notes-file notes.md "${files[@]}"

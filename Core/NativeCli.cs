@@ -6,7 +6,8 @@ namespace VideoConverter.Core;
 
 /// <summary>Host-owned version, preferences and localization; Core does not depend on WinUI or user settings files.</summary>
 public sealed record CliContext(string Version, string LicenseFolder, bool TermsAccepted, MediaTools SavedTools,
-    Func<string, string> Translate, string Language = "en");
+    Func<string, string> Translate, string Language = "en", Func<JsonObject, JsonObject>? CachePlan = null,
+    Func<IEnumerable<string>, JsonObject>? CapabilityProbe = null);
 
 /// <summary>Headless command orchestration with deterministic plans, batch conflict checks and stable exit codes.</summary>
 public sealed partial class NativeCli(Transcoder engine, CliContext context)
@@ -20,11 +21,11 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         {
             foreach (var item in engine.Config[purpose]!.AsObject())
             {
-                rows.Add((JsonNode)new JsonObject { ["id"] = purpose + "-" + item.Key, ["options"] = new JsonObject { ["purpose"] = purpose, ["codec"] = item.Key, ["variant"] = "standard" }, ["encoder"] = item.Value?.DeepClone() });
+                rows.Add((JsonNode)new JsonObject { ["id"] = purpose + "-" + item.Key, ["options"] = new JsonObject { ["purpose"] = purpose, ["codec"] = item.Key, ["variant"] = "standard" }, ["encoder"] = item.Value?.DeepClone(), ["backend"] = EncoderBackends.For(item.Value.Text("encoder")) ?? "unknown" });
             }
         }
 
-        rows.Add((JsonNode)new JsonObject { ["id"] = "archive-av1-fast", ["options"] = new JsonObject { ["purpose"] = "archive", ["codec"] = "av1", ["variant"] = "fast" }, ["encoder"] = engine.Config["archive_fast_av1"]?.DeepClone() });
+        rows.Add((JsonNode)new JsonObject { ["id"] = "archive-av1-fast", ["options"] = new JsonObject { ["purpose"] = "archive", ["codec"] = "av1", ["variant"] = "fast" }, ["encoder"] = engine.Config["archive_fast_av1"]?.DeepClone(), ["backend"] = EncoderBackends.For(engine.Config["archive_fast_av1"].Text("encoder")) ?? "unknown" });
         return rows;
     }
     private JsonObject Describe(MediaInfo media)
@@ -143,7 +144,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
         {
             Console.Out.WriteLine(T("同一个 EXE 提供 GUI 与命令行。无参数时打开 GUI；使用下列命令时无界面运行。"));
             Console.Out.WriteLine("\n" + T("位置参数") + ":");
-            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码", "读取逐帧时间轴信息", "导出图片或 Android 动态照片"];
+            string[] descriptions = ["读取视频与全部音轨信息", "列出编码预设", "列出内置 Log/LUT 曲线", "检查工具与编码器、滤镜", "查看缓存清单与回收计划（--purge 执行删除）", "读取组件条款与许可路径", "转换文件、目录或通配符", "查看解析选项和 FFmpeg 参数，不编码", "读取逐帧时间轴信息", "导出图片或 Android 动态照片"];
             for (int i = 0; i < CliArguments.Commands.Length; i++)
             {
                 Console.Out.WriteLine("  " + CliArguments.Commands[i].PadRight(12) + T(descriptions[i]));
@@ -199,7 +200,7 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             report = new CliReporter(args.Has("json"), args.Has("verbose"), T);
             if (args.Version)
             {
-                Console.Out.WriteLine("LumaRecode " + context.Version);
+                Console.Out.WriteLine("LumaRecode " + context.Version + " WBNEXT");
                 return 0;
             }
             if (args.Help || args.Command is null)
@@ -271,9 +272,26 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
             }
 
             var tools = new MediaTools(Tool("ffmpeg", args.Get("ffmpeg"), context.SavedTools.Ffmpeg), Tool("ffprobe", args.Get("ffprobe"), context.SavedTools.Ffprobe));
+            if (args.Command == "cache")
+            {
+                JsonObject inventory = CacheReport.Read();
+                if (context.CachePlan is { } planner)
+                {
+                    inventory["plan"] = planner(inventory);
+                }
+
+                if (args.Has("purge") && inventory["plan"] is JsonObject plan)
+                {
+                    inventory["purge"] = CacheReport.Purge(plan);
+                }
+
+                inventory["schema_version"] = 1;
+                Output(inventory);
+                return 0;
+            }
             if (args.Command == "doctor")
             {
-                var values = new JsonObject { ["schema_version"] = 1, ["backend"] = "native-dotnet", ["tools"] = new JsonObject { ["ffmpeg"] = tools.Ffmpeg, ["ffprobe"] = tools.Ffprobe }, ["encoders"] = new JsonObject(), ["filters"] = new JsonObject() };
+                var values = new JsonObject { ["schema_version"] = 1, ["backend"] = "native-dotnet", ["tools"] = new JsonObject { ["ffmpeg"] = tools.Ffmpeg, ["ffprobe"] = tools.Ffprobe }, ["encoders"] = new JsonObject(), ["filters"] = new JsonObject(), ["core"] = new JsonObject { ["mode"] = SharedCore.CoreActive ? "shared" : "managed", ["version"] = SharedCore.CoreVersion } };
                 foreach (var (name, executable) in new[] { ("ffmpeg", tools.Ffmpeg), ("ffprobe", tools.Ffprobe) })
                 {
                     var result = await ProcessRunner.CaptureAsync(executable, ["-version"], cancellation, 15);
@@ -297,6 +315,33 @@ public sealed partial class NativeCli(Transcoder engine, CliContext context)
                         values[key]![name] = Regex.IsMatch(result.Output, @"\b" + Regex.Escape(name) + @"\b");
                     }
                 }
+                var backends = new JsonObject();
+                foreach (var pair in values["encoders"]!.AsObject())
+                {
+                    if (pair.Value?.GetValue<bool>() != true)
+                    {
+                        continue;
+                    }
+
+                    var family = EncoderBackends.For(pair.Key) ?? "unknown";
+                    backends[family] = (backends[family]?.GetValue<int>() ?? 0) + 1;
+                }
+
+                values["backends"] = backends;
+                if (context.CapabilityProbe is { } probe)
+                {
+                    values["capability"] = probe(values["encoders"]!.AsObject()
+                        .Where(pair => pair.Value?.GetValue<bool>() == true)
+                        .Select(pair => pair.Key));
+                }
+
+                JsonObject cache = CacheReport.Read();
+                if (context.CachePlan is { } planner)
+                {
+                    cache["plan"] = planner(cache);
+                }
+
+                values["cache"] = cache;
                 values["note"] = T("硬件编码模式取决于显卡与驱动。");
                 Output(values);
                 return 0;

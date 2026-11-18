@@ -12,7 +12,7 @@ public sealed class CliException(string code, string message, int status = 2) : 
 /// <summary>Parses commands and options without shell reparsing or runtime reflection.</summary>
 public sealed class CliArguments
 {
-    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "license", "convert", "plan", "frames", "image"];
+    public static readonly string[] Commands = ["probe", "presets", "profiles", "doctor", "cache", "license", "convert", "plan", "frames", "image"];
     public static readonly Dictionary<string, string[]> Choices = new()
     {
         ["purpose"] = ["share", "archive"],
@@ -29,7 +29,7 @@ public sealed class CliArguments
         ["container"] = ["auto", "mp4", "mkv"],
         ["dynamic_hdr"] = ["preserve", "standard"]
     };
-    private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose", "motion"];
+    private static readonly HashSet<string> booleans = ["json", "accept_terms", "no_settings", "text", "recursive", "overwrite", "skip_existing", "continue_on_error", "dry_run", "verbose", "motion", "purge"];
     private static readonly HashSet<string> commonValues = ["lang", "ffmpeg", "ffprobe"];
     private static readonly HashSet<string> taskValues = ["output", "output_dir", "config", "preset", "duration", "log", "start_frame", "end_frame", "start_time", "end_time", "frame", "image_format", "quality", "motion_start_frame", "motion_end_frame", "motion_size"];
     public string? Command
