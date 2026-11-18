@@ -107,6 +107,11 @@ void LUMA_CALL luma_string_free(char *value);
  *   plan.color_tags      {kind, output, rgb?, dolby_profile5?, source_range, output_range,
  *                        primaries?, transfer?, space?} -> {source, target, source_filter}
  *   plan.log_profile     {profile} -> {profile, file, matrix, range}
+ *   execution.run        {task_id?, commands:[{program, arguments}]} -> {ok, stopped_early,
+ *                        outcomes}
+ *
+ * Progress: luma_set_progress_sink(callback, user_data) registers a sink that
+ * execution.run calls once per finished step; pass a null callback to clear it.
  *
  * Frames never cross this boundary: the host keeps decoded images and passes
  * only timestamps, sizes and identifiers.

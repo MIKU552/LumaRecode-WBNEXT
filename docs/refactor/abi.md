@@ -15,6 +15,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `luma_core_version()` | 返回静态存储的版本字符串 | 静态，**不可释放** |
 | `luma_call_json(op, request)` | 执行一次操作 | 返回值由调用方用 `luma_string_free` 释放 |
 | `luma_string_free(value)` | 释放上一个符号的返回值 | `NULL` 安全 |
+| `luma_set_progress_sink(callback, user_data)` | 注册进度回调 | 传 `NULL` 清除；上下文须在清除前保持有效 |
 
 调用约定为 `cdecl`。符号名不做修饰，Windows x64/ARM64 与 macOS ARM64 一致。
 
@@ -62,6 +63,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `plan.render_filters` | `log`、`tone_map`、`dolby_render`、`drop_dynamic_metadata`、`vpp` | 曲线 LUT、色调映射、Dolby 渲染、元数据删除与 VPP，按需返回 |
 | `plan.color_tags` | `kind`、`output`、`rgb`、`dolby_profile5`、`source_range`、`output_range`、`primaries`、`transfer`、`space` | 源侧与输出侧两套色彩标签，以及源侧的 `setparams` 条目 |
 | `plan.log_profile` | `profile` | 曲线的 LUT 文件名、矩阵与范围 |
+| `execution.run` | `task_id`、`commands`（`program` + `arguments`） | 逐步执行的结果；每步结束调用已注册的进度回调 |
 
 `frames` 只传时间戳、时长和关键帧标记；解码后的图像不跨边界。
 
@@ -94,6 +96,7 @@ the four exported symbols.
 | `luma_core_version()` | Version string in static storage | Static, **never free** |
 | `luma_call_json(op, request)` | Runs one operation | Caller frees with `luma_string_free` |
 | `luma_string_free(value)` | Releases the previous symbol's result | `NULL` is safe |
+| `luma_set_progress_sink(callback, user_data)` | Registers the progress callback | Pass `NULL` to clear; the context must outlive it |
 
 Calling convention is `cdecl`; symbols are undecorated on Windows x64/ARM64 and
 macOS ARM64 alike.
@@ -142,6 +145,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `plan.render_filters` | `log`, `tone_map`, `dolby_render`, `drop_dynamic_metadata`, `vpp` | Curve LUT, tone mapping, Dolby render, metadata drop and VPP, only the ones that apply |
 | `plan.color_tags` | `kind`, `output`, `rgb`, `dolby_profile5`, `source_range`, `output_range`, `primaries`, `transfer`, `space` | The source tags, the output tags and the source entry |
 | `plan.log_profile` | `profile` | The curve's LUT file, matrix and range |
+| `execution.run` | `task_id`, `commands` (`program` + `arguments`) | One outcome per step; the registered sink hears every finished step |
 
 `frames` carries timestamps, durations and keyframe flags only; decoded images
 never cross the boundary.
