@@ -40,6 +40,7 @@ Windows 的 `Interop/LumaCoreNative.cs` 与 macOS 的 `LumaKit` 都只依赖该�
 | `policy.validate` | `source`、可选 `options` | 同上，但先执行完整校验 |
 | `timeline.resolve` | `frames`、`time_base`、`packet_indexed`、`range` | 帧数、时长、`seek` 与起止秒 |
 | `presets.resolve` | `document`、`purpose`、`codec`、`variant` | 编码器、预设、质量值、参数、音频默认 |
+| `presets.audio` | `document`、`preset` | 有损音频预设的编码器、码率、声道与 Opus 附加参数 |
 | `presets.validate` | `document` | 预设清单与数量 |
 | `capability.select` | `devices`、`requirement` | 选中的设备、后端、得分、理由、是否回退 |
 | `capability.summary` | `devices`、`codec` | 可用后端、最高位深、采样、HDR 能力 |
