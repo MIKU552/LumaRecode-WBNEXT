@@ -274,11 +274,40 @@ public struct ConversionPlanner: Sendable {
         }
         arguments += colorFlags
         arguments += ["-fps_mode:v", "passthrough", "-enc_time_base:v", "filter"]
-        // Audio is copied: a first command should not silently re-encode tracks whose
-        // policy decisions have not moved to macOS yet.
-        arguments += ["-c:a", "copy"]
+        arguments += try audioArguments(preset: preset, document: job.presets)
         arguments.append(job.output)
         return ConversionPlan(arguments: arguments, format: format)
+    }
+
+    /// Copies the audio or encodes it, whichever the table decided for this purpose.
+    ///
+    /// A share encodes to the named lossy preset, because the container it lands in cannot
+    /// carry whatever the source had; an archive copies every track untouched.
+    private func audioArguments(preset: PresetSelection, document: String) throws -> [String] {
+        guard preset.audio.mode == "encode", let name = preset.audio.preset else {
+            return ["-c:a", "copy"]
+        }
+        let audio = try client.audioPreset(document: document, preset: name)
+        var arguments = [
+            "-c:a", audio.encoder,
+            "-b:a", "\(audio.bitrateKbps)k",
+            "-ac", String(audio.channels),
+        ]
+        if audio.encoder == "libopus" {
+            if let rate = audio.sampleRate {
+                arguments += ["-ar", String(rate)]
+            }
+            if let vbr = audio.vbr {
+                arguments += ["-vbr", vbr]
+            }
+            if let application = audio.application {
+                arguments += ["-application:a", application]
+            }
+            if let level = audio.compressionLevel {
+                arguments += ["-compression_level:a", String(level)]
+            }
+        }
+        return arguments
     }
 
     /// VideoToolbox takes its own rate control: `-q:v` instead of CRF or a global quality.

@@ -54,7 +54,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 27);
+    assert_eq!(operations.len(), 28);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -456,4 +456,17 @@ fn plan_log_profile_names_the_curve_the_lut_expects() {
     assert_eq!(profile["matrix"], "2020_ncl");
     // Mi-Log is the one curve the camera writes full range.
     assert_eq!(profile["range"], "full");
+}
+
+#[test]
+fn presets_audio_names_the_share_encoder() {
+    let document = include_str!("../../../../Assets/recommended-presets.json").to_string();
+    let request = serde_json::json!({ "document": document, "preset": "aac" }).to_string();
+    let preset = data("presets.audio", &request);
+
+    assert_eq!(preset["encoder"], "aac");
+    assert_eq!(preset["bitrate_kbps"], 256);
+    assert_eq!(preset["channels"], 2);
+    // The table follows the source rate for AAC, so there is no fixed rate to pass on.
+    assert_eq!(preset["sample_rate"], Value::Null);
 }

@@ -260,6 +260,7 @@ jobs:
           grep -q -- "-c:v hevc_videotoolbox" build-info/convert-share.txt
           grep -q -- "-q:v 60" build-info/convert-share.txt
           grep -q -- "-realtime 1" build-info/convert-share.txt
+          grep -q -- "-c:a aac" build-info/convert-share.txt
 
           # A camera curve: the LUT path, the matrix it was graded in and the HLG retag all
           # come from the core; only the file itself is the repository's. Homebrew's ffmpeg 9

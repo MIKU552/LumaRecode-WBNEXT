@@ -65,6 +65,8 @@ void LUMA_CALL luma_string_free(char *value);
  *   policy.validate      {source, options?} -> same shape, after full validation
  *   timeline.resolve     {frames, time_base, packet_indexed?, range?}
  *                        -> {count, duration, packet_indexed, window}
+ *   presets.audio        {document, preset} -> {name, encoder, bitrate_kbps, channels,
+ *                        sample_rate, vbr, application, compression_level}
  *   presets.resolve      {document, purpose, codec, variant?} -> preset + audio default
  *   presets.validate     {document} -> {count, presets}
  *   capability.select    {devices, requirement}

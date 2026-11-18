@@ -40,13 +40,14 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 27] = [
+const OPERATIONS: [&str; 28] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
     "policy.validate",
     "timeline.resolve",
     "presets.resolve",
+    "presets.audio",
     "presets.validate",
     "capability.select",
     "capability.summary",
@@ -165,6 +166,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "policy.validate" => policy_validate(&payload),
         "timeline.resolve" => timeline_resolve(&payload),
         "presets.resolve" => presets_resolve(&payload),
+        "presets.audio" => presets_audio(&payload),
         "presets.validate" => presets_validate(&payload),
         "probe.summarize" => probe_summarize(&payload),
         "capability.select" => capability_select(&payload),
@@ -359,6 +361,32 @@ fn timeline_resolve(payload: &Value) -> CoreResult<Value> {
             "end_seconds": window.end_seconds,
             "duration": window.duration(),
         })),
+    }))
+}
+
+#[derive(Deserialize)]
+struct AudioPresetRequest {
+    document: String,
+    preset: String,
+}
+
+fn presets_audio(payload: &Value) -> CoreResult<Value> {
+    let request: AudioPresetRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "presets"))?;
+    let registry = PresetRegistry::parse(&request.document)?;
+    let preset = registry.audio_preset(&request.preset)?;
+    Ok(json!({
+        "name": request.preset,
+        "encoder": preset.encoder,
+        "bitrate_kbps": preset.bitrate_kbps,
+        "channels": preset.channels,
+        "sample_rate": match preset.sample_rate {
+            luma_core::SampleRate::Source => Value::Null,
+            luma_core::SampleRate::Fixed(rate) => json!(rate),
+        },
+        "vbr": preset.vbr,
+        "application": preset.application,
+        "compression_level": preset.compression_level,
     }))
 }
 

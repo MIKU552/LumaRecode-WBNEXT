@@ -28,6 +28,7 @@
 - 预览画布显示真实画面，时间轴可拖动定位（抽帧走 AVFoundation，时间映射有单测）。
 - 导出面板：可选目标目录、改文件名、覆盖前明确确认；命名与去重规则有单测。
 - macOS 支持共享档：`Assets/recommended-presets-macos.json` 提供 VideoToolbox 行，`-q:v`/`-realtime`/`-allow_sw` 由宿主拼装（数值待 M 系列实测校准）。
+- macOS 的音频跟随预设表的决定：归档复制全部音轨，共享按 `presets.audio` 重新编码（AAC 256k / Opus 192k）。
 - 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
 
 ### 4.4.3
@@ -322,6 +323,7 @@
 - The preview canvas shows a real frame and the timeline scrubs; stills come from AVFoundation and the time mapping is unit tested.
 - The export sheet picks the folder, edits the name and confirms a replacement; the naming and de-duplication rules are unit tested.
 - macOS shares through VideoToolbox: `Assets/recommended-presets-macos.json` carries the rows and the host builds `-q:v` / `-realtime` / `-allow_sw` (the values await M-series measurement).
+- macOS audio follows the table: an archive copies every track, a share re-encodes to the named preset (AAC 256k or Opus 192k).
 - Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
 
 ### 4.4.3

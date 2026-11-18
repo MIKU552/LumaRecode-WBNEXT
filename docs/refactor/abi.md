@@ -119,6 +119,7 @@ identities localized by the front end; `detail` only carries the rejected value.
 | `policy.validate` | `source`, optional `options` | Same shape, after full validation |
 | `timeline.resolve` | `frames`, `time_base`, `packet_indexed`, `range` | Count, duration, `seek` target and start/end seconds |
 | `presets.resolve` | `document`, `purpose`, `codec`, `variant` | Encoder, preset, quality, parameters, audio default |
+| `presets.audio` | `document`, `preset` | Encoder, bitrate, channels and the Opus extras |
 | `presets.validate` | `document` | Preset catalog and count |
 | `capability.select` | `devices`, `requirement` | Chosen device, backend, score, reasons, fallback flag |
 | `capability.summary` | `devices`, `codec` | Available backends, maximum depth, samplings, HDR capability |

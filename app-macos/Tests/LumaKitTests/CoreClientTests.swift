@@ -165,6 +165,8 @@ final class CoreClientTests: XCTestCase {
         XCTAssertTrue(chain.contains("-color_trc bt709"))
         // Archive keeps the source's precision: 10-bit BT.709, not 8-bit.
         XCTAssertEqual(plan.format.bitDepth, 10)
+        // Archive copies every track untouched.
+        XCTAssertTrue(plan.commandLine.contains("-c:a copy"))
     }
 
     func testPlannerRunsACameraCurveThroughItsLut() throws {
@@ -220,6 +222,9 @@ final class CoreClientTests: XCTestCase {
         XCTAssertFalse(command.contains("-global_quality"))
         XCTAssertFalse(command.contains("-low_power"))
         XCTAssertFalse(command.contains("-x265-params"))
+        // A share encodes the audio: the container it lands in cannot carry the source's.
+        XCTAssertTrue(command.contains("-c:a aac"))
+        XCTAssertTrue(command.contains("-b:a 256k"))
     }
 
     /// The shipped macOS table, read from the repository so the file itself is under test.

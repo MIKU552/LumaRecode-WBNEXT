@@ -285,12 +285,38 @@ public enum PresetValue: Decodable, Sendable, Equatable {
 }
 
 /// The encoder, rate control and options one preset selector resolves to.
+/// Whether a share or archive copies the audio or re-encodes it, and with which preset.
+public struct AudioSelection: Decodable, Sendable, Equatable {
+    public let mode: String
+    public let preset: String?
+}
+
+/// A named lossy audio preset: encoder, bitrate, channel count and the extras Opus wants.
+public struct AudioPreset: Decodable, Sendable, Equatable {
+    public let name: String
+    public let encoder: String
+    public let bitrateKbps: Int
+    public let channels: Int
+    public let sampleRate: Int?
+    public let vbr: String?
+    public let application: String?
+    public let compressionLevel: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case name, encoder, channels, vbr, application
+        case bitrateKbps = "bitrate_kbps"
+        case sampleRate = "sample_rate"
+        case compressionLevel = "compression_level"
+    }
+}
+
 public struct PresetSelection: Decodable, Sendable, Equatable {
     public let selector: String
     public let encoder: String
     public let preset: String
     public let quality: Int
     public let parameters: [String: PresetValue]
+    public let audio: AudioSelection
 
     /// Options in table order, so the same request always builds the same command.
     public var parameterPairs: [(String, String)] {
@@ -298,7 +324,7 @@ public struct PresetSelection: Decodable, Sendable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case selector, encoder, preset, quality, parameters
+        case selector, encoder, preset, quality, parameters, audio
     }
 
     public init(from decoder: Decoder) throws {
@@ -306,6 +332,7 @@ public struct PresetSelection: Decodable, Sendable, Equatable {
         selector = try container.decode(String.self, forKey: .selector)
         encoder = try container.decode(String.self, forKey: .encoder)
         preset = try container.decode(String.self, forKey: .preset)
+        audio = try container.decode(AudioSelection.self, forKey: .audio)
         quality = try container.decode(Int.self, forKey: .quality)
         parameters = try container.decodeIfPresent([String: PresetValue].self, forKey: .parameters) ?? [:]
     }
@@ -435,6 +462,15 @@ public struct CoreClient: Sendable {
     public func preset(document: String, purpose: String, codec: String) throws -> PresetSelection {
         let payload = try call("presets.resolve", request: ["document": document, "purpose": purpose, "codec": codec])
         return try JSONDecoder().decode(PresetSelection.self, from: payload)
+    }
+
+    /// The named lossy audio preset a share output encodes with.
+    public func audioPreset(document: String, preset: String) throws -> AudioPreset {
+        let payload = try call(
+            "presets.audio",
+            request: ["document": document, "preset": preset]
+        )
+        return try JSONDecoder().decode(AudioPreset.self, from: payload)
     }
 
     /// GOP length for one conversion; the input block below carries it to the encoder.
