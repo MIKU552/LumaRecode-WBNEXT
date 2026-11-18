@@ -89,7 +89,7 @@ public sealed partial class MainWindow
         var source = new[] { "SourceSummary", "SourceEvidence", "SourceBadge" }.ToDictionary(name => name, name => Control<TextBlock>(name).Text);
         var cancelEnabled = Control<Button>("Cancel").IsEnabled;
         viewLocalization.Apply(root);
-        Title = L.T("映码 · LumaRecode");
+        Title = L.T("映码 · LumaRecode WBNEXT");
         updating = true;
         try
         {
