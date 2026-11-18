@@ -1,7 +1,7 @@
 //! The HDR10+ reader is checked against payloads composed bit by bit, so a field that
 //! moves by one bit fails here instead of producing a wrong `dhdr10-info` document.
 
-use luma_core::sei::t35_line;
+use luma_core::sei::{document, t35_line};
 
 /// MSB-first writer that mirrors the reader.
 #[derive(Default)]
@@ -99,6 +99,82 @@ fn two_windows_are_rejected() {
     payload.extend_from_slice(&bits.bytes);
     assert_eq!(
         t35_line(&payload).expect_err("one window only").code(),
+        "metadata.hdr10plus"
+    );
+}
+
+/// One frame in the shape FFprobe's compact writer emits, prefix and all.
+fn frame(target: &str, average: &str) -> String {
+    let prefix = "side_datum/hdr_dynamic_metadata_smpte2094_40__hdr10__";
+    let keys = [
+        format!("{prefix}:side_data_type=HDR Dynamic Metadata SMPTE2094-40 (HDR10+)"),
+        format!("{prefix}:application version=1"),
+        format!("{prefix}:num_windows=1"),
+        format!("{prefix}:targeted_system_display_maximum_luminance={target}"),
+        format!("{prefix}:maxscl=1000/100000"),
+        format!("{prefix}:maxscl=2000/100000"),
+        format!("{prefix}:maxscl=3000/100000"),
+        format!("{prefix}:average_maxrgb={average}"),
+        format!("{prefix}:num_distribution_maxrgb_percentiles=0"),
+        format!("{prefix}:fraction_bright_pixels=0/1000"),
+    ];
+    format!("frame|pts_time=0.000000|{}", keys.join("|"))
+}
+
+#[test]
+fn a_steady_frame_becomes_one_scene() {
+    let lines = vec![
+        frame("1000/1", "500/100000"),
+        frame("1000/1", "500/100000"),
+        frame("1000/1", "500/100000"),
+    ];
+    let document = document(&lines).expect("document");
+
+    let scenes = document["SceneInfo"].as_array().expect("scenes");
+    assert_eq!(scenes.len(), 3);
+    assert!(scenes.iter().all(|frame| frame["SceneId"] == 0));
+    // The per-scene index restarts at every change, the sequence index does not.
+    assert_eq!(scenes[2]["SceneFrameIndex"], 2);
+    assert_eq!(scenes[2]["SequenceFrameIndex"], 2);
+    assert_eq!(
+        scenes[0]["LuminanceParameters"]["MaxScl"],
+        serde_json::json!([1000, 2000, 3000])
+    );
+    assert_eq!(document["JSONInfo"]["HDR10plusProfile"], "A");
+}
+
+#[test]
+fn a_changed_frame_starts_a_new_scene() {
+    let lines = vec![
+        frame("1000/1", "500/100000"),
+        frame("1000/1", "500/100000"),
+        frame("4000/1", "900/100000"),
+    ];
+    let document = document(&lines).expect("document");
+    let scenes = document["SceneInfo"].as_array().expect("scenes");
+
+    assert_eq!(scenes[1]["SceneId"], 0);
+    assert_eq!(scenes[2]["SceneId"], 1);
+    assert_eq!(scenes[2]["SceneFrameIndex"], 0);
+    assert_eq!(scenes[2]["SequenceFrameIndex"], 2);
+}
+
+#[test]
+fn a_frame_without_metadata_is_refused() {
+    let line = frame("1000/1", "500/100000").replace("HDR Dynamic Metadata", "Other");
+    assert_eq!(
+        document(&[line]).expect_err("no metadata").code(),
+        "metadata.hdr10plus"
+    );
+}
+
+#[test]
+fn an_out_of_range_luminance_is_refused() {
+    // The target ceiling is ten thousand nits; anything above it is not a real display.
+    assert_eq!(
+        document(&[frame("20000/1", "500/100000")])
+            .expect_err("too bright")
+            .code(),
         "metadata.hdr10plus"
     );
 }

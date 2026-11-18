@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 31] = [
+const OPERATIONS: [&str; 32] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -72,6 +72,7 @@ const OPERATIONS: [&str; 31] = [
     "execution.run",
     "metadata.hdr10plus",
     "plan.raw_filter",
+    "metadata.hdr10plus_document",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -253,6 +254,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "execution.run" => execution_run(&payload),
         "metadata.hdr10plus" => metadata_hdr10plus(&payload),
         "plan.raw_filter" => plan_raw_filter(&payload),
+        "metadata.hdr10plus_document" => metadata_hdr10plus_document(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -838,6 +840,20 @@ fn plan_raw_filter(payload: &Value) -> CoreResult<Value> {
             &request.commands,
             request.preview_size,
         ),
+    }))
+}
+
+#[derive(Deserialize)]
+struct Hdr10PlusLinesRequest {
+    lines: Vec<String>,
+}
+
+/// Builds the `dhdr10-info` document from one line per frame.
+fn metadata_hdr10plus_document(payload: &Value) -> CoreResult<Value> {
+    let request: Hdr10PlusLinesRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "metadata"))?;
+    Ok(json!({
+        "document": luma_core::sei::document(&request.lines)?,
     }))
 }
 

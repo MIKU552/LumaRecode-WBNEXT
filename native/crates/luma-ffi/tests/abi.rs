@@ -57,7 +57,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 31);
+    assert_eq!(operations.len(), 32);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -69,6 +69,11 @@ fn core_info_lists_every_operation() {
     assert!(operations.iter().any(|value| value == "execution.run"));
     assert!(operations.iter().any(|value| value == "metadata.hdr10plus"));
     assert!(operations.iter().any(|value| value == "plan.raw_filter"));
+    assert!(
+        operations
+            .iter()
+            .any(|value| value == "metadata.hdr10plus_document")
+    );
     assert!(operations.iter().any(|value| value == "cache.plan"));
     assert!(operations.iter().any(|value| value == "plan.input_map"));
     assert!(operations.iter().any(|value| value == "plan.color_args"));
