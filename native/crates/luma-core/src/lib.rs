@@ -31,6 +31,7 @@ pub mod process;
 pub mod providers;
 pub mod render;
 pub mod safety;
+pub mod sei;
 pub mod source;
 pub mod timeline;
 

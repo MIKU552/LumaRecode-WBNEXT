@@ -40,7 +40,7 @@ const ABI_VERSION: u32 = luma_core::ABI_VERSION;
 const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Operations understood by [`luma_call_json`].
-const OPERATIONS: [&str; 29] = [
+const OPERATIONS: [&str; 30] = [
     "core.info",
     "policy.describe",
     "policy.resolve",
@@ -70,6 +70,7 @@ const OPERATIONS: [&str; 29] = [
     "plan.color_tags",
     "plan.log_profile",
     "execution.run",
+    "metadata.hdr10plus",
 ];
 
 /// Returns the ABI revision the loaded library implements.
@@ -249,6 +250,7 @@ fn dispatch(op: &str, request: &str) -> CoreResult<Value> {
         "plan.color_tags" => plan_color_tags(&payload),
         "plan.log_profile" => plan_log_profile(&payload),
         "execution.run" => execution_run(&payload),
+        "metadata.hdr10plus" => metadata_hdr10plus(&payload),
         "plan.build" => plan_build(&payload),
         other => Err(CoreError::with_detail(codes::FFI_OP, other)),
     }
@@ -804,6 +806,18 @@ struct VppDto {
     out_range: String,
     #[serde(default)]
     sdr: bool,
+}
+
+#[derive(Deserialize)]
+struct Hdr10PlusRequest {
+    payload: Vec<u8>,
+}
+
+/// Reads one frame's HDR10+ metadata from the SEI payload the host extracted.
+fn metadata_hdr10plus(payload: &Value) -> CoreResult<Value> {
+    let request: Hdr10PlusRequest = serde_json::from_value(payload.clone())
+        .map_err(|_| CoreError::with_detail(codes::FFI_ENVELOPE, "metadata"))?;
+    Ok(json!({ "line": luma_core::sei::t35_line(&request.payload)? }))
 }
 
 #[derive(Deserialize)]

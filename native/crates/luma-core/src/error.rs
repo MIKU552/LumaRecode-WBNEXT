@@ -119,6 +119,7 @@ pub mod codes {
 
     // Timeline.
     pub const TIMELINE_RANGE: &str = "timeline.range";
+    pub const METADATA_HDR10PLUS: &str = "metadata.hdr10plus";
 
     // Presets, capability and planning.
     pub const PRESET_INVALID: &str = "preset.invalid";

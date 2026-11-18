@@ -57,7 +57,7 @@ fn core_info_lists_every_operation() {
     let info = data("core.info", "{}");
     assert_eq!(info["abi"], Value::from(1));
     let operations = info["operations"].as_array().expect("operation list");
-    assert_eq!(operations.len(), 29);
+    assert_eq!(operations.len(), 30);
     assert!(operations.iter().any(|value| value == "plan.build"));
     assert!(operations.iter().any(|value| value == "probe.summarize"));
     assert!(operations.iter().any(|value| value == "capability.backend"));
@@ -67,6 +67,7 @@ fn core_info_lists_every_operation() {
             .any(|value| value == "capability.supports")
     );
     assert!(operations.iter().any(|value| value == "execution.run"));
+    assert!(operations.iter().any(|value| value == "metadata.hdr10plus"));
     assert!(operations.iter().any(|value| value == "cache.plan"));
     assert!(operations.iter().any(|value| value == "plan.input_map"));
     assert!(operations.iter().any(|value| value == "plan.color_args"));
@@ -520,4 +521,53 @@ fn execution_run_reports_to_the_registered_sink() {
     assert_eq!(luma_set_progress_sink(None, std::ptr::null_mut()), 0);
     data("execution.run", &request);
     assert_eq!(EVENTS.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn metadata_hdr10plus_reads_a_payload_the_host_extracted() {
+    // One window, application version 4, no percentiles and no bezier curve.
+    let mut bits: Vec<u8> = Vec::new();
+    let mut writer = BitWriter::default();
+    writer.write(4, 8).write(1, 2).write(1000, 27).write(0, 1)
+        .write(1000, 17).write(2000, 17).write(3000, 17).write(500, 17)
+        .write(0, 4).write(100, 10).write(0, 1).write(0, 1).write(0, 1)
+        .pad();
+    bits.extend_from_slice(&[0xb5, 0x00, 0x3c, 0x00, 0x01, 0x04]);
+    bits.extend_from_slice(&writer.bytes);
+
+    let request = serde_json::json!({ "payload": bits }).to_string();
+    let data = data("metadata.hdr10plus", &request);
+    let line = data["line"].as_str().expect("line");
+    assert!(line.starts_with("frame|side_data_type=HDR Dynamic Metadata SMPTE2094-40"));
+    assert!(line.contains("|targeted_system_display_maximum_luminance=1000"));
+    assert!(line.contains("|maxscl=3000/100000"));
+}
+
+#[derive(Default)]
+struct BitWriter {
+    bytes: Vec<u8>,
+    used: u32,
+}
+
+impl BitWriter {
+    fn write(&mut self, value: u32, count: u32) -> &mut Self {
+        for bit in (0..count).rev() {
+            if self.used % 8 == 0 {
+                self.bytes.push(0);
+            }
+            if (value >> bit) & 1 == 1 {
+                let index = self.bytes.len() - 1;
+                self.bytes[index] |= 0x80 >> (self.used % 8);
+            }
+            self.used += 1;
+        }
+        self
+    }
+
+    fn pad(&mut self) -> &mut Self {
+        while self.used % 8 != 0 {
+            self.write(0, 1);
+        }
+        self
+    }
 }
