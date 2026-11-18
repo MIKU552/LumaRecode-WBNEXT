@@ -1,4 +1,4 @@
-use luma_core::execution::{Outcome, ProcessRunner, Runner, run};
+use luma_core::execution::{Outcome, ProcessRunner, ProgressEvent, Runner, run, run_with_progress};
 use luma_core::process::Command;
 
 struct Fake {
@@ -86,4 +86,44 @@ fn the_process_runner_reports_a_real_process() {
 
     let missing = runner.run(&Command::new("luma-recode-missing-binary"));
     assert!(!missing.succeeded());
+}
+
+#[test]
+fn a_sequence_reports_one_event_per_step() {
+    let mut fake = Fake {
+        script: vec![ok(), ok(), ok()],
+        calls: 0,
+    };
+    let steps = [Command::new("a"), Command::new("b"), Command::new("c")];
+    let mut seen: Vec<ProgressEvent> = Vec::new();
+    let report = run_with_progress(&mut fake, &steps, 7, &mut |event| seen.push(event));
+
+    assert!(report.succeeded());
+    assert_eq!(seen.len(), 3);
+    assert_eq!(
+        seen.iter().map(|event| event.sequence).collect::<Vec<_>>(),
+        vec![1, 2, 3]
+    );
+    // Every event names its task, so two sequences can share a sink.
+    assert!(seen.iter().all(|event| event.task_id == 7 && event.total == 3));
+    assert!((seen[0].fraction - 1.0 / 3.0).abs() < 1e-6);
+    assert_eq!(seen.last().map(|event| event.fraction), Some(1.0));
+}
+
+#[test]
+fn a_failing_step_is_named_in_its_own_event() {
+    let mut fake = Fake {
+        script: vec![ok(), failed("boom")],
+        calls: 0,
+    };
+    let steps = [Command::new("a"), Command::new("b"), Command::new("c")];
+    let mut seen: Vec<ProgressEvent> = Vec::new();
+    let report = run_with_progress(&mut fake, &steps, 3, &mut |event| seen.push(event));
+
+    assert!(!report.succeeded());
+    assert!(report.stopped_early);
+    // The failure reports itself; the steps after it never run and never report.
+    assert_eq!(seen.len(), 2);
+    assert_eq!(seen[1].step, 1);
+    assert!((seen[1].fraction - 2.0 / 3.0).abs() < 1e-6);
 }

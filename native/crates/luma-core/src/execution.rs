@@ -57,16 +57,56 @@ impl Report {
     }
 }
 
+/// One thing that happened while a sequence ran.
+///
+/// The plan asks for events that carry a task id and a sequence number, so a host running
+/// two sequences at once can tell them apart and a late event cannot be mistaken for a new
+/// one. `fraction` reaches exactly `1.0` only when the last step succeeded.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProgressEvent {
+    /// Identifies the sequence; two sequences running together differ here.
+    pub task_id: u64,
+    /// Monotonic from one, incremented for every event of a task.
+    pub sequence: u64,
+    /// The step this event describes, zero-based.
+    pub step: u32,
+    /// How many steps the sequence has.
+    pub total: u32,
+    /// Completed steps over total steps.
+    pub fraction: f32,
+}
+
 /// Runs the steps in order and stops at the first failure.
 ///
 /// Stopping is deliberate: a later FFmpeg invocation usually depends on the previous one,
 /// and continuing after a failure produces output that looks finished but is not.
 pub fn run(runner: &mut dyn Runner, steps: &[Command]) -> Report {
+    run_with_progress(runner, steps, 0, &mut |_| {})
+}
+
+/// Runs the steps and reports what happened after each one.
+///
+/// A failing step still reports: the event carries its index, so a host can show where the
+/// sequence stopped rather than only that it stopped.
+pub fn run_with_progress(
+    runner: &mut dyn Runner,
+    steps: &[Command],
+    task_id: u64,
+    sink: &mut dyn FnMut(ProgressEvent),
+) -> Report {
     let mut report = Report::default();
-    for step in steps {
+    let total = steps.len() as u32;
+    for (index, step) in steps.iter().enumerate() {
         let outcome = runner.run(step);
         let failed = !outcome.succeeded();
         report.outcomes.push(outcome);
+        sink(ProgressEvent {
+            task_id,
+            sequence: index as u64 + 1,
+            step: index as u32,
+            total,
+            fraction: (index as f32 + 1.0) / total as f32,
+        });
         if failed {
             report.stopped_early = report.outcomes.len() < steps.len();
             break;
