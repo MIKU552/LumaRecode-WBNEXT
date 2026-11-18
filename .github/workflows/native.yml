@@ -263,6 +263,18 @@ jobs:
           grep -q -- "-realtime 1" build-info/convert-share.txt
           grep -q -- "-c:a aac" build-info/convert-share.txt
 
+          # The plan is only half the story: encode it with VideoToolbox and look at the file.
+          "$binary" convert "$work/source.mp4" -o "$work/share-out.mkv" \
+            --purpose share --codec hevc --input-kind sdr | tee build-info/share-run.txt
+          ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of csv=p=0 \
+            "$work/share-out.mkv" > build-info/share-video.txt
+          cat build-info/share-video.txt
+          grep -q '^hevc,yuv420p' build-info/share-video.txt
+          ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of csv=p=0 \
+            "$work/share-out.mkv" > build-info/share-audio.txt
+          cat build-info/share-audio.txt
+          grep -q '^aac' build-info/share-audio.txt
+
           # A camera curve: the LUT path, the matrix it was graded in and the HLG retag all
           # come from the core; only the file itself is the repository's. Homebrew's ffmpeg 9
           # has no zscale or lut3d, so the plan is what is asserted here.
