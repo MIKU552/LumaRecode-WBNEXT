@@ -182,6 +182,7 @@ jobs:
       # so a missing binary or a bundle that ignores its own copy fails the job.
       - name: Both package variants
         run: |
+          mkdir -p build-info
           if [[ -e app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg ]]; then
             echo "the plain package must not carry FFmpeg" >&2
             exit 1
