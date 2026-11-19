@@ -247,11 +247,13 @@
               <NumberBox x:Name="MotionStart" Header="视频开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
               <TextBox x:Name="MotionStartText" Header="或输入时间" PlaceholderText="00:01:23.12" />
               <TextBlock x:Name="MotionStartTime" Style="{StaticResource Secondary}" />
+              <Button x:Name="SetMotionStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" />
             </StackPanel>
             <StackPanel x:Name="MotionEndFields" Grid.Column="1" Spacing="6">
               <NumberBox x:Name="MotionEnd" Header="视频结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
               <TextBox x:Name="MotionEndText" Header="或输入时间" PlaceholderText="00:01:23.12" />
               <TextBlock x:Name="MotionEndTime" Style="{StaticResource Secondary}" />
+              <Button x:Name="SetMotionEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" />
             </StackPanel>
           </Grid>
         </Grid>

@@ -115,19 +115,26 @@ public sealed partial class MainWindow
             foreach (var edge in new[] { "Start", "End" })
             {
                 // A time beside each edge does the same job as typing into the frame box.
+                // These names are built from the loop, so a missing one must not take the
+                // window down with it.
                 var time = Control<TextBox>(prefix + edge + "Text");
-                void Apply() => ApplyTimeInput(time, Control<NumberBox>(prefix + edge));
-                time.KeyDown += (_, args) =>
+                if (time is not null)
                 {
-                    if (args.Key == Windows.System.VirtualKey.Enter)
+                    void Apply() => ApplyTimeInput(time, Control<NumberBox>(prefix + edge));
+                    time.KeyDown += (_, args) =>
                     {
-                        Apply();
-                        args.Handled = true;
-                    }
-                };
-                time.LostFocus += (_, _) => Apply();
+                        if (args.Key == Windows.System.VirtualKey.Enter)
+                        {
+                            Apply();
+                            args.Handled = true;
+                        }
+                    };
+                    time.LostFocus += (_, _) => Apply();
+                }
 
-                Control<NumberBox>(prefix + edge).ValueChanged += (_, _) =>
+                var box = Control<NumberBox>(prefix + edge);
+                if (box is not null)
+                box.ValueChanged += (_, _) =>
                 {
                     if (frameUiUpdating || updating)
                     {
@@ -140,7 +147,10 @@ public sealed partial class MainWindow
                     Refresh();
                     UpdateTransferStats();
                 };
-                Control<Button>("Set" + prefix + edge).Click += (_, _) => Control<NumberBox>(prefix + edge).Value = SelectedFrame + 1;
+                if (Control<Button>("Set" + prefix + edge) is { } button && box is not null)
+                {
+                    button.Click += (_, _) => box.Value = SelectedFrame + 1;
+                }
             }
         }
         Control<CheckBox>("TrimEnabled").Click += (_, _) => { Refresh(); UpdateTransferStats(); };
