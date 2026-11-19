@@ -183,7 +183,7 @@ jobs:
       - name: Both package variants
         run: |
           mkdir -p build-info
-          if [[ -e app-macos/dist/LumaRecode.app/Contents/Resources/bin/ffmpeg ]]; then
+          if [[ -e app-macos/dist/LumaRecode.app/Contents/Resources/tools/bin/ffmpeg ]]; then
             echo "the plain package must not carry FFmpeg" >&2
             exit 1
           fi
@@ -198,7 +198,7 @@ jobs:
           # The bundled copy wins, so the package behaves the same on any machine.
           app-macos/dist/LumaRecode.app/Contents/MacOS/LumaRecode doctor \
             | tee build-info/doctor-full.txt
-          grep -q "Resources/bin/ffmpeg" build-info/doctor-full.txt
+          grep -q "Resources/tools/bin/ffmpeg" build-info/doctor-full.txt
           # Put the plain package back: the steps below assert what a user without a bundled
           # FFmpeg sees, and they run the same binary.
           bash app-macos/scripts/build-macos.sh --skip-dmg
