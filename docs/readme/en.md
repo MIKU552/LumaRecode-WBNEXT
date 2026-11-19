@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | English | [日本語](ja.md) | [Español](es.md)
 
-> **WBNEXT refactor preview**: this branch is an independent cross-platform rewrite based on [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), developed with WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context). It is **not an official release** and carries no support commitment from upstream. Builds come from GitHub Actions artifacts; progress is tracked in the [refactor record](../refactor/README.md#english).
+> **WBNEXT refactor preview**: this branch is an independent cross-platform rewrite based on [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), developed with WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context). It is **not an official release** and carries no support commitment from upstream. Packages are on [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases); progress is tracked in the [refactor record](../refactor/README.md#english).
 
 Video transcoding and color conversion for Windows 11, built with C# and .NET. LumaRecode provides a native WinUI 3 interface and a command line for FFmpeg, with video compression, camera Log to HDR / SDR, and HDR to SDR workflows.
 
@@ -26,17 +26,21 @@ Video transcoding and color conversion for Windows 11, built with C# and .NET. L
 
 ## Quick start
 
-1. Download the EXE for your device from [Releases](https://github.com/MIKU552/LumaRecode/releases). See the variants below. Required runtimes are included.
-2. Obtain a Windows build of [FFmpeg](https://ffmpeg.org/download.html) containing `ffmpeg.exe` and `ffprobe.exe`. LumaRecode checks `PATH` on first use; paths can also be selected with the gear button.
+1. Download the package for your device from [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases); the table below lists them. Required runtimes are included.
+2. Pick one of the two shapes: a plain package expects [FFmpeg](https://ffmpeg.org/download.html) on your machine (`ffmpeg` and `ffprobe`, found on `PATH` or chosen with the gear button), while a `-full` package carries it and works right away.
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
 Quick share uses Intel QSV. Software archive uses CPU encoding.
 
-| Download | Platform and requirements |
-| --- | --- |
-| `LumaRecode.exe` | X64, using the common x64 instruction-set profile |
-| `LumaRecode-ARM64.exe` | Windows ARM64, with a native ARM64 app and image codec |
+| Download | Platform | FFmpeg |
+| --- | --- | --- |
+| `LumaRecode-5.0.0-winx64.zip` | Windows x64, common instruction-set profile | Bring your own |
+| `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | Included |
+| `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64, native app and image codec | Bring your own |
+| `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | Included |
+| `LumaRecode-5.0.0-arm64.dmg` | macOS 27 or later, Apple silicon | Bring your own |
+| `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 or later, Apple silicon | Included, with the MoltenVK libplacebo needs |
 
 ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
 
@@ -139,15 +143,15 @@ docs/      User guides, development notes, and benchmark data
 licenses/  Third-party licenses, notices, and provenance
 ```
 
-## Code signing policy
+## Builds are unsigned
 
-Windows builds ship **unsigned**; that is the project's decision and no code signing certificate will be requested. The release page publishes a SHA-256 for the package so a download can be checked against it, and the SmartScreen prompt on first run is expected — no system protection needs to be turned off.
+Windows builds ship **unsigned**; that is the project's decision and no code signing certificate will be requested. The release page publishes a SHA-256 for every package (`SHA256SUMS.txt`) so a download can be checked, and the SmartScreen prompt on first run is expected — no system protection needs to be turned off.
 
 The macOS build uses a free ad-hoc signature: no Apple Developer ID and no notarization. On first launch, choose "Open Anyway" in System Settings → Privacy & Security; the distribution notes state that step and never ask you to disable Gatekeeper.
 
-Roles: MIKU552 maintains the project and approves releases; committer and reviewer are the same account (single-maintainer project). Every formal signing is approved manually.
+The FFmpeg inside a `-full` package is a **separate program** distributed under GPL-3.0: its licence and source list travel in `Licenses/` and `SOURCES.txt` while the application stays MIT. The two meet through a subprocess, not a link, so each keeps its own licence.
 
-Privacy: the program has no telemetry and uploads no diagnostics or footage; it reaches the network only when you open an external link or use a system share action. FFmpeg / ffprobe are supplied by you and are never downloaded on your behalf.
+Privacy: the program has no telemetry and uploads no diagnostics or footage; it reaches the network only when you open an external link or use a system share action. It never downloads FFmpeg — a plain package expects you to supply it, and the copy in a `-full` package runs from disk only.
 
 ## Development and license
 

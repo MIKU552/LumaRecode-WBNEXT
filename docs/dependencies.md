@@ -56,7 +56,7 @@ JIT 交叉发布无需 C++ 链接器；AOT 交叉编译需要对应架构的 [C+
 | `./build.ps1 -Compilation Aot` | AOT 单文件 EXE | 内置所需运行组件 |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | 用户安装 .NET 11 Runtime、Windows App Runtime 2.6 |
 
-`-Target` 可与部署选项组合；Apx 使用 SelfContained / Aot。FFmpeg 与 ffprobe 由用户提供。
+`-Target` 可与部署选项组合；Apx 使用 SelfContained / Aot。发布包有两种形态：普通包要求用户提供 FFmpeg 与 ffprobe；`-full` 包内嵌 FFmpeg（Windows 取 BtbN 的 GPL 构建并按仓库内的 SHA-256 校验，macOS 用 `Packaging/relocate-brew-tools.py` 重定位 Homebrew 构建及其依赖库）。
 
 Ultra HDR 原生库按架构放置在 `App/Native/x64/uhdr.dll` 与 `App/Native/arm64/uhdr.dll`，首次导出时加载。重新编译需要 MSVC、CMake 和 Ninja；x64 还需要 NASM：
 
@@ -172,7 +172,7 @@ JIT cross-publishing does not need a C++ linker. AOT cross-compilation requires 
 | `./build.ps1 -Compilation Aot` | AOT single EXE | Required runtime components included |
 | `./build.ps1 -Deployment FrameworkDependent` | JIT ZIP | Install .NET 11 Runtime and Windows App Runtime 2.6 |
 
-Combine `-Target` with deployment options. Apx uses SelfContained / Aot. FFmpeg and ffprobe are supplied by the user.
+Combine `-Target` with deployment options. Apx uses SelfContained / Aot. Packages come in two shapes: a plain one asks the user for FFmpeg and ffprobe, while a `-full` one embeds them (Windows takes BtbN's GPL build and checks it against the SHA-256 recorded in the repository; macOS relocates the Homebrew build and its libraries with `Packaging/relocate-brew-tools.py`).
 
 Ultra HDR native libraries are stored at `App/Native/x64/uhdr.dll` and `App/Native/arm64/uhdr.dll` and loaded on first export. Rebuilding requires MSVC, CMake and Ninja; x64 also needs NASM:
 

@@ -44,6 +44,20 @@ Dynamic HDR sources default to software HEVC with metadata preservation. Use `--
 
 Every command supports `--help`. Probe/catalog/doctor/cache/license results are JSON. Text progress goes to stderr; results go to stdout.
 
+### macOS command line
+
+The macOS build is the same executable with a terminal entry point, and has only these; `presets`, `profiles`, `frames`, `image`, `cache`, `license` and `plan` are Windows-only.
+
+| Command | Purpose |
+| --- | --- |
+| `--version` | Version and whether the core loaded |
+| `convert INPUT -o OUTPUT` | Converts one file; progress comes from FFmpeg's `-progress` stream and the run can be cancelled |
+| `doctor` | Probes the FFmpeg encoders and filters step by step and lists what is missing |
+| `motionphoto PHOTO -o VIDEO` | Takes the video out of a motion photo by copying the declared range |
+| `hdr10plus INPUT -o DOC.json` | Exports the `dhdr10-info` document a clip carries |
+
+Every command accepts `--help`.
+
 ## Encoding and color options
 
 `convert` and `plan` expose the GUI's encoding and color controls:

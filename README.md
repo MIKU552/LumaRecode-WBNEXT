@@ -5,7 +5,7 @@
 
 简体中文 | [English](docs/readme/en.md) | [日本語](docs/readme/ja.md) | [Español](docs/readme/es.md)
 
-> **WBNEXT 重构预览版**：本分支是独立于上游的跨平台重构版本，基线为 [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode)。重构由 WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）协助完成，**非正式发布版**，不提供上游正式版本的支持承诺。构建产物来自 GitHub Actions Artifacts，进度见[重构实施记录](docs/refactor/README.md)。
+> **WBNEXT 重构预览版**：本分支是独立于上游的跨平台重构版本，基线为 [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode)。重构由 WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）协助完成，**非正式发布版**，不提供上游正式版本的支持承诺。发布包见 [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases)，进度见[重构实施记录](docs/refactor/README.md)。
 
 基于 C# / .NET 的 Windows 11 视频转码与色彩转换工具，提供原生 WinUI 3 界面和命令行，使用 FFmpeg 完成视频压缩、相机 Log 转 HDR / SDR，以及 HDR 转 SDR。
 
@@ -26,17 +26,21 @@
 
 ## 快速开始
 
-1. 从 [Releases](https://github.com/MIKU552/LumaRecode/releases) 下载适合设备的 EXE，版本说明见下表。程序内置所需运行时。
-2. 准备 Windows 版 [FFmpeg](https://ffmpeg.org/download.html)，包含 `ffmpeg.exe` 和 `ffprobe.exe`。首次运行会从 `PATH` 查找，也可在右上角齿轮中指定路径。
+1. 从 [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases) 下载适合设备的包，见下表。程序内置所需运行时。
+2. 选择包的两种形态之一：普通包要求自备 FFmpeg（`ffmpeg` 与 `ffprobe`），首次运行从 `PATH` 查找，也可在右上角齿轮中指定路径；`-full` 包已内嵌 FFmpeg，装好即用。
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
 
 “快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
 
-| 下载文件 | 平台与要求 |
-| --- | --- |
-| `LumaRecode.exe` | X64，通用 x64 指令集配置 |
-| `LumaRecode-ARM64.exe` | Windows ARM64，原生 ARM64 应用与图片编解码库 |
+| 下载文件 | 平台 | FFmpeg |
+| --- | --- | --- |
+| `LumaRecode-5.0.0-winx64.zip` | Windows x64，通用 x64 指令集配置 | 自备 |
+| `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | 内嵌 |
+| `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64，原生 ARM64 应用与图片编解码库 | 自备 |
+| `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | 内嵌 |
+| `LumaRecode-5.0.0-arm64.dmg` | macOS 27 及以上，Apple 芯片 | 自备 |
+| `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 及以上，Apple 芯片 | 内嵌（含 libplacebo 所需的 MoltenVK） |
 
 ARM64 默认使用软件归档。FFmpeg 的编码速度由外部 FFmpeg、硬件与所选预设决定。
 
@@ -139,15 +143,15 @@ docs/      使用说明、开发文档和测试数据
 licenses/  第三方许可、声明与来源清单
 ```
 
-## Code signing policy（代码签名政策）
+## 构建签名（Builds are unsigned）
 
-Windows 发布包**不签名**，这是项目的明确决定，不再申请代码签名证书。发布页给出安装包的 SHA-256，下载后可自行核对来源；首次运行出现的 SmartScreen 提示属预期行为，无需关闭系统防护。
+Windows 发布包**不签名**，这是项目的明确决定，不申请代码签名证书。发布页给出每个包的 SHA-256（`SHA256SUMS.txt`），下载后可自行核对；首次运行出现的 SmartScreen 提示属预期行为，无需关闭系统防护。
 
 macOS 版本使用免费 ad-hoc 签名，不使用 Apple Developer ID，也未经过公证。首次打开需在“系统设置 → 隐私与安全性”中选择“仍要打开”，分发说明会写明该步骤，不要求关闭 Gatekeeper。
 
-角色与责任：维护者与发布批准由 MIKU552 承担，提交者与审核者为同一账号（单人项目）；每次正式签名由批准者人工确认。
+`-full` 包内嵌的 FFmpeg 是**独立程序**，按 GPL-3.0 分发：许可证与源码清单随包放在 `Licenses/` 与 `SOURCES.txt`，应用本身仍是 MIT。两者通过子进程调用协作，不链接，因此各自保持自己的许可证。
 
-隐私：程序不包含遥测，不自动上传诊断或素材；仅在你主动打开外部链接或使用系统分享时联网。FFmpeg / ffprobe 由你自行提供，程序不代为下载。
+隐私：程序不包含遥测，不自动上传诊断或素材；仅在你主动打开外部链接或使用系统分享时联网。程序不代为下载 FFmpeg——普通包需要你自备，`-full` 包内的副本只从本地运行。
 
 ## 开发与许可
 

@@ -44,6 +44,20 @@
 
 各コマンドは `--help` に対応します。素材情報、プリセット一覧、診断、キャッシュ、ライセンス情報の出力は JSON です。テキストの進捗は stderr、結果は stdout に出力します。
 
+### macOS のコマンドライン
+
+macOS 版は同じ実行ファイルのターミナル入口で、次のものだけです。`presets`、`profiles`、`frames`、`image`、`cache`、`license`、`plan` は Windows 版専用です。
+
+| コマンド | 機能 |
+| --- | --- |
+| `--version` | バージョンとコアの読み込み状態 |
+| `convert INPUT -o OUTPUT` | 1 ファイルを変換。進捗は FFmpeg の `-progress` から取得し、中止できます |
+| `doctor` | FFmpeg のエンコーダーとフィルターを順に調べ、不足を一覧表示します |
+| `motionphoto PHOTO -o VIDEO` | 宣言された範囲をコピーして、モーションフォトから動画を取り出します |
+| `hdr10plus INPUT -o DOC.json` | クリップが持つ `dhdr10-info` ドキュメントを書き出します |
+
+各コマンドは `--help` に対応します。
+
 ## エンコードと色のオプション
 
 `convert` と `plan` では GUI と同じエンコード・色設定を指定できます。

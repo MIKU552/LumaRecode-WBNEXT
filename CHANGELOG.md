@@ -8,8 +8,9 @@
 
 - 版本号 5.0.0；产品名统一为「映码 · LumaRecode WBNEXT」（窗口标题、终端横幅、DMG 名）。
 - Windows 每个架构两个包：不内嵌 FFmpeg 的，与内嵌 FFmpeg n9.0（GPL）的；内嵌包按仓库内钉死的
-  SHA-256 校验，随包附许可证与 NOTICE，应用本身仍为 MIT。macOS 仍只发一个包：Homebrew 的 FFmpeg
-  是动态链接的，只拷可执行文件在别的机器上起不来，静态构建另行决定。
+  SHA-256 校验，随包附许可证与 NOTICE，应用本身仍为 MIT。macOS 也发两个包：
+  full 包用 `Packaging/relocate-brew-tools.py` 把 FFmpeg 与全部依赖库重定位进 `tools/`，
+  并带上 libplacebo 所需的 MoltenVK。
 - `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS DMG，并生成 SHA256SUMS。
 
 - 由上游 4.4.3 派生并重命名为 WBNEXT 重构版，位于独立分支 `next`，非正式发布。

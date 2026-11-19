@@ -120,7 +120,7 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 | P6 高级媒体 | 部分完成 | 动态照片识别、内嵌视频提取（含 Ultra HDR 判定）已在 macOS 实现并有合成字节单测；HDR10+ 全通：SEI 读取与 `dhdr10-info` 文档生成在核心（`metadata.hdr10plus`、`metadata.hdr10plus_document`，逐位与逐帧测试），macOS 的 `hdr10plus` 用 ffprobe 取行并导出，CI 里用 x265 造片段做往返验证；RAW 显影的滤镜链进了核心（`plan.raw_filter`，顺序有测试），宿主侧的 RAW 解包与校准命令未做 |
 | P7 校准与优化 | 完成（预设候选除外） | 标识、策略、存储抽象、计划、带范围保护的删除、预算报告（`cache` 命令与 `doctor` 的缓存段）与长任务的取消/进度都已接线；预设候选需要实测吞吐，未开始 |
 | P8 发布准备 | 完成 | 四语文档与隐私说明就绪；按决定**不做代码签名**，发布页给出 SHA-256 供核对 |
-| P9 合并发布 | 未执行 | 分支已就绪（检查全绿）；合并、标签与正式 Release 待执行（不带签名） |
+| P9 合并发布 | 完成 | 219 个提交以 `--no-ff` 并入 `main`，标签 `v5.0.0`，草稿 Release 含六个包与 `SHA256SUMS.txt`（不带签名） |
 
 ### 与方案的已知偏差
 
@@ -148,7 +148,7 @@ VideoToolbox 的共享档（HEVC + AAC）已在 macOS 流水线上真机编码�
 **已完成**：`Interop` 与 `qa/NativeChecks` 已加入 `LumaRecode.slnx` 与 `.sln`，`windows` 作业会读回
 两份文件核对，IDE 与命令行现在是同一入口。
 
-1. **合并与发布（P9）**：合并到 `main`、打标签、写 Release 说明；按决定不带签名，发布页给出 SHA-256。
+1. **发布线的收尾**：草稿 Release 待人工确认后取消草稿；`release` 工作流按标签重建全部包，不再有构建分支上的手工步骤。
 2. 跨制式渲染：曲线链已用 Homebrew 的 `ffmpeg-full`（keg-only，带 `zscale` 与 `lut3d`）**真渲染**并通过断言；
    色调映射仍只能断言计划——`ffmpeg-full` 虽然带 `libplacebo`，但托管 runner 没有可用的 Vulkan 设备（实测
    `Generic error in an external library`），与 Windows runner 同一结局。本机（GPU）可正常出片。
@@ -296,7 +296,7 @@ records the others as "not run" rather than folding them into pass or fail.
 | P6 Advanced media | Partial | Motion photo recognition and extraction (with the Ultra HDR flag) are implemented on macOS and tested on composed bytes; HDR10+ is complete: the SEI reader and the `dhdr10-info` document builder are in the core (`metadata.hdr10plus`, `metadata.hdr10plus_document`, tested bit by bit and frame by frame), macOS exports it with `hdr10plus` from FFprobe's lines, and the pipeline round-trips a clip x265 built from that very document; the RAW development chain is in the core (`plan.raw_filter`, ordering tested) while the host-side demux and calibration commands are not |
 | P7 Calibration | Done except preset candidates | Identity, retention, the store seam, the plan, guarded deletion, the budget report (`cache` command and the cache section of `doctor`) and cancellation/progress for long runs are wired; preset candidates need measured throughput and have not started |
 | P8 Release prep | Done | Four-language docs and the privacy statement are in place; builds ship **unsigned** by decision, with a SHA-256 published for checking |
-| P9 Merge and release | Not executed | The branch is ready and green; the merge, tag and release await execution, without signing |
+| P9 Merge and release | Done | 219 commits merged with `--no-ff`, tag `v5.0.0`, and a draft release with six packages plus `SHA256SUMS.txt`, unsigned |
 
 ### Known deviations
 

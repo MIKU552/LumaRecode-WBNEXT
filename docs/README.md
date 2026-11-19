@@ -9,7 +9,7 @@
 | 指南 | 简体中文 | English | 日本語 | Español |
 | --- | --- | --- | --- | --- |
 | 项目与安装 | [README](../README.md) | [README](readme/en.md) | [README](readme/ja.md) | [README](readme/es.md) |
-| 命令行 | [CLI](cli/zh-CN.md) | [CLI](cli/en.md) | [CLI](cli/ja.md) | [CLI](cli/es.md) |
+| 命令行（含 macOS 入口） | [CLI](cli/zh-CN.md) | [CLI](cli/en.md) | [CLI](cli/ja.md) | [CLI](cli/es.md) |
 
 ### 专题与开发
 

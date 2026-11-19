@@ -42,6 +42,18 @@ FFmpeg / ffprobe 默认先从 PATH 查找，再使用 GUI 保存的路径。可�
 | `plan INPUT...` | 预览转换选项、FFmpeg 参数、工作目录和输出色彩 |
 | `convert INPUT...` | 单文件或顺序批量转换，完成后校验输出 |
 
+### macOS 命令行
+
+macOS 版是同一个可执行文件的终端入口，只有下面几条；`presets`、`profiles`、`frames`、`image`、`cache`、`license`、`plan` 是 Windows 版专有的。
+
+| 命令 | 功能 |
+| --- | --- |
+| `--version` | 版本与核心加载状态 |
+| `convert INPUT -o OUTPUT` | 转换一个文件；进度来自 FFmpeg 的 `-progress` 流，可取消 |
+| `doctor` | 逐步探测 FFmpeg 的编码器与滤镜，列出缺项 |
+| `motionphoto PHOTO -o VIDEO` | 从动态照片里取出内嵌视频（按声明区间复制） |
+| `hdr10plus INPUT -o DOC.json` | 导出片段携带的 `dhdr10-info` 文档 |
+
 各命令均可使用 `--help`。`presets`、`profiles`、`probe`、`doctor`、`cache`、`license` 返回 JSON；转换的文本进度写入 stderr，结果写入 stdout。
 
 ## 编码与色彩选项

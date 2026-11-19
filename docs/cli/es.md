@@ -44,6 +44,20 @@ Las fuentes HDR dinámicas usan HEVC por software para conservar metadatos. Usa 
 
 Todos los comandos admiten `--help`. Los resultados de análisis, catálogos, diagnóstico, caché y licencias son JSON. El progreso en texto se escribe en stderr; los resultados, en stdout.
 
+### Línea de comandos de macOS
+
+La versión de macOS es el mismo ejecutable con entrada de terminal y solo tiene estos; `presets`, `profiles`, `frames`, `image`, `cache`, `license` y `plan` son exclusivos de Windows.
+
+| Comando | Función |
+| --- | --- |
+| `--version` | Versión y si el núcleo se cargó |
+| `convert INPUT -o OUTPUT` | Convierte un archivo; el progreso viene del flujo `-progress` de FFmpeg y se puede cancelar |
+| `doctor` | Sondea los codificadores y filtros de FFmpeg paso a paso y enumera lo que falta |
+| `motionphoto PHOTO -o VIDEO` | Extrae el vídeo de una foto en movimiento copiando el rango declarado |
+| `hdr10plus INPUT -o DOC.json` | Exporta el documento `dhdr10-info` que lleva el clip |
+
+Todos los comandos aceptan `--help`.
+
 ## Opciones de codificación y color
 
 `convert` y `plan` ofrecen los mismos controles de codificación y color que la interfaz:

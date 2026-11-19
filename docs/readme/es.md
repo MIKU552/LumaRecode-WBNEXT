@@ -5,7 +5,7 @@
 
 [简体中文](../../README.md) | [English](en.md) | [日本語](ja.md) | Español
 
-> **Vista previa de la reescritura WBNEXT**: esta rama es una reescritura multiplataforma independiente basada en [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), desarrollada con WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). **No es una versión oficial** y no hereda el soporte del proyecto original. Las compilaciones provienen de los artefactos de GitHub Actions; el avance se registra en el [registro de la reescritura (chino e inglés)](../refactor/README.md#english).
+> **Vista previa de la reescritura WBNEXT**: esta rama es una reescritura multiplataforma independiente basada en [LumaRecode 4.4.3](https://github.com/MIKU552/LumaRecode), desarrollada con WorkBuddy (DeepSeek-V4.1-Flash-1017, razonamiento alto, contexto de 1M). **No es una versión oficial** y no hereda el soporte del proyecto original. Los paquetes están en [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases); el avance se registra en el [registro de la reescritura (chino e inglés)](../refactor/README.md#english).
 
 Herramienta de transcodificación de vídeo y conversión de color para Windows 11, desarrollada con C# y .NET. LumaRecode ofrece una interfaz nativa WinUI 3 y una línea de comandos para FFmpeg, con compresión de vídeo, conversión de Log de cámara a HDR / SDR y de HDR a SDR.
 
@@ -26,17 +26,21 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 
 ## Inicio rápido
 
-1. Descarga el EXE para tu equipo desde [Releases](https://github.com/MIKU552/LumaRecode/releases). Consulta las variantes en la tabla siguiente. Los entornos de ejecución necesarios están incluidos.
-2. Prepara una compilación de [FFmpeg para Windows (inglés)](https://ffmpeg.org/download.html) con `ffmpeg.exe` y `ffprobe.exe`. LumaRecode busca en `PATH` al iniciarse; también puedes indicar las rutas con el botón de engranaje.
+1. Descarga el paquete para tu equipo desde [Releases](https://github.com/MIKU552/LumaRecode-WBNEXT/releases); la tabla siguiente los enumera. Los entornos de ejecución necesarios están incluidos.
+2. Elige una de las dos formas: el paquete normal espera [FFmpeg](https://ffmpeg.org/download.html) en tu equipo (`ffmpeg` y `ffprobe`, buscados en `PATH` o indicados con el botón de engranaje), mientras que el paquete `-full` lo incluye y funciona sin más.
 3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
 Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
 
-| Archivo | Plataforma y requisitos |
-| --- | --- |
-| `LumaRecode.exe` | X64, con un perfil de instrucciones x64 común |
-| `LumaRecode-ARM64.exe` | Windows ARM64, con aplicación y códec de imagen nativos ARM64 |
+| Archivo | Plataforma | FFmpeg |
+| --- | --- | --- |
+| `LumaRecode-5.0.0-winx64.zip` | Windows x64, perfil de instrucciones común | Aportado por ti |
+| `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | Incluido |
+| `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64, aplicación y códec nativos | Aportado por ti |
+| `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | Incluido |
+| `LumaRecode-5.0.0-arm64.dmg` | macOS 27 o posterior, Apple silicon | Aportado por ti |
+| `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 o posterior, Apple silicon | Incluido, con el MoltenVK que necesita libplacebo |
 
 ARM64 usa Archivo por software de forma predeterminada. La velocidad de codificación depende del FFmpeg externo, del hardware y del preajuste.
 
@@ -139,15 +143,15 @@ docs/      Guías, documentación de desarrollo y datos de pruebas
 licenses/  Licencias, avisos y procedencia de componentes de terceros
 ```
 
-## Code signing policy
+## Compilaciones sin firma
 
-Las compilaciones de Windows se distribuyen **sin firmar**; es una decisión del proyecto y no se solicitará ningún certificado de firma. La página de la versión publica un SHA-256 del paquete para poder comprobarlo, y el aviso de SmartScreen al ejecutarlo por primera vez es esperado: no hace falta desactivar la protección del sistema.
+Las compilaciones de Windows se distribuyen **sin firmar**; es una decisión del proyecto y no se solicitará ningún certificado de firma. La página de la versión publica un SHA-256 de cada paquete (`SHA256SUMS.txt`) para poder comprobarlos, y el aviso de SmartScreen al ejecutarlo por primera vez es esperado: no hace falta desactivar la protección del sistema.
 
 La versión de macOS usa una firma ad-hoc gratuita: sin Apple Developer ID y sin notarización. En el primer inicio, elige «Abrir de todos modos» en Ajustes del Sistema → Privacidad y seguridad; las notas de distribución indican ese paso y nunca piden desactivar Gatekeeper.
 
-Roles: MIKU552 mantiene el proyecto y aprueba las versiones; la misma cuenta actúa como committer y revisor (proyecto de un solo mantenedor). Cada firma formal se aprueba manualmente.
+El FFmpeg incluido en un paquete `-full` es un **programa independiente** distribuido bajo GPL-3.0: su licencia y la lista de fuentes viajan en `Licenses/` y `SOURCES.txt`, mientras la aplicación sigue siendo MIT. Se comunican por un subproceso, no por enlace, así que cada uno conserva su licencia.
 
-Privacidad: el programa no incluye telemetría ni sube diagnósticos o material; solo accede a la red cuando abres un enlace externo o usas una acción de compartir del sistema. FFmpeg / ffprobe los aporta el usuario y nunca se descargan en su nombre.
+Privacidad: el programa no incluye telemetría ni sube diagnósticos o material; solo accede a la red cuando abres un enlace externo o usas una acción de compartir del sistema. Nunca descarga FFmpeg: el paquete normal espera que lo aportes tú y la copia del paquete `-full` solo se ejecuta desde el disco.
 
 ## Desarrollo y licencia
 

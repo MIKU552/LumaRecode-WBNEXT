@@ -6,12 +6,15 @@
 
 ### 模块
 
-`LumaRecode.sln` 与 `LumaRecode.slnx` 包含应用、核心、单文件入口、打包入口与 C# 检查项目。Visual Studio 的发布配置通过 `Packaging` 调用仓库根目录的 `build.ps1`。
+`LumaRecode.sln` 与 `LumaRecode.slnx` 包含应用、核心、原生桥、单文件入口、打包入口与检查项目。规则与参数由 Rust 核心（`native/`）决定，Windows 与 macOS 两个宿主都通过 C ABI（`native/include/luma_core.h`）调用它。Visual Studio 的发布配置通过 `Packaging` 调用仓库根目录的 `build.ps1`。
 
 | 目录 | 职责 |
 | --- | --- |
+| `native/` | Rust 核心（规则、规划、执行抽象、颜色与元数据）以及 C ABI 与头文件 |
+| `Interop/` | C# 到 C ABI 的托管桥，供 Windows 侧调用 |
+| `app-macos/` | Swift 应用与终端入口（`convert`、`doctor`、`motionphoto`、`hdr10plus`） |
 | `App/` | WinUI 视图、设置、本地化、通知及 GUI / CLI 启动选择 |
-| `Core/` | 素材探测、输出规则、命令规划、视频与图片导出、CLI |
+| `Core/` | 素材探测、命令规划、视频与图片导出、CLI；规则取自核心 |
 | `Bundle/` | 可选 AOT 的单文件入口，传递标准句柄与退出码 |
 | `Packaging/` | 将 Visual Studio 配置映射到完整的单文件构建流程 |
 | `Assets/` | LUT、视频与动态照片预设、资源来源清单 |
@@ -76,12 +79,15 @@ GUI 控件只在 DispatcherQueue 所在线程访问。`ConversionEventPump` 在�
 
 ### Modules
 
-`LumaRecode.sln` and `LumaRecode.slnx` contain the application, core, single-file launcher, packaging entry and C# checks. Visual Studio release configurations use `Packaging` to invoke `build.ps1` in the repository root.
+`LumaRecode.sln` and `LumaRecode.slnx` contain the application, core, managed bridge, single-file launcher, packaging entry and the checks. Rules and parameters come from the Rust core (`native/`), which both hosts call over the C ABI (`native/include/luma_core.h`). Visual Studio release configurations use `Packaging` to invoke `build.ps1` in the repository root.
 
 | Directory | Responsibility |
 | --- | --- |
+| `native/` | Rust core (rules, planning, the execution seam, colour and metadata) plus the C ABI and its header |
+| `Interop/` | Managed bridge to the C ABI for the Windows side |
+| `app-macos/` | Swift application and terminal entry (`convert`, `doctor`, `motionphoto`, `hdr10plus`) |
 | `App/` | WinUI views, settings, localization, notifications and GUI / CLI startup selection |
-| `Core/` | Source inspection, output policies, command planning, video/image export and CLI |
+| `Core/` | Media probing, command planning, video/image export and CLI; the rules come from the core |
 | `Bundle/` | Optional AOT single-file entry; preserve standard handles and exit codes |
 | `Packaging/` | Map Visual Studio configurations to the complete single-file build pipeline |
 | `Assets/` | LUTs, video and Motion Photo presets, resource provenance |
