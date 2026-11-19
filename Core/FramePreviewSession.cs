@@ -1,7 +1,9 @@
 namespace VideoConverter.Core;
 
 /// <summary>A frame key within one source timeline; output-format changes do not invalidate SDR previews.</summary>
-public sealed record FramePreviewRequest(int Frame, string SourceKind, string? Profile);
+/// <param name="Approximate">True while the user is still dragging: seek to the nearest
+/// keyframe instead of decoding forward to the exact one.</param>
+public sealed record FramePreviewRequest(int Frame, string SourceKind, string? Profile, bool Approximate = false);
 
 /// <summary>Runs one decoder with one replaceable pending request and a bounded PNG cache.</summary>
 /// <remarks>Callbacks run on the worker. A GUI must marshal presentation to its dispatcher.

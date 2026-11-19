@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using VideoConverter.Core;
 using Windows.ApplicationModel.DataTransfer;
 
@@ -177,6 +178,19 @@ public sealed partial class MainWindow : Window
         }
         combo.SelectedIndex = 0;
     }
+    /// <summary>True when the element is (or sits inside) something that takes typed input.</summary>
+    private static bool IsTextEntry(DependencyObject element)
+    {
+        for (var node = element; node is not null; node = VisualTreeHelper.GetParent(node))
+        {
+            if (node is TextBox or NumberBox or RichEditBox or ComboBox)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void WireEvents()
     {
         var copyLog = Control<Button>("CopyLog");

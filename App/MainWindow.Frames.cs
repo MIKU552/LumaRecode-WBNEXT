@@ -26,6 +26,9 @@ public sealed partial class MainWindow
     private bool TrimVideo => !PhotoMode && Control<CheckBox>("TrimEnabled").IsChecked == true;
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
     private int selectedFrame;
+    private bool scrubbing;
+
+    /// <summary>True while the slider is held: previews may seek approximately.</summary>
 
     private int SelectedFrame => selectedFrame;
     private string ImageFormat => Value(Control<ComboBox>("ImageFormat"));
@@ -71,7 +74,22 @@ public sealed partial class MainWindow
                 Control<Image>("FramePreview").Source = null;
             }
         };
-        Control<Slider>("FrameSeek").ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
+        var seek = Control<Slider>("FrameSeek");
+        seek.ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
+        seek.PointerPressed += (_, _) => scrubbing = true;
+        seek.PointerReleased += (_, _) =>
+        {
+            scrubbing = false;
+            QueueFramePreview();
+        };
+        seek.PointerCaptureLost += (_, _) =>
+        {
+            if (scrubbing)
+            {
+                scrubbing = false;
+                QueueFramePreview();
+            }
+        };
         // A frame can be named by number or by time, and Enter or leaving the box commits it.
         var frameNumber = Control<TextBox>("FrameNumber");
         frameNumber.KeyDown += (_, args) =>
@@ -327,7 +345,7 @@ public sealed partial class MainWindow
                         Frame = request.Frame,
                         SourceKind = request.SourceKind,
                         Profile = request.Profile
-                    }, cancellation),
+                    }, request.Approximate, cancellation),
                 (request, bytes, cancellation) => OnPreviewUiAsync(async () =>
                 {
                     if (!ReferenceEquals(previewSession, session))
@@ -364,7 +382,7 @@ public sealed partial class MainWindow
             previewIdentity = identity;
         }
         Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
-        previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile));
+        previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile, scrubbing));
     }
 
     /// <summary>Posts WinRT bitmap work explicitly; cancellation also releases a dispatcher callback during shutdown.</summary>
