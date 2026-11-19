@@ -25,7 +25,9 @@ public sealed partial class MainWindow
     private bool PhotoMode => Control<SelectorBar>("WorkPage").SelectedItem == Control<SelectorBarItem>("PhotoPage");
     private bool TrimVideo => !PhotoMode && Control<CheckBox>("TrimEnabled").IsChecked == true;
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
-    private int SelectedFrame => Math.Max(0, (int)Control<NumberBox>("FrameNumber").Value - 1);
+    private int selectedFrame;
+
+    private int SelectedFrame => selectedFrame;
     private string ImageFormat => Value(Control<ComboBox>("ImageFormat"));
     private FrameRange VideoFrames => ReadRange("Trim");
     private FrameRange MotionFrames => ReadRange("Motion");
@@ -70,13 +72,17 @@ public sealed partial class MainWindow
             }
         };
         Control<Slider>("FrameSeek").ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
-        Control<NumberBox>("FrameNumber").ValueChanged += (_, args) =>
+        // A frame can be named by number or by time, and Enter or leaving the box commits it.
+        var frameNumber = Control<TextBox>("FrameNumber");
+        frameNumber.KeyDown += (_, args) =>
         {
-            if (double.IsFinite(args.NewValue))
+            if (args.Key == Windows.System.VirtualKey.Enter)
             {
-                ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
+                CommitFrameInput();
+                args.Handled = true;
             }
         };
+        frameNumber.LostFocus += (_, _) => CommitFrameInput();
         Control<Button>("PreviousFrame").Click += (_, _) => ChangePreviewFrame(SelectedFrame - 1);
         Control<Button>("NextFrame").Click += (_, _) => ChangePreviewFrame(SelectedFrame + 1);
         foreach (var prefix in new[] { "Trim", "Motion" })
@@ -128,7 +134,9 @@ public sealed partial class MainWindow
         Control<TextBlock>("PreviewStatus").Text = "";
         Control<CheckBox>("TrimEnabled").IsChecked = false;
         Control<CheckBox>("IncludeMotion").IsChecked = false;
-        foreach (var name in new[] { "FrameNumber", "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
+        selectedFrame = 0;
+        Control<TextBox>("FrameNumber").Text = "1";
+        foreach (var name in new[] { "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
         {
             Control<NumberBox>(name).Value = 1;
         }
@@ -204,6 +212,23 @@ public sealed partial class MainWindow
         }
     }
 
+    /// <summary>Reads the frame box: a number, or a time such as <c>00:01:23.12</c>.</summary>
+    private void CommitFrameInput()
+    {
+        if (frameTimeline is null || frameUiUpdating)
+        {
+            return;
+        }
+        var text = Control<TextBox>("FrameNumber").Text;
+        var frame = FrameTimelineInput.Resolve(text, frameTimeline);
+        if (frame is null)
+        {
+            Control<TextBox>("FrameNumber").Text = (selectedFrame + 1).ToString();
+            return;
+        }
+        ChangePreviewFrame(frame.Value - 1);
+    }
+
     private void ChangePreviewFrame(int frame)
     {
         if (frameUiUpdating || frameTimeline is null || activeJob is not null)
@@ -218,7 +243,8 @@ public sealed partial class MainWindow
             return;
         }
         frameUiUpdating = true;
-        Control<NumberBox>("FrameNumber").Value = frame + 1;
+        selectedFrame = frame;
+        Control<TextBox>("FrameNumber").Text = (frame + 1).ToString();
         Control<Slider>("FrameSeek").Value = frame + 1;
         if (!motionRangeEdited)
         {

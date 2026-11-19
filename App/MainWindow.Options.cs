@@ -356,9 +356,8 @@ public sealed partial class MainWindow
                 warning = L.T(MediaText("flac_reason"));
             }
 
-            var notice = Control<InfoBar>("Notice");
-            notice.Message = warning;
-            notice.IsOpen = warning != "";
+            Control<TextBlock>("NoticeText").Text = warning;
+            Control<Grid>("NoticeRow").Visibility = warning == "" ? Visibility.Collapsed : Visibility.Visible;
             Control<TextBlock>("ChooseInputLabel").Text = L.T(media is null ? "选择视频" : "更换视频");
             Control<Button>("ChooseInput").Style = (Style)root.Resources[media is null ? "AccentActionButtonStyle" : "ActionButtonStyle"];
             Control<Button>("Start").IsEnabled = media is not null && !probing && activeJob is null && warning == "";

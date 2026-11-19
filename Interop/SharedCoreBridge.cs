@@ -32,6 +32,7 @@ public static class SharedCoreBridge
 
         SharedCore.Resolver = Resolve;
         SharedCore.Validator = Validate;
+        SharedCore.TimeInputParser = ParseTimeInput;
         SharedCore.InputBuilder = BuildInputMap;
         SharedCore.ColorBuilder = BuildColorArguments;
         SharedCore.EncoderBuilder = BuildEncoderArguments;
@@ -49,6 +50,20 @@ public static class SharedCoreBridge
     }
 
     /// <summary>Builds the input/mapping block through the core.</summary>
+    private static (double Seconds, int Frames)? ParseTimeInput(string text)
+    {
+        if (!LumaCoreNative.TryCall("timeline.frame_input",
+                new JsonObject { ["text"] = text }, out var data, out _))
+        {
+            return null;
+        }
+        if (data?["seconds"] is not { } seconds || seconds.GetValueKind() != JsonValueKind.Number)
+        {
+            return null;
+        }
+        return (seconds.GetValue<double>(), data?["frames"]?.GetValue<int>() ?? 0);
+    }
+
     private static IReadOnlyList<string>? BuildInputMap(InputMapRequest request)
     {
         JsonObject payload = new();

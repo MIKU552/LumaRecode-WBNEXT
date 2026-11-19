@@ -106,7 +106,7 @@
               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
               <Button x:Name="PreviousFrame" Content="上一帧" />
               <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
-              <NumberBox x:Name="FrameNumber" Grid.Column="2" Header="帧" Minimum="1" Maximum="2" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" HorizontalAlignment="Right" MinWidth="160" />
+              <TextBox x:Name="FrameNumber" Grid.Column="2" Header="帧（可输入 00:01:23.12）" Text="1" HorizontalAlignment="Right" MinWidth="180" />
             </Grid>
             <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
             <Grid x:Name="VideoTrimFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
@@ -160,7 +160,12 @@
             <ComboBox x:Name="BitDepth" Header="位深" HorizontalAlignment="Stretch" AutomationProperties.Name="位深" />
             <ComboBox x:Name="ColorRange" Header="色彩范围" HorizontalAlignment="Stretch" AutomationProperties.Name="色彩范围" />
             <TextBlock x:Name="FormatNote" Style="{StaticResource Secondary}" />
-            <InfoBar x:Name="Notice" IsOpen="False" IsClosable="False" Severity="Warning" />
+            <Grid x:Name="NoticeRow" ColumnSpacing="8" Visibility="Collapsed">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <FontIcon Glyph="&#xE7BA;" FontSize="15" VerticalAlignment="Top" Margin="0,2,0,0"
+                        Foreground="{ThemeResource SystemFillColorCautionBrush}" />
+              <TextBlock x:Name="NoticeText" Grid.Column="1" Style="{StaticResource Secondary}" />
+            </Grid>
           </StackPanel>
         </Border>
         <Border x:Name="FormatCard" Grid.Row="3" Grid.ColumnSpan="2" Style="{StaticResource Card}">

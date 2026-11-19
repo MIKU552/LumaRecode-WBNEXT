@@ -357,7 +357,7 @@ public sealed partial class MainWindow : Window
         Grid.SetRow(format, settingsRow + (narrow ? 2 : 1));
         Grid.SetColumnSpan(format, narrow ? 1 : 2);
 
-        var frameNumber = Control<NumberBox>("FrameNumber");
+        var frameNumber = Control<TextBox>("FrameNumber");
         Grid.SetColumn(frameNumber, compact ? 0 : 2);
         Grid.SetRow(frameNumber, compact ? 1 : 0);
         Grid.SetColumnSpan(frameNumber, compact ? 3 : 1);

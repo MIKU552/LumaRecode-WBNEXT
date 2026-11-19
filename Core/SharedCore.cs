@@ -122,6 +122,9 @@ public sealed record HdrMetadataArguments(IReadOnlyList<ParameterPair> Parameter
 /// </remarks>
 public static class SharedCore
 {
+    /// <summary>Reads a typed time through the shared core; null means the box takes digits only.</summary>
+    public static Func<string, (double Seconds, int Frames)?>? TimeInputParser { get; set; }
+
     /// <summary>Resolves a request through the shared core; null means "use the managed rules".</summary>
     public static Func<EncodeOptions, MediaInfo, SharedResolution>? Resolver { get; set; }
 

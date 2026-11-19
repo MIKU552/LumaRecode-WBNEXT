@@ -272,3 +272,45 @@ pub fn sorted_unique_packets(mut points: Vec<FramePoint>) -> Option<Vec<FramePoi
         .all(|pair| pair[0].pts != pair[1].pts)
         .then_some(points)
 }
+
+/// Reads a time the user typed, as `h:mm:ss`, `h:mm:ss.ff` or decimal seconds.
+///
+/// The group after the dot counts frames when the text is clock-shaped and seconds when it
+/// is not, which is how people write both. A bare number is not a time — the frame box
+/// treats it as a frame number — so it returns `None` here.
+pub fn parse_time_input(text: &str) -> Option<(f64, u32)> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() || trimmed.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    if !trimmed.contains(':') {
+        let seconds: f64 = trimmed.parse().ok()?;
+        return (seconds.is_finite() && seconds >= 0.0).then_some((seconds, 0));
+    }
+
+    let (clock, frames) = match trimmed.rsplit_once('.') {
+        Some((clock, frames)) => (clock, Some(frames)),
+        None => (trimmed, None),
+    };
+    let mut seconds = 0.0;
+    let mut groups = 0;
+    for group in clock.split(':') {
+        let value: f64 = group.parse().ok()?;
+        if !(value.is_finite() && value >= 0.0) {
+            return None;
+        }
+        seconds = seconds * 60.0 + value;
+        groups += 1;
+    }
+    if groups < 2 {
+        return None;
+    }
+    let offset = match frames {
+        None => 0.0,
+        Some(frames) if !frames.is_empty() && frames.chars().all(|c| c.is_ascii_digit()) => {
+            frames.parse().ok()?
+        }
+        Some(_) => return None,
+    };
+    Some((seconds, offset as u32))
+}
