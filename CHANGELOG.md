@@ -4,6 +4,14 @@
 
 ## 简体中文
 
+### 未发布
+
+- 预览改为浮层：画面随窗口缩放，时间轴紧贴其下，两个按钮把当前帧设为起始或末尾，
+  每个边界旁可输入 `00:01:23.12` 形式的时刻；动态照片的范围也移到这个面板里。
+- 帧号输入框接受「帧号」或「时间.帧」，不再是带上下箭头的数字框。
+- 色卡下方的警告改为自绘一行，图标与文字首行对齐。
+- 拖动时间轴时按最近关键帧出图，松手后再取精确帧；点击非输入区域会释放焦点。
+
 ### WBNEXT 5.0.0（首个发布）
 
 - 由上游 4.4.3 派生：规则、参数与色彩决策移入 Rust 核心，Windows 与 macOS 通过 C ABI 共用，
@@ -288,6 +296,16 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### Unreleased
+
+- The preview is a floating panel: the frame scales with the window, the timeline sits right
+  under it, two buttons set the current frame as start or end, and each edge takes a
+  `00:01:23.12` time beside its frame number. The motion-photo range moved into the same panel.
+- The frame box accepts a number or a `time.frame` value and is a text field, not a spinner.
+- The warning under the colour card is drawn as a row so the icon sits on the first text line.
+- Dragging the timeline seeks to the nearest keyframe and asks for the exact frame on release;
+  pressing outside a text field hands focus back.
 
 ### WBNEXT 5.0.0 (first release)
 
