@@ -16,7 +16,7 @@
   `Packaging/relocate-brew-tools.py` 把 FFmpeg 与全部依赖库重定位进 `tools/` 并带上 MoltenVK；
   应用本身仍是 MIT，许可证与源码清单随包附上。
 - 不签名（项目决定）；发布页给出 `SHA256SUMS.txt` 供核对。
-- `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS DMG。
+- `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS 归档（`.app` 打包为 ZIP）。
 - `presets` 与预设面板显示编码后端；`doctor` 增加核心状态、后端统计与只读缓存报告。
 - 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
 - 开发协助：WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）。

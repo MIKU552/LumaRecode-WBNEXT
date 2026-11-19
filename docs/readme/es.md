@@ -39,8 +39,8 @@ Compartir rápido usa Intel QSV en Windows y VideoToolbox en macOS. Archivo por 
 | `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | Incluido |
 | `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64, aplicación y códec nativos | Aportado por ti |
 | `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | Incluido |
-| `LumaRecode-5.0.0-arm64.dmg` | macOS 27 o posterior, Apple silicon | Aportado por ti |
-| `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 o posterior, Apple silicon | Incluido, con el MoltenVK que necesita libplacebo |
+| `LumaRecode-5.0.0-arm64.zip` | macOS 27 o posterior, Apple silicon | Aportado por ti |
+| `LumaRecode-5.0.0-arm64-full.zip` | macOS 27 o posterior, Apple silicon | Incluido, con el MoltenVK que necesita libplacebo |
 
 ARM64 usa Archivo por software de forma predeterminada. La velocidad depende del FFmpeg en uso (el tuyo o el incluido), del hardware y del preajuste.
 

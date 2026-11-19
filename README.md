@@ -39,8 +39,8 @@
 | `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | 内嵌 |
 | `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64，原生 ARM64 应用与图片编解码库 | 自备 |
 | `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | 内嵌 |
-| `LumaRecode-5.0.0-arm64.dmg` | macOS 27 及以上，Apple 芯片 | 自备 |
-| `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 及以上，Apple 芯片 | 内嵌（含 libplacebo 所需的 MoltenVK） |
+| `LumaRecode-5.0.0-arm64.zip` | macOS 27 及以上，Apple 芯片 | 自备 |
+| `LumaRecode-5.0.0-arm64-full.zip` | macOS 27 及以上，Apple 芯片 | 内嵌（含 libplacebo 所需的 MoltenVK） |
 
 ARM64 默认使用软件归档。编码速度由所用 FFmpeg（自备或包内）、硬件与所选预设决定。
 

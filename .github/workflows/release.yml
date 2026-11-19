@@ -112,7 +112,7 @@ jobs:
           df -h /
           bash app-macos/scripts/build-macos.sh --configuration release
           mkdir -p dist
-          mv app-macos/dist/*.dmg dist/
+          mv app-macos/dist/*.zip dist/
           df -h /
 
       - name: Install the full FFmpeg
@@ -124,18 +124,18 @@ jobs:
         run: |
           df -h /
           bash app-macos/scripts/build-macos.sh --configuration release --with-ffmpeg
-          mv app-macos/dist/*.dmg dist/
+          mv app-macos/dist/*.zip dist/
           ls -lh dist
           # A carrying package that is not clearly larger is a broken relocation.
-          plain=$(ls dist/*-arm64.dmg | grep -v full)
-          full=$(ls dist/*-arm64-full.dmg)
+          plain=$(ls dist/*-arm64.zip | grep -v full)
+          full=$(ls dist/*-arm64-full.zip)
           test "$(stat -f%z "$full")" -gt "$(stat -f%z "$plain")"
 
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: dist/*.dmg
+          path: dist/*.zip
           if-no-files-found: error
 
   publish:
@@ -152,7 +152,7 @@ jobs:
       - name: Checksums
         run: |
           cd artifacts
-          find . -type f \( -name '*.zip' -o -name '*.dmg' \) -print0 \
+          find . -type f -name '*.zip' -print0 \
             | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
@@ -172,7 +172,7 @@ jobs:
 
           Unsigned by decision: check the download against `SHA256SUMS.txt`.
           NOTES
-          mapfile -t files < <(find artifacts -type f \( -name '*.zip' -o -name '*.dmg' -o -name 'SHA256SUMS.txt' \))
+          mapfile -t files < <(find artifacts -type f \( -name '*.zip' -o -name 'SHA256SUMS.txt' \))
           printf '%s\n' "${files[@]}"
           # A rerun must replace what an earlier attempt uploaded, not fail on "already exists".
           if gh release view "v5.0.0" >/dev/null 2>&1; then

@@ -105,13 +105,16 @@ codesign --verify --strict --verbose=2 "$app"
 version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")"
 
 if [[ $make_dmg -eq 1 ]]; then
-    echo "==> Packaging DMG"
+    echo "==> Packaging archive"
+    # ditto keeps the bundle's symlinks and metadata, and unlike hdiutil it never needs
+    # to mount anything — the images failed on hosted runners for reasons that had
+    # nothing to do with the bundle itself.
     suffix=""
-    [[ $with_ffmpeg -eq 1 ]] && suffix="-full"
-    dmg="$app_dir/dist/LumaRecode-$version-arm64$suffix.dmg"
-    rm -f "$dmg"
-    hdiutil create -volname "LumaRecode" -srcfolder "$app" -ov -format UDZO "$dmg" >/dev/null
-    echo "DMG: $dmg"
+    if [[ $with_ffmpeg -eq 1 ]]; then suffix="-full"; fi
+    archive="$app_dir/dist/LumaRecode-$version-arm64$suffix.zip"
+    rm -f "$archive"
+    ditto -c -k --sequesterRsrc --keepParent "$app" "$archive"
+    echo "Archive: $archive"
 fi
 
 echo "App: $app"
