@@ -77,12 +77,12 @@ jobs:
           $licence = Get-ChildItem ffmpeg -Recurse -Filter LICENSE.txt | Select-Object -First 1
           if ($null -ne $licence) { Copy-Item $licence.FullName full/licenses/ffmpeg-GPLv3.txt }
           @"
-          LumaRecode $version (WBNEXT) carries FFmpeg n9.0 beside the application.
+          LumaRecode $version (WBNEXT) carries $($meta.version) beside the application.
 
           The application is MIT licensed. The FFmpeg binaries in tools/ are a separate
           program, licensed GPL-3.0-or-later; they are invoked as a subprocess and are not
           linked into the application. The licence text is in licenses/ and the corresponding
-          source is https://github.com/FFmpeg/FFmpeg/tree/n9.0
+          source is $($meta.source)
           "@ | Set-Content full/licenses/NOTICE.txt -Encoding utf8
           Compress-Archive -Path full/* -DestinationPath "dist/LumaRecode-$version-win${{ matrix.arch }}-full.zip"
 
@@ -166,7 +166,7 @@ jobs:
           LumaRecode WBNEXT 5.0.0 — the first release of the cross-platform rewrite.
 
           Two packages per architecture: the plain one expects FFmpeg on your machine, the
-          `-full` one carries FFmpeg n9.0 and its licence. The application is MIT licensed;
+          `-full` one carries a GPL FFmpeg build and its licence. The application is MIT licensed;
           the FFmpeg binaries are a separate GPL-3.0 program invoked as a subprocess, so the
           two licences stay separate.
 

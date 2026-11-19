@@ -12,7 +12,7 @@
 - macOS 首次获得完整应用（预览、时间轴、导出、共享）与终端入口：
   `convert`、`doctor`、`motionphoto`、`hdr10plus`。
 - 每个架构两个包：Windows x64、Windows ARM64 与 macOS Apple 芯片各有一个普通包与一个 `-full` 包。
-  `-full` 内嵌 FFmpeg n9.0（GPL）：Windows 按仓库内钉死的 SHA-256 校验下载物，macOS 用
+  `-full` 内嵌一版 GPL 的 FFmpeg（版本与哈希钉在 `Packaging/ffmpeg-windows.json`）：Windows 按该哈希校验下载物，macOS 用
   `Packaging/relocate-brew-tools.py` 把 FFmpeg 与全部依赖库重定位进 `tools/` 并带上 MoltenVK；
   应用本身仍是 MIT，许可证与源码清单随包附上。
 - 不签名（项目决定）；发布页给出 `SHA256SUMS.txt` 供核对。
