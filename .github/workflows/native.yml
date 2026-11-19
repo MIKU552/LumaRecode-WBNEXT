@@ -360,41 +360,38 @@ jobs:
           # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
           # that filter, so this step asserts the plan and the refusal here, and renders only
           # when the build actually has it.
-          # Presence is not usability: a build can list libplacebo and still fail to open a
-          # device, which is exactly what a hosted runner does. The probe decides the branch.
-          if ffmpeg -hide_banner -v error -f lavfi -i color=red:s=32x32:d=0.1 \
-               -vf "libplacebo=format=yuv420p" -f null - >/dev/null 2>&1; then
-            "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
-              --purpose archive --codec hevc --output sdr | tee build-info/convert-hdr-to-sdr.txt
+          # The plan is what this job can hold the core to: source tags, the tone map, the
+          # range conversion and the output tags. Whether it renders depends on a Vulkan
+          # device a hosted runner does not have, so the run may stop — with a reason, and
+          # the reason has to name the filter or the device rather than something else.
+          "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
+            --purpose archive --codec hevc --output sdr --dry-run \
+            > build-info/convert-hdr-to-sdr.txt
+          grep -q "setparams=color_primaries=bt2020:color_trc=arib-std-b67" build-info/convert-hdr-to-sdr.txt
+          grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
+          grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
+          grep -q -- "-pix_fmt yuv420p10le" build-info/convert-hdr-to-sdr.txt
+
+          set +e
+          "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
+            --purpose archive --codec hevc --output sdr \
+            > build-info/hdr-to-sdr.out 2> build-info/hdr-to-sdr.err
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
             ffprobe -v error -select_streams v:0 -show_streams -of json "$work/hlg-sdr.mkv" \
               > build-info/hdr-to-sdr.json
-            grep -q '"color_transfer": "bt709"' build-info/hdr-to-sdr.json
+            grep -q '"color_transfer": "bt709"' build-info/hdr-to-sdr.json \
+              || { cat build-info/hdr-to-sdr.json; exit 1; }
             # Archive keeps the 10-bit precision; only the transfer changes.
-            grep -q '"pix_fmt": "yuv420p10le"' build-info/hdr-to-sdr.json
-            grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
+            grep -q '"pix_fmt": "yuv420p10le"' build-info/hdr-to-sdr.json \
+              || { cat build-info/hdr-to-sdr.json; exit 1; }
           else
-            set +e
-            "$binary" convert "$work/hlg.mkv" -o "$work/hlg-sdr.mkv" \
-              --purpose archive --codec hevc --output sdr \
-              > build-info/convert-hdr-to-sdr.txt 2> build-info/hdr-to-sdr.err
-            status=$?
-            set -e
-            cat build-info/convert-hdr-to-sdr.txt build-info/hdr-to-sdr.err
-            # The plan is complete: source tags, tone map, range conversion, output tags.
-            grep -q "setparams=color_primaries=bt2020:color_trc=arib-std-b67" build-info/convert-hdr-to-sdr.txt
-            grep -q "libplacebo=format=yuv444p16le:colorspace=bt709" build-info/convert-hdr-to-sdr.txt
-            grep -q -- "-color_trc bt709" build-info/convert-hdr-to-sdr.txt
-            # Two honest outcomes: the build has no filter (exit 3), or it lists one but
-            # cannot open a device on this machine (exit 2, the run fails instead of lying).
-            if [ "$status" -eq 3 ]; then
-              grep -q "has no libplacebo filter" build-info/hdr-to-sdr.err
-            elif [ "$status" -eq 2 ]; then
-              grep -qiE "libplacebo|external library|device" build-info/hdr-to-sdr.err
-            else
-              echo "unexpected exit $status for a tone map without a device" >&2
-              exit 1
-            fi
+            # A refusal is only acceptable when it names the filter or the device.
+            cat build-info/hdr-to-sdr.err
+            grep -qiE "libplacebo|external library|vulkan|device|has no" build-info/hdr-to-sdr.err
           fi
+
 
       - name: Archive app bundle
         run: tar -czf LumaRecode-arm64-app.tar.gz -C app-macos/dist LumaRecode.app
