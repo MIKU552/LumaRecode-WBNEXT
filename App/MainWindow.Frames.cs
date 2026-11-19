@@ -85,10 +85,30 @@ public sealed partial class MainWindow
         frameNumber.LostFocus += (_, _) => CommitFrameInput();
         Control<Button>("PreviousFrame").Click += (_, _) => ChangePreviewFrame(SelectedFrame - 1);
         Control<Button>("NextFrame").Click += (_, _) => ChangePreviewFrame(SelectedFrame + 1);
+        Control<Button>("ClosePreview").Click += (_, _) =>
+        {
+            Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked = false;
+            CancelFramePreview();
+            Control<Image>("FramePreview").Source = null;
+            UpdateFramePresentation();
+        };
         foreach (var prefix in new[] { "Trim", "Motion" })
         {
             foreach (var edge in new[] { "Start", "End" })
             {
+                // A time beside each edge does the same job as typing into the frame box.
+                var time = Control<TextBox>(prefix + edge + "Text");
+                void Apply() => ApplyTimeInput(time, Control<NumberBox>(prefix + edge));
+                time.KeyDown += (_, args) =>
+                {
+                    if (args.Key == Windows.System.VirtualKey.Enter)
+                    {
+                        Apply();
+                        args.Handled = true;
+                    }
+                };
+                time.LostFocus += (_, _) => Apply();
+
                 Control<NumberBox>(prefix + edge).ValueChanged += (_, _) =>
                 {
                     if (frameUiUpdating || updating)
@@ -210,6 +230,22 @@ public sealed partial class MainWindow
                 Control<TextBlock>("PreviewStatus").Text = L.T(error.Message);
             }
         }
+    }
+
+    /// <summary>Puts a typed time into the frame box beside it, or clears it when unreadable.</summary>
+    private void ApplyTimeInput(TextBox source, NumberBox target)
+    {
+        if (frameTimeline is null || frameUiUpdating)
+        {
+            return;
+        }
+        var frame = FrameTimelineInput.Resolve(source.Text, frameTimeline);
+        if (frame is null)
+        {
+            source.Text = "";
+            return;
+        }
+        target.Value = frame.Value;
     }
 
     /// <summary>Reads the frame box: a number, or a time such as <c>00:01:23.12</c>.</summary>
@@ -405,8 +441,9 @@ public sealed partial class MainWindow
             Control<Border>(name).Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         }
         Control<Border>("PhotoSettings").Visibility = photo ? Visibility.Visible : Visibility.Collapsed;
-        Control<Border>("PreviewCard").Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
-        Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
+        Control<Grid>("PreviewOverlay").Visibility = preview ? Visibility.Visible : Visibility.Collapsed;
+        // The photo range lives in the same panel, so the opener has to exist in both modes.
+        Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Visibility = Visibility.Visible;
         Control<CheckBox>("TrimEnabled").Visibility = photo ? Visibility.Collapsed : Visibility.Visible;
         Control<Grid>("VideoTrimFields").Visibility = TrimVideo ? Visibility.Visible : Visibility.Collapsed;
         Control<Grid>("MotionFields").Visibility = photo && MotionImage ? Visibility.Visible : Visibility.Collapsed;

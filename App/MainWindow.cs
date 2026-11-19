@@ -346,7 +346,6 @@ public sealed partial class MainWindow : Window
         grid.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         grid.ColumnSpacing = narrow ? 0 : 24;
         Grid.SetColumnSpan(Control<Border>("SourceCard"), narrow ? 1 : 2);
-        Grid.SetColumnSpan(Control<Border>("PreviewCard"), narrow ? 1 : 2);
         Grid.SetColumnSpan(Control<Border>("PhotoSettings"), narrow ? 1 : 2);
         Grid.SetRow(Control<Border>("PhotoSettings"), settingsRow);
         Grid.SetRow(Control<Border>("OutputCard"), settingsRow);

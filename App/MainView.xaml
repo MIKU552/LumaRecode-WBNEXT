@@ -87,36 +87,6 @@
             <ToggleButton x:Name="ShowPreview" Content="预览与逐帧裁剪" HorizontalAlignment="Left" />
           </StackPanel>
         </Border>
-        <Border x:Name="PreviewCard" Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource Card}" Visibility="Collapsed">
-          <StackPanel Spacing="16">
-            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-              <TextBlock x:Name="PreviewHeading" Text="逐帧预览" Style="{StaticResource Section}" />
-              <TextBlock x:Name="PreviewModeNote" Grid.Column="1" Text="SDR 预览" Style="{StaticResource Secondary}" VerticalAlignment="Center" />
-            </Grid>
-            <Border Background="Black" CornerRadius="8" Height="280">
-              <Grid>
-                <Image x:Name="FramePreview" Stretch="Uniform" />
-                <ProgressRing x:Name="PreviewBusy" Width="36" Height="36" IsActive="False" />
-              </Grid>
-            </Border>
-            <TextBlock x:Name="PreviewStatus" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
-            <Slider x:Name="FrameSeek" Minimum="1" Maximum="2" Value="1" StepFrequency="1" SnapsTo="StepValues" IsEnabled="False" AutomationProperties.Name="预览帧" />
-            <Grid x:Name="FrameNavigation" ColumnSpacing="12" RowSpacing="12">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-              <Button x:Name="PreviousFrame" Content="上一帧" />
-              <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
-              <TextBox x:Name="FrameNumber" Grid.Column="2" Header="帧（可输入 00:01:23.12）" Text="1" HorizontalAlignment="Right" MinWidth="180" />
-            </Grid>
-            <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
-            <Grid x:Name="VideoTrimFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-              <StackPanel Spacing="8"><NumberBox x:Name="TrimStart" Header="开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="TrimStartTime" Style="{StaticResource Secondary}" /><Button x:Name="SetTrimStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" /></StackPanel>
-              <StackPanel x:Name="TrimEndFields" Grid.Column="1" Spacing="8"><NumberBox x:Name="TrimEnd" Header="结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="TrimEndTime" Style="{StaticResource Secondary}" /><Button x:Name="SetTrimEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" /></StackPanel>
-            </Grid>
-          </StackPanel>
-        </Border>
         <Border x:Name="PhotoSettings" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource Card}" Visibility="Collapsed">
           <StackPanel Spacing="16">
             <TextBlock x:Name="PhotoHeading" Text="图片导出" Style="{StaticResource Section}" />
@@ -127,12 +97,8 @@
             <ComboBox x:Name="MotionEncoder" Header="动态视频编码" HorizontalAlignment="Stretch" Visibility="Collapsed" />
             <ComboBox x:Name="MotionResolution" Header="视频分辨率" HorizontalAlignment="Stretch" Visibility="Collapsed" />
             <TextBlock x:Name="MotionEncoderDetail" Style="{StaticResource Secondary}" Visibility="Collapsed" />
-            <Grid x:Name="MotionFields" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-              <StackPanel Spacing="8"><NumberBox x:Name="MotionStart" Header="视频开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="MotionStartTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionStart" Content="将当前帧设为开始" HorizontalAlignment="Stretch" /></StackPanel>
-              <StackPanel x:Name="MotionEndFields" Grid.Column="1" Spacing="8"><NumberBox x:Name="MotionEnd" Header="视频结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" /><TextBlock x:Name="MotionEndTime" Style="{StaticResource Secondary}" /><Button x:Name="SetMotionEnd" Content="将当前帧设为结束" HorizontalAlignment="Stretch" /></StackPanel>
-            </Grid>
+            <TextBlock x:Name="MotionFieldsHint" Style="{StaticResource Secondary}"
+                       Text="动态照片的范围在预览面板中选择：打开预览，用两个按钮把当前帧设为开始或结束。" />
             <TextBlock x:Name="PhotoWarning" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
@@ -224,4 +190,72 @@
       </Grid>
     </StackPanel></Grid>
   </Border>
+
+  <Grid x:Name="PreviewOverlay" Visibility="Collapsed" Background="{ThemeResource SmokeFillColorDefaultBrush}">
+    <Border Style="{StaticResource Card}" Margin="40" Padding="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+      <Grid RowSpacing="12">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <TextBlock x:Name="PreviewHeading" Text="逐帧预览" Style="{StaticResource Section}" VerticalAlignment="Center" />
+          <TextBlock x:Name="PreviewModeNote" Grid.Column="1" Text="SDR 预览" Style="{StaticResource Secondary}" VerticalAlignment="Center" />
+          <Button x:Name="ClosePreview" Grid.Column="2" Content="关闭" />
+        </Grid>
+        <!-- The frame fills whatever the window gives it; Uniform keeps the pixels honest. -->
+        <Border Grid.Row="1" Background="Black" CornerRadius="8" MinHeight="240">
+          <Grid>
+            <Image x:Name="FramePreview" Stretch="Uniform" />
+            <ProgressRing x:Name="PreviewBusy" Width="36" Height="36" IsActive="False" />
+          </Grid>
+        </Border>
+        <Slider x:Name="FrameSeek" Grid.Row="2" Minimum="1" Maximum="2" Value="1" StepFrequency="1" SnapsTo="StepValues" IsEnabled="False" AutomationProperties.Name="预览帧" />
+        <Grid x:Name="FrameNavigation" Grid.Row="3" ColumnSpacing="12" RowSpacing="12">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Button x:Name="PreviousFrame" Content="上一帧" />
+          <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
+          <Button x:Name="SetTrimStart" Grid.Column="2" Content="设为起始帧" />
+          <Button x:Name="SetTrimEnd" Grid.Column="3" Content="设为末尾帧" />
+          <TextBox x:Name="FrameNumber" Grid.Column="4" Header="帧（可输入 00:01:23.12）" Text="1" HorizontalAlignment="Right" MinWidth="200" />
+        </Grid>
+        <TextBlock x:Name="PreviewStatus" Grid.Row="4" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
+        <Grid Grid.Row="5" RowSpacing="12">
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+          <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
+          <Grid x:Name="VideoTrimFields" RowSpacing="12" Visibility="Collapsed">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <StackPanel Spacing="6">
+              <NumberBox x:Name="TrimStart" Header="开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
+              <TextBox x:Name="TrimStartText" Header="或输入时间" PlaceholderText="00:01:23.12" />
+              <TextBlock x:Name="TrimStartTime" Style="{StaticResource Secondary}" />
+            </StackPanel>
+            <StackPanel x:Name="TrimEndFields" Grid.Column="1" Spacing="6">
+              <NumberBox x:Name="TrimEnd" Header="结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
+              <TextBox x:Name="TrimEndText" Header="或输入时间" PlaceholderText="00:01:23.12" />
+              <TextBlock x:Name="TrimEndTime" Style="{StaticResource Secondary}" />
+            </StackPanel>
+          </Grid>
+          <Grid x:Name="MotionFields" Grid.Row="1" ColumnSpacing="16" RowSpacing="12" Visibility="Collapsed">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <StackPanel Spacing="6">
+              <NumberBox x:Name="MotionStart" Header="视频开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
+              <TextBox x:Name="MotionStartText" Header="或输入时间" PlaceholderText="00:01:23.12" />
+              <TextBlock x:Name="MotionStartTime" Style="{StaticResource Secondary}" />
+            </StackPanel>
+            <StackPanel x:Name="MotionEndFields" Grid.Column="1" Spacing="6">
+              <NumberBox x:Name="MotionEnd" Header="视频结束帧（包含）" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />
+              <TextBox x:Name="MotionEndText" Header="或输入时间" PlaceholderText="00:01:23.12" />
+              <TextBlock x:Name="MotionEndTime" Style="{StaticResource Secondary}" />
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
 </Grid>
