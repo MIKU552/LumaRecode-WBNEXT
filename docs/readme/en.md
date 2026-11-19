@@ -35,12 +35,12 @@ Quick share uses Intel QSV on Windows and VideoToolbox on macOS. Software archiv
 
 | Download | Platform | FFmpeg |
 | --- | --- | --- |
-| `LumaRecode-5.0.0-winx64.zip` | Windows x64, common instruction-set profile | Bring your own |
-| `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | Included |
-| `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64, native app and image codec | Bring your own |
-| `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | Included |
-| `LumaRecode-5.0.0-arm64.zip` | macOS 27 or later, Apple silicon | Bring your own |
-| `LumaRecode-5.0.0-arm64-full.zip` | macOS 27 or later, Apple silicon | Included, with the MoltenVK libplacebo needs |
+| `LumaRecode-<version>-winx64.zip` | Windows x64, common instruction-set profile | Bring your own |
+| `LumaRecode-<version>-winx64-full.zip` | Windows x64 | Included |
+| `LumaRecode-<version>-winarm64.zip` | Windows ARM64, native app and image codec | Bring your own |
+| `LumaRecode-<version>-winarm64-full.zip` | Windows ARM64 | Included |
+| `LumaRecode-<version>-arm64.zip` | macOS 27 or later, Apple silicon | Bring your own |
+| `LumaRecode-<version>-arm64-full.zip` | macOS 27 or later, Apple silicon | Included, with the MoltenVK libplacebo needs |
 
 ARM64 defaults to Software archive. Encoding speed depends on the FFmpeg in use (yours or the bundled one), the hardware and the preset.
 

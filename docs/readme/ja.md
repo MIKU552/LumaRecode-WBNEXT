@@ -35,12 +35,12 @@ C# / .NET で開発した Windows 11 向けの動画変換・色変換ツール�
 
 | ファイル | プラットフォーム | FFmpeg |
 | --- | --- | --- |
-| `LumaRecode-5.0.0-winx64.zip` | Windows x64。汎用 x64 命令セット構成 | 各自で用意 |
-| `LumaRecode-5.0.0-winx64-full.zip` | Windows x64 | 同梱 |
-| `LumaRecode-5.0.0-winarm64.zip` | Windows ARM64。アプリと画像コーデックは ARM64 ネイティブ | 各自で用意 |
-| `LumaRecode-5.0.0-winarm64-full.zip` | Windows ARM64 | 同梱 |
-| `LumaRecode-5.0.0-arm64.zip` | macOS 27 以降、Apple シリコン | 各自で用意 |
-| `LumaRecode-5.0.0-arm64-full.zip` | macOS 27 以降、Apple シリコン | 同梱（libplacebo が必要とする MoltenVK を含む） |
+| `LumaRecode-<バージョン>-winx64.zip` | Windows x64。汎用 x64 命令セット構成 | 各自で用意 |
+| `LumaRecode-<バージョン>-winx64-full.zip` | Windows x64 | 同梱 |
+| `LumaRecode-<バージョン>-winarm64.zip` | Windows ARM64。アプリと画像コーデックは ARM64 ネイティブ | 各自で用意 |
+| `LumaRecode-<バージョン>-winarm64-full.zip` | Windows ARM64 | 同梱 |
+| `LumaRecode-<バージョン>-arm64.zip` | macOS 27 以降、Apple シリコン | 各自で用意 |
+| `LumaRecode-<バージョン>-arm64-full.zip` | macOS 27 以降、Apple シリコン | 同梱（libplacebo が必要とする MoltenVK を含む） |
 
 ARM64 の初期設定はアーカイブです。エンコード速度は使用する FFmpeg（各自で用意したもの、または同梱版）、ハードウェア、プリセットによって変わります。
 

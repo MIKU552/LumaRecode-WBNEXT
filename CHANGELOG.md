@@ -4,6 +4,13 @@
 
 ## 简体中文
 
+### 5.0.1
+
+- 修复：预览改版时漏掉两个按钮，启动过程按名字取控件后解引用空值，程序打不开。
+  按钮已补回，按循环拼出的控件名改为缺失即跳过——单个控件缺失不该拖垮整个窗口。
+- 帧号输入接受「帧号」或 `00:01:23.12`；预览改为浮层，画面随窗口缩放，起止帧可就地设定。
+- 拖动时间轴按最近关键帧出图，松手后取精确帧。
+
 ### 未发布
 
 - 预览改为浮层：画面随窗口缩放，时间轴紧贴其下，两个按钮把当前帧设为起始或末尾，
@@ -296,6 +303,15 @@
 - 支持素材自动识别与三组色彩转换。
 
 ## English
+
+### 5.0.1
+
+- Fixed: the preview rework dropped two buttons, and the startup wiring dereferenced the
+  missing control, so the window never opened. Both are back, and loop-built lookups now skip
+  a missing control — one absent button should not take the window down.
+- The frame box takes a number or `00:01:23.12`; the preview is a panel that scales with the
+  window and sets the range in place.
+- Dragging the timeline seeks to the nearest keyframe and asks for the exact frame on release.
 
 ### Unreleased
 

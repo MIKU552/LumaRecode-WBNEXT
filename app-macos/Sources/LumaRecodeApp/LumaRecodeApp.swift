@@ -10,7 +10,7 @@ struct LumaRecodeApp: App {
         // never touches AppKit.
         let arguments = CommandLine.arguments
         if arguments.contains("--version") {
-            print("LumaRecode 5.0.0 WBNEXT")
+            print("LumaRecode 5.0.1 WBNEXT")
             do {
                 print("core: shared \(try CoreClient().identity().version)")
             } catch {

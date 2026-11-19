@@ -191,7 +191,7 @@
     </StackPanel></Grid>
   </Border>
 
-  <Grid x:Name="PreviewOverlay" Visibility="Collapsed" Background="{ThemeResource SmokeFillColorDefaultBrush}">
+  <Grid x:Name="PreviewOverlay" Visibility="Collapsed" Background="#99000000">
     <Border Style="{StaticResource Card}" Margin="40" Padding="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions>
