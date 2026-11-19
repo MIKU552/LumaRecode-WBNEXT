@@ -268,7 +268,8 @@ fn core_info() -> Value {
         "core_version": luma_core::CORE_VERSION,
         "target_arch": std::env::consts::ARCH,
         "target_os": std::env::consts::OS,
-        "operations": OPERATIONS,
+        // A slice, because serde stops implementing arrays past thirty-two elements.
+        "operations": &OPERATIONS[..],
     })
 }
 
