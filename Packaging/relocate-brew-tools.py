@@ -26,6 +26,11 @@ def run(*args: str | Path) -> str:
     return subprocess.check_output(args, text=True).strip()
 
 
+def run_quiet(*args: str | Path) -> None:
+    """Runs a tool whose warnings are expected and would drown the job log."""
+    subprocess.run(args, check=True, stderr=subprocess.DEVNULL)
+
+
 def dependencies(binary: Path) -> list[str]:
     return [line.strip().split(" (", 1)[0] for line in run("otool", "-L", binary).splitlines()[1:]]
 
@@ -73,9 +78,9 @@ class Bundle:
             if dependency != replacement:
                 changes.extend(("-change", dependency, replacement))
         if changes:
-            run("install_name_tool", *changes, target)
+            run_quiet("install_name_tool", *changes, target)
         # Ad-hoc signing has to happen after every rewrite, including for libraries.
-        run("codesign", "--force", "--sign", "-", target)
+        run_quiet("codesign", "--force", "--sign", "-", target)
 
     def resolve(self, source: Path, dependency: str) -> Path:
         if dependency.startswith("@loader_path/"):
