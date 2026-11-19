@@ -31,7 +31,7 @@
 3. 拖入视频或点击“选择视频”，确认输出动态范围、编码预设和色彩转换。
 4. 选择保存位置，点击“开始转换”。
 
-“快速分享”使用 Intel QSV；“软件归档”使用 CPU 编码。
+“快速分享”在 Windows 上使用 Intel QSV、在 macOS 上使用 VideoToolbox；“软件归档”使用 CPU 编码。
 
 | 下载文件 | 平台 | FFmpeg |
 | --- | --- | --- |
@@ -42,7 +42,7 @@
 | `LumaRecode-5.0.0-arm64.dmg` | macOS 27 及以上，Apple 芯片 | 自备 |
 | `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 及以上，Apple 芯片 | 内嵌（含 libplacebo 所需的 MoltenVK） |
 
-ARM64 默认使用软件归档。FFmpeg 的编码速度由外部 FFmpeg、硬件与所选预设决定。
+ARM64 默认使用软件归档。编码速度由所用 FFmpeg（自备或包内）、硬件与所选预设决定。
 
 Dolby Vision / HDR10+ 素材默认使用软件 HEVC 保留动态元数据；“标准 HDR”可用于硬件快速分享。Dolby Vision 支持单层 Profile 5、8.1、8.4、10.1 和 10.4。ProRes RAW 在确认 FFmpeg 解码兼容性后，根据相机白平衡、色彩矩阵和增益显影，默认输出 HLG。格式与处理流程见[色彩转换](docs/color-conversion.md)。
 

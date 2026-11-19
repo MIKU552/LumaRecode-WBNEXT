@@ -31,7 +31,7 @@ Video transcoding and color conversion for Windows 11, built with C# and .NET. L
 3. Drop a video or choose **Choose video**, then confirm the output range, preset, and color conversion.
 4. Choose the output path and select **Start conversion**.
 
-Quick share uses Intel QSV. Software archive uses CPU encoding.
+Quick share uses Intel QSV on Windows and VideoToolbox on macOS. Software archive uses CPU encoding.
 
 | Download | Platform | FFmpeg |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ Quick share uses Intel QSV. Software archive uses CPU encoding.
 | `LumaRecode-5.0.0-arm64.dmg` | macOS 27 or later, Apple silicon | Bring your own |
 | `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 or later, Apple silicon | Included, with the MoltenVK libplacebo needs |
 
-ARM64 defaults to Software archive. Encoding speed depends on the external FFmpeg build, hardware and selected preset.
+ARM64 defaults to Software archive. Encoding speed depends on the FFmpeg in use (yours or the bundled one), the hardware and the preset.
 
 Dolby Vision / HDR10+ sources default to software HEVC with dynamic metadata preservation. Select Standard HDR for hardware quick sharing. Supported Dolby Vision profiles are single-layer 5, 8.1, 8.4, 10.1 and 10.4. ProRes RAW checks FFmpeg decoder compatibility, then develops with camera white balance, color matrix and gain, with HLG output by default. See [Color conversion](../color-conversion.md#english) for formats and processing paths.
 

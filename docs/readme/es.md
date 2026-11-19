@@ -31,7 +31,7 @@ Herramienta de transcodificación de vídeo y conversión de color para Windows 
 3. Arrastra un vídeo o pulsa **Elegir vídeo** y comprueba el rango dinámico, el preajuste y la conversión de color.
 4. Elige la ruta de salida y pulsa **Iniciar conversión**.
 
-Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
+Compartir rápido usa Intel QSV en Windows y VideoToolbox en macOS. Archivo por software usa la CPU.
 
 | Archivo | Plataforma | FFmpeg |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ Compartir rápido usa Intel QSV. Archivo por software usa la CPU.
 | `LumaRecode-5.0.0-arm64.dmg` | macOS 27 o posterior, Apple silicon | Aportado por ti |
 | `LumaRecode-5.0.0-arm64-full.dmg` | macOS 27 o posterior, Apple silicon | Incluido, con el MoltenVK que necesita libplacebo |
 
-ARM64 usa Archivo por software de forma predeterminada. La velocidad de codificación depende del FFmpeg externo, del hardware y del preajuste.
+ARM64 usa Archivo por software de forma predeterminada. La velocidad depende del FFmpeg en uso (el tuyo o el incluido), del hardware y del preajuste.
 
 Las fuentes Dolby Vision / HDR10+ usan HEVC por software para conservar los metadatos dinámicos de forma predeterminada. Elige HDR estándar para compartir con codificación por hardware. Se admiten los perfiles Dolby Vision de una sola capa 5, 8.1, 8.4, 10.1 y 10.4. ProRes RAW comprueba la compatibilidad de FFmpeg y se revela con el balance de blancos, la matriz de color y la ganancia de cámara, con salida HLG predeterminada. Consulta los formatos compatibles en [Conversión de color (chino e inglés)](../color-conversion.md#english).
 
