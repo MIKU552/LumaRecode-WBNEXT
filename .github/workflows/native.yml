@@ -352,8 +352,10 @@ jobs:
             | tee build-info/convert-log-real.txt
           ffprobe -v error -select_streams v:0 -show_streams -of json "$work/log-real.mkv" \
             > build-info/log-real.json
-          grep -q '"color_transfer": "arib-std-b67"' build-info/log-real.json
-          grep -q '"pix_fmt": "yuv420p10le"' build-info/log-real.json
+          grep -q '"color_transfer": "arib-std-b67"' build-info/log-real.json \
+            || { cat build-info/log-real.json; exit 1; }
+          grep -q '"pix_fmt": "yuv420p10le"' build-info/log-real.json \
+            || { cat build-info/log-real.json; exit 1; }
 
           # HDR to SDR plans a libplacebo tone map. Homebrew's ffmpeg formula ships without
           # that filter, so this step asserts the plan and the refusal here, and renders only
