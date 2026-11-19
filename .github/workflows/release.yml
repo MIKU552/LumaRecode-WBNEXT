@@ -163,7 +163,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat > notes.md <<'NOTES'
-          LumaRecode WBNEXT 5.0.0 — the first release of the cross-platform rewrite.
+          LumaRecode WBNEXT ${{ github.ref_name }} — a release of the cross-platform rewrite.
 
           Two packages per architecture: the plain one expects FFmpeg on your machine, the
           `-full` one carries a GPL FFmpeg build and its licence. The application is MIT licensed;
@@ -175,10 +175,11 @@ jobs:
           mapfile -t files < <(find artifacts -type f \( -name '*.zip' -o -name 'SHA256SUMS.txt' \))
           printf '%s\n' "${files[@]}"
           # A rerun must replace what an earlier attempt uploaded, not fail on "already exists".
-          if gh release view "v5.0.0" >/dev/null 2>&1; then
-            gh release upload "v5.0.0" --clobber "${files[@]}"
-            gh release edit "v5.0.0" --notes-file notes.md
+          tag="${{ github.ref_name }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" --clobber "${files[@]}"
+            gh release edit "$tag" --notes-file notes.md
           else
-            gh release create "v5.0.0" --draft --title "LumaRecode WBNEXT 5.0.0" \
+            gh release create "$tag" --title "LumaRecode WBNEXT $tag" \
               --notes-file notes.md "${files[@]}"
           fi
