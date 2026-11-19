@@ -6,47 +6,20 @@
 
 ### WBNEXT 5.0.0（首个发布）
 
+- 由上游 4.4.3 派生：规则、参数与色彩决策移入 Rust 核心，Windows 与 macOS 通过 C ABI 共用，
+  两边的数字由 1881 项对照检查保证一致。
 - 版本号 5.0.0；产品名统一为「映码 · LumaRecode WBNEXT」（窗口标题、终端横幅、DMG 名）。
-- Windows 每个架构两个包：不内嵌 FFmpeg 的，与内嵌 FFmpeg n9.0（GPL）的；内嵌包按仓库内钉死的
-  SHA-256 校验，随包附许可证与 NOTICE，应用本身仍为 MIT。macOS 也发两个包：
-  full 包用 `Packaging/relocate-brew-tools.py` 把 FFmpeg 与全部依赖库重定位进 `tools/`，
-  并带上 libplacebo 所需的 MoltenVK。
-- `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS DMG，并生成 SHA256SUMS。
-
-- 由上游 4.4.3 派生并重命名为 WBNEXT 重构版，位于独立分支 `next`，非正式发布。
-- 重构分支已就绪（三条流水线全绿），等待合并到 `main`；标签与正式 Release 待签名就绪后执行。
-- 共享核心迁移到 Rust，Windows 与 macOS 使用同一 Rust 1.100.0 工具链；新增 `native`、`windows` 两条 Actions 工作流。
-- 开发协助：WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）；此后的提交不再添加协作者记录。
-- 补充 Windows / macOS 签名政策与隐私说明，为免费签名申请准备公开条款。
+- macOS 首次获得完整应用（预览、时间轴、导出、共享）与终端入口：
+  `convert`、`doctor`、`motionphoto`、`hdr10plus`。
+- 每个架构两个包：Windows x64、Windows ARM64 与 macOS Apple 芯片各有一个普通包与一个 `-full` 包。
+  `-full` 内嵌 FFmpeg n9.0（GPL）：Windows 按仓库内钉死的 SHA-256 校验下载物，macOS 用
+  `Packaging/relocate-brew-tools.py` 把 FFmpeg 与全部依赖库重定位进 `tools/` 并带上 MoltenVK；
+  应用本身仍是 MIT，许可证与源码清单随包附上。
+- 不签名（项目决定）；发布页给出 `SHA256SUMS.txt` 供核对。
+- `release` 工作流由标签触发，产出 4 个 Windows ZIP 与 2 个 macOS DMG。
 - `presets` 与预设面板显示编码后端；`doctor` 增加核心状态、后端统计与只读缓存报告。
 - 校验流程新增 Windows ARM64 应用构建与 x64 单文件发布检查。
-- 新增 `cache` 命令：查看缓存清单与回收计划，`--purge` 在范围保护下真正删除。
-- 编码器的 GOP 间隔改由共享核心计算（`plan.gop`）；托管回退沿用同一规则，两条路径的 `-g` 由对照检查逐帧率比较。
-- HDR 元数据参数组合改由共享核心生成（`plan.hdr_metadata`）：Dolby Vision 码率下限、HDR10+ 负载与 x265 / SVT-AV1 的静态元数据 token 统一在核心拼装。
-- macOS 新增 `convert` 命令：编码器、GOP、流映射与参数串全部由共享核心决定，流水线里真实转出 SDR 与 10 位 HDR 各一条。
-- 软件色彩转换段（zscale / format / setparams）改由共享核心拼装（`plan.color_filters`）；对照检查比较完整滤镜串。
-- 探测摘要带出侧数据，macOS 的 `convert` 因此能把 mastering display 与亮度声明原样带给编码器。
-- 曲线表增加一致性守卫：宿主的回退表与核心的 `plan.log_profile` 逐条比较 LUT 文件、矩阵与范围。
-- 色彩标签改由共享核心派生（`plan.color_tags`）：缺省补齐、RGB 与 profile 5 的表面对应、SDR/HDR 目标标签各只写一次。
-- macOS 的 `convert` 已能生成 HDR→SDR 的完整滤镜链与 BT.709 标签；渲染需要带 libplacebo 的 FFmpeg，构建缺少该滤镜时会给出明确提示而不是原始报错。
-- macOS 支持相机曲线：`--log-profile` 配合 `--lut-dir`，文件名、矩阵与范围取自核心的曲线表（`plan.log_profile`），转出 HLG；缺少 `zscale`/`lut3d`/`libplacebo` 时会指名哪个滤镜缺失。
-- LUT 路径含逗号、冒号等字符时会自动加引号，避免滤镜链被截断（此前 FFmpeg 会报 `No option name near …`）。
-- macOS 的 `convert` 支持 `--dry-run`：只打印计划不执行，便于支持与流水线断言。
-- macOS 窗口里可以直接转换打开的文件：进度取自 FFmpeg 的 `-progress` 流，可取消，失败与拒绝都有明确文字。
-- 预览画布显示真实画面，时间轴可拖动定位（抽帧走 AVFoundation，时间映射有单测）。
-- 导出面板：可选目标目录、改文件名、覆盖前明确确认；命名与去重规则有单测。
-- macOS 支持共享档：`Assets/recommended-presets-macos.json` 提供 VideoToolbox 行，`-q:v`/`-realtime`/`-allow_sw` 由宿主拼装（数值待 M 系列实测校准）。
-- macOS 的音频跟随预设表的决定：归档复制全部音轨，共享按 `presets.audio` 重新编码（AAC 256k / Opus 192k）。
-- macOS 共享档在 CI 里用 VideoToolbox 真机编码（HEVC + AAC）并检查产物，不再是仅计划层断言。
-- 执行层补上类型化进度事件（任务 ID、序号、步号、比例）；失败步会自行上报，比例只在全部成功时到 1。
-- 新增 `luma_set_progress_sink` 与 `execution.run`：宿主给出命令序列，核心按步执行并把事件送回回调。
-- macOS 新增 `doctor`：逐步探测 FFmpeg 的编码器与滤镜并列出缺项，是进度回调的第一个真实消费者。
-- macOS 新增 `motionphoto`：从动态照片里取出内嵌视频（按声明区间复制，短读即报错）。
-- macOS 新增 `hdr10plus`：从片段导出 `dhdr10-info` 文档；CI 用 x265 造片段做往返回读验证。
-- CI 用 `ffmpeg-full` 真渲染曲线链（`lut3d` + `zscale`，断言输出 HLG/10 位）；色调映射仍需 Vulkan，托管 runner 不可用。
-- 按决定取消 Windows 代码签名：不再申请签名证书，四语文档改为「不签名 + 发布 SHA-256」，P8 收口。
-- P6 起步：macOS 能识别动态照片与 Ultra HDR（合成字节单测）；核心新增 HDR10+ SEI 读取、`dhdr10-info` 文档生成与 RAW 显影滤镜链（逐位/逐帧/顺序测试）。宿主侧的扫描与 RAW 解包仍待做。
-- 曲线 LUT、色调映射、Dolby 渲染、动态元数据删除与 QSV 的 VPP 段也由核心拼装（`plan.render_filters`）；对照检查扩到 10 种素材。
+- 开发协助：WorkBuddy（DeepSeek-V4.1-Flash-1017，极高推理，1M 上下文）。
 
 ### 4.4.3
 
@@ -316,38 +289,26 @@
 
 ## English
 
-### WBNEXT (refactor preview)
+### WBNEXT 5.0.0 (first release)
 
-- Derived from upstream 4.4.3 and renamed to the WBNEXT refactor preview on the independent `next` branch; not an official release.
-- The refactor branch is ready and green, awaiting the merge to `main`; the tag and the release wait for signing.
-- The shared core moves to Rust; Windows and macOS use the same Rust 1.100.0 toolchain, with new `native` and `windows` Actions workflows.
-- Development assistance: WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context); later commits carry no co-author trailer.
-- Add the Windows / macOS code signing policy and privacy statement for the free signing application.
-- Presets and the preset panel name the encoder backend; `doctor` reports the core state, backend counts and a read-only cache inventory.
-- The pipeline now builds the ARM64 application and verifies the x64 single-file publish.
-- New `cache` command: inspect the inventory and retention plan; `--purge` deletes inside the guarded root.
-- The encoder GOP interval is computed by the shared core (`plan.gop`); the managed fallback keeps the same rule and the harness compares the `-g` value both paths produce for every frame rate.
-- HDR metadata parameters are composed by the shared core (`plan.hdr_metadata`): the Dolby Vision rate-control floor, the HDR10+ payload and the x265 / SVT-AV1 static tokens are spelled in one place.
-- macOS gains a `convert` command: encoder, GOP, stream mapping and the parameter string all come from the shared core, and the pipeline converts one SDR and one 10-bit HDR clip for real.
-- The software colour tail (zscale / format / setparams) is composed by the shared core (`plan.color_filters`); the harness compares the whole filter chain.
-- The probe summary now carries side data, so the macOS `convert` hands the mastering display and light levels back to the encoder.
-- The curve table gains a consistency guard: the host's fallback copy is compared with `plan.log_profile` entry by entry.
-- Color tags are derived by the shared core (`plan.color_tags`): gap filling, the RGB and profile 5 surface names, and the SDR/HDR target tags are written once.
-- The macOS `convert` command now builds the whole HDR to SDR chain and the BT.709 tags; rendering needs an FFmpeg with libplacebo, and a build without it gets a clear message instead of a raw filter error.
-- macOS develops camera curves: `--log-profile` with `--lut-dir` takes the file name, matrix and range from the core's curve table (`plan.log_profile`) and delivers HLG; when `zscale`, `lut3d` or `libplacebo` is missing, the message names it.
-- A LUT path containing a comma or colon is quoted, so the filter chain is no longer cut short (`No option name near ...`).
-- The macOS `convert` command gains `--dry-run`: it prints the plan and stops, which support and pipelines can assert on.
-- The macOS window converts the open file directly: progress comes from FFmpeg's `-progress` stream, the run can be cancelled, and failures arrive as readable text.
-- The preview canvas shows a real frame and the timeline scrubs; stills come from AVFoundation and the time mapping is unit tested.
-- The export sheet picks the folder, edits the name and confirms a replacement; the naming and de-duplication rules are unit tested.
-- macOS shares through VideoToolbox: `Assets/recommended-presets-macos.json` carries the rows and the host builds `-q:v` / `-realtime` / `-allow_sw` (the values await M-series measurement).
-- macOS audio follows the table: an archive copies every track, a share re-encodes to the named preset (AAC 256k or Opus 192k).
-- The macOS share path encodes with VideoToolbox in CI (HEVC plus AAC) and the artifacts are checked, not just the plan.
-- The execution layer now has typed progress events (task id, sequence, step, fraction); a failing step reports itself and the fraction reaches one only on success.
-- `luma_set_progress_sink` and `execution.run` let a host hand over a sequence of commands and hear every finished step.
-- macOS gains `doctor`: it probes the FFmpeg encoders and filters step by step and lists what is missing, as the first real user of the progress sink.
-- P6 begins: macOS recognises motion photos and Ultra HDR (tested on composed bytes), and the core gains the HDR10+ SEI reader, the `dhdr10-info` document builder and the RAW development chain (bit-level, frame-by-frame and ordering tests). The host-side scan and the RAW demux remain.
-- Curve LUTs, tone mapping, the Dolby render pass, the dynamic metadata drop and the QSV VPP stage are composed by the core too (`plan.render_filters`); the harness now covers ten sources.
+- Derived from upstream 4.4.3: rules, parameters and colour decisions moved into a Rust core
+  that both hosts share over the C ABI, with 1881 parity comparisons holding the two sets of
+  numbers together.
+- Version 5.0.0; the product name is LumaRecode WBNEXT everywhere a user reads it (window
+  title, terminal banner, DMG name).
+- macOS gains a full application (preview, timeline, export, share) and a terminal entry:
+  `convert`, `doctor`, `motionphoto`, `hdr10plus`.
+- Two packages per architecture: Windows x64, Windows ARM64 and Apple silicon each get a plain
+  package and a `-full` one. The carrying package embeds FFmpeg n9.0 (GPL): Windows checks the
+  download against the SHA-256 recorded in the repository, macOS relocates FFmpeg and every
+  library it needs into `tools/` with `Packaging/relocate-brew-tools.py` and brings MoltenVK;
+  the application stays MIT and the licences plus the source list travel with the package.
+- Unsigned by decision; the release page publishes `SHA256SUMS.txt` for checking.
+- The `release` workflow runs on a tag and produces four Windows ZIPs and two macOS DMGs.
+- `presets` and the preset panel show the encoding backend; `doctor` reports core status,
+  backend statistics and a read-only cache inventory.
+- The checks gain a Windows ARM64 application build and an x64 single-file publish check.
+- Development assistance: WorkBuddy (DeepSeek-V4.1-Flash-1017, high reasoning, 1M context).
 
 ### 4.4.3
 
