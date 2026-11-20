@@ -28,6 +28,7 @@ public sealed partial class MainWindow
     private int selectedFrame;
     private bool scrubbing;
     private long lastPreviewMs;
+    private long lastPreviewTick;
 
     /// <summary>True while the slider is held: previews may seek approximately.</summary>
 
@@ -343,8 +344,21 @@ public sealed partial class MainWindow
             frameUiUpdating = false;
         }
         UpdateFrameSelection();
+        if (scrubbing)
+        {
+            // A 4K frame costs most of a second to decode; asking for every pointer move
+            // only queues work nobody sees. The label always follows the pointer, the picture
+            // follows at a rate the decoder can keep.
+            if (Environment.TickCount64 - lastPreviewTick >= 120)
+            {
+                lastPreviewTick = Environment.TickCount64;
+                QueueFramePreview();
+            }
+            return;
+        }
         UpdateFrameOutput();
         UpdateTransferStats();
+        lastPreviewTick = Environment.TickCount64;
         QueueFramePreview();
     }
 
