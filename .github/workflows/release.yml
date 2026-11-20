@@ -60,7 +60,8 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
 
           # Plain package: the single file and nothing else.
-          $plain = @('publish/LumaRecode.exe') + @(Get-ChildItem publish -Filter *.pdb | ForEach-Object FullName)
+          # Debug symbols are not for users: a single file plus symbols is still a pile of files.
+          $plain = @('publish/LumaRecode.exe')
           Compress-Archive -Path $plain -DestinationPath "dist/LumaRecode-$version-win${{ matrix.arch }}.zip"
 
           # Carrying package: the same file, the verified FFmpeg, and its licence.
@@ -72,7 +73,7 @@ jobs:
           $folder = Split-Path $binary.FullName
           New-Item -ItemType Directory -Force full/tools, full/licenses | Out-Null
           Copy-Item publish/LumaRecode.exe full/
-          Get-ChildItem publish -Filter *.pdb | Copy-Item -Destination full/
+          # Symbols stay out of the package for the same reason.
           Copy-Item (Join-Path $folder 'ffmpeg.exe'), (Join-Path $folder 'ffprobe.exe') full/tools/
           $licence = Get-ChildItem ffmpeg -Recurse -Filter LICENSE.txt | Select-Object -First 1
           if ($null -ne $licence) { Copy-Item $licence.FullName full/licenses/ffmpeg-GPLv3.txt }

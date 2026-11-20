@@ -228,7 +228,7 @@
         <Grid Grid.Row="5" RowSpacing="12">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
           <CheckBox x:Name="TrimEnabled" Content="裁剪视频" />
-          <Grid x:Name="VideoTrimFields" RowSpacing="12" Visibility="Collapsed">
+          <Grid x:Name="VideoTrimFields" Grid.Row="1" RowSpacing="12" Visibility="Collapsed">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <StackPanel Spacing="6">
               <NumberBox x:Name="TrimStart" Header="开始帧" Minimum="1" Value="1" SmallChange="1" SpinButtonPlacementMode="Compact" />

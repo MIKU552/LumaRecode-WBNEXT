@@ -13,7 +13,7 @@
     <AssemblyName>LumaRecode</AssemblyName>
     <Product>映码 · LumaRecode</Product>
     <Title>映码 · LumaRecode</Title>
-    <Version>5.0.1</Version>
+    <Version>5.0.2</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>

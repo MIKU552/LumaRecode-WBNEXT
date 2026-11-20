@@ -1,3 +1,5 @@
+using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using VideoConverter.Native;
@@ -93,8 +95,36 @@ public sealed partial class ConverterApp : Application
     }
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        L.Configure(UserSettings.Load().Language);
-        window = new MainWindow();
-        window.Activate();
+        try
+        {
+            L.Configure(UserSettings.Load().Language);
+            window = new MainWindow();
+            window.Activate();
+        }
+        catch (Exception error)
+        {
+            // A window that never appears is the worst way to learn about a bug: leave the
+            // reason on screen and in the log instead of exiting silently.
+            Report(error);
+            throw;
+        }
     }
+
+    /// <summary>Writes the failure to the settings folder and shows it without a window.</summary>
+    internal static void Report(Exception error)
+    {
+        var folder = UserSettings.Folder;
+        var path = Path.Combine(folder, "error.log");
+        try
+        {
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(path, error.ToString());
+        }
+        catch (IOException) { }
+        var text = error.GetType().Name + ": " + error.Message + "\n\n" + path;
+        MessageBoxW(IntPtr.Zero, text, "LumaRecode", 0x10);
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int MessageBoxW(IntPtr window, string text, string caption, uint type);
 }
