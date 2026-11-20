@@ -191,7 +191,9 @@
     </StackPanel></Grid>
   </Border>
 
-  <Grid x:Name="PreviewOverlay" Visibility="Collapsed" Background="#99000000">
+  <!-- The root grid has three rows; without this the overlay lands in the 48px title row
+       and collapses to nothing, which looks exactly like a button that does nothing. -->
+  <Grid x:Name="PreviewOverlay" Grid.Row="0" Grid.RowSpan="3" Visibility="Collapsed" Background="#99000000">
     <Border Style="{StaticResource Card}" Margin="40" Padding="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions>
