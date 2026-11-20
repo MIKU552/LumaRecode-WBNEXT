@@ -63,8 +63,17 @@ public sealed partial class MainWindow
         };
         Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").Click += async (_, _) =>
         {
-            UpdateFramePresentation();
-            if (Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview").IsChecked == true)
+            // The panel opens and closes on its own state rather than the button's: a toggle
+            // that does not flip leaves a button that looks pressed and does nothing.
+            var overlay = Control<Grid>("PreviewOverlay");
+            var open = overlay is null || overlay.Visibility != Visibility.Visible;
+            var toggle = Control<Microsoft.UI.Xaml.Controls.Primitives.ToggleButton>("ShowPreview");
+            toggle.IsChecked = open;
+            if (overlay is not null)
+            {
+                overlay.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            }
+            if (open)
             {
                 await PreparePreviewAsync();
             }
@@ -73,6 +82,7 @@ public sealed partial class MainWindow
                 CancelFramePreview();
                 Control<Image>("FramePreview").Source = null;
             }
+            UpdateFramePresentation();
         };
         var seek = Control<Slider>("FrameSeek");
         seek.ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
