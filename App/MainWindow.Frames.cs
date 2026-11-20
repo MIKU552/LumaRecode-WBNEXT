@@ -30,7 +30,6 @@ public sealed partial class MainWindow
     private long lastPreviewMs;
     private long lastPreviewTick;
     private long lastPreviewRendered;
-    private long lastPreviewTick;
 
     /// <summary>True while the slider is held: previews may seek approximately.</summary>
 
