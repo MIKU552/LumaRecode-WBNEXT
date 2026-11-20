@@ -17,7 +17,10 @@ public sealed class FramePreview(Transcoder engine)
         ImageExportOptions options, bool approximate, CancellationToken cancellation = default)
     {
         var window = timeline.Resolve(new(options.Frame, options.Frame + 1));
-        var plan = engine.Plan(tools, source, FrameExporter.RenderOptions(source, options, sdr: true), "preview.mkv", window: window, previewSize: 1024);
+        // While the slider moves a smaller frame arrives sooner and still shows the colour;
+        // the exact frame is asked for again on release.
+        var plan = engine.Plan(tools, source, FrameExporter.RenderOptions(source, options, sdr: true), "preview.mkv",
+            window: window, previewSize: approximate ? 512 : 1024);
         int input = Array.IndexOf(plan.Arguments, "-i");
         var arguments = plan.Arguments.Take(input + 2).Skip(1).ToList();
         // Frame-threaded decoders otherwise decode many 4K frames ahead before

@@ -1,5 +1,8 @@
 <Grid xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:VideoConverter" x:Class="VideoConverter.MainView">
   <Grid.Resources>
+    <!-- The preview sits over the page, so it needs a surface of its own rather than the
+         translucent card brush the rest of the layout uses. -->
+    <SolidColorBrush x:Key="PreviewSurfaceBrush" Color="#F218181C" />
     <Style x:Key="Card" TargetType="Border">
       <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}" />
       <Setter Property="BorderBrush" Value="{ThemeResource CardStrokeColorDefaultBrush}" />
@@ -193,8 +196,9 @@
 
   <!-- The root grid has three rows; without this the overlay lands in the 48px title row
        and collapses to nothing, which looks exactly like a button that does nothing. -->
-  <Grid x:Name="PreviewOverlay" Grid.Row="0" Grid.RowSpan="3" Visibility="Collapsed" Background="#99000000">
-    <Border Style="{StaticResource Card}" Margin="40" Padding="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+  <Grid x:Name="PreviewOverlay" Grid.Row="0" Grid.RowSpan="3" Visibility="Collapsed" Background="#CC000000">
+    <Border Background="{StaticResource PreviewSurfaceBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="12" Margin="40" Padding="20" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
       <Grid RowSpacing="12">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
@@ -218,13 +222,14 @@
           </Grid>
         </Border>
         <Slider x:Name="FrameSeek" Grid.Row="2" Minimum="1" Maximum="2" Value="1" StepFrequency="1" SnapsTo="StepValues" IsEnabled="False" AutomationProperties.Name="预览帧" />
-        <Grid x:Name="FrameNavigation" Grid.Row="3" ColumnSpacing="12" RowSpacing="12">
+        <Grid x:Name="FrameNavigation" Grid.Row="3" ColumnSpacing="12" RowSpacing="8">
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
           <Button x:Name="PreviousFrame" Content="上一帧" />
           <Button x:Name="NextFrame" Grid.Column="1" Content="下一帧" />
           <Button x:Name="SetTrimStart" Grid.Column="2" Content="设为起始帧" />
           <Button x:Name="SetTrimEnd" Grid.Column="3" Content="设为末尾帧" />
-          <TextBox x:Name="FrameNumber" Grid.Column="4" Header="帧（可输入 00:01:23.12）" Text="1" HorizontalAlignment="Right" MinWidth="200" />
+          <TextBox x:Name="FrameNumber" Grid.Row="1" Grid.ColumnSpan="5" Header="跳到（帧号，或 00:01:23.12）" Text="1" MinWidth="220" HorizontalAlignment="Left" Margin="0,4,0,0" />
         </Grid>
         <TextBlock x:Name="PreviewStatus" Grid.Row="4" Style="{StaticResource Secondary}" TextWrapping="Wrap" />
         <Grid Grid.Row="5" RowSpacing="12">

@@ -27,6 +27,7 @@ public sealed partial class MainWindow
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
     private int selectedFrame;
     private bool scrubbing;
+    private long lastPreviewMs;
 
     /// <summary>True while the slider is held: previews may seek approximately.</summary>
 
@@ -75,7 +76,9 @@ public sealed partial class MainWindow
             }
             if (open)
             {
+                frameUiUpdating = false;
                 await PreparePreviewAsync();
+                UpdateFrameSelection();
             }
             else
             {
@@ -317,14 +320,21 @@ public sealed partial class MainWindow
             return;
         }
         frameUiUpdating = true;
-        selectedFrame = frame;
-        Control<TextBox>("FrameNumber").Text = (frame + 1).ToString();
-        Control<Slider>("FrameSeek").Value = frame + 1;
-        if (!motionRangeEdited)
+        try
         {
-            SetDefaultMotionRange();
+            selectedFrame = frame;
+            Control<TextBox>("FrameNumber").Text = (frame + 1).ToString();
+            Control<Slider>("FrameSeek").Value = frame + 1;
+            if (!motionRangeEdited)
+            {
+                SetDefaultMotionRange();
+            }
         }
-        frameUiUpdating = false;
+        finally
+        {
+            // A throw in here used to leave the flag set, and every later drag was ignored.
+            frameUiUpdating = false;
+        }
         UpdateFrameSelection();
         UpdateFrameOutput();
         UpdateTransferStats();
@@ -359,13 +369,24 @@ public sealed partial class MainWindow
             var exporter = new FramePreview(ConversionClient.Engine);
             FramePreviewSession? session = null;
             session = new FramePreviewSession(
-                (request, cancellation) => exporter.RenderAsync(tools, source, timeline,
-                    options with
+                async (request, cancellation) =>
+                {
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    try
                     {
-                        Frame = request.Frame,
-                        SourceKind = request.SourceKind,
-                        Profile = request.Profile
-                    }, request.Approximate, cancellation),
+                        return await exporter.RenderAsync(tools, source, timeline,
+                            options with
+                            {
+                                Frame = request.Frame,
+                                SourceKind = request.SourceKind,
+                                Profile = request.Profile
+                            }, request.Approximate, cancellation).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        lastPreviewMs = clock.ElapsedMilliseconds;
+                    }
+                },
                 (request, bytes, cancellation) => OnPreviewUiAsync(async () =>
                 {
                     if (!ReferenceEquals(previewSession, session))
@@ -573,8 +594,9 @@ public sealed partial class MainWindow
         if (frameTimeline is { } timeline)
         {
             var frame = Math.Clamp(SelectedFrame, 0, timeline.Count - 1);
+            var timing = lastPreviewMs > 0 ? $" · {lastPreviewMs} ms" : "";
             Control<TextBlock>("PreviewStatus").Text = previewError.Length > 0 ? L.T(previewError)
-                : $"{frame + 1:N0} / {timeline.Count:N0} · {FrameTime(timeline.Position(frame))} / {FrameTime(timeline.Duration)}";
+                : $"{frame + 1:N0} / {timeline.Count:N0} · {FrameTime(timeline.Position(frame))} / {FrameTime(timeline.Duration)}{timing}";
             foreach (var prefix in new[] { "Trim", "Motion" })
             {
                 var range = ReadRange(prefix);

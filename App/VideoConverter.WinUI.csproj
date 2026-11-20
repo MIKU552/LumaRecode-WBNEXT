@@ -26,7 +26,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <Version>5.0.5</Version>
+    <Version>5.0.6</Version>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <NuGetLockFilePath Condition="'$(LumaRecodeArchitecture)' == 'arm64'">packages.arm64.lock.json</NuGetLockFilePath>
   </PropertyGroup>

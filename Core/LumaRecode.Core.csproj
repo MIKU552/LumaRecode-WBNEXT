@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>VideoConverter.Core</RootNamespace>
-    <Version>5.0.5</Version>
+    <Version>5.0.6</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsAotCompatible>true</IsAotCompatible>
