@@ -26,8 +26,10 @@ public sealed partial class MainWindow
     private bool TrimVideo => !PhotoMode && Control<CheckBox>("TrimEnabled").IsChecked == true;
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
     private int selectedFrame;
-    private bool scrubbing;
+    private FrameStrip? strip;
     private long lastPreviewMs;
+    private long lastPreviewTick;
+    private long lastPreviewRendered;
     private long lastPreviewTick;
 
     /// <summary>True while the slider is held: previews may seek approximately.</summary>
@@ -90,19 +92,11 @@ public sealed partial class MainWindow
         };
         var seek = Control<Slider>("FrameSeek");
         seek.ValueChanged += (_, args) => ChangePreviewFrame((int)Math.Round(args.NewValue) - 1);
-        seek.PointerPressed += (_, _) => scrubbing = true;
+        // Lifting the thumb asks for the exact frame, whatever the strip showed.
         seek.PointerReleased += (_, _) =>
         {
-            scrubbing = false;
+            lastPreviewTick = 0;
             QueueFramePreview();
-        };
-        seek.PointerCaptureLost += (_, _) =>
-        {
-            if (scrubbing)
-            {
-                scrubbing = false;
-                QueueFramePreview();
-            }
         };
         // A frame can be named by number or by time, and Enter or leaving the box commits it.
         var frameNumber = Control<TextBox>("FrameNumber");
@@ -191,6 +185,8 @@ public sealed partial class MainWindow
         displayedFrame = -1;
         previewError = "";
         motionRangeEdited = false;
+        strip?.Dispose();
+        strip = null;
         frameUiUpdating = true;
         Control<Image>("FramePreview").Source = null;
         Control<TextBlock>("PreviewStatus").Text = "";
@@ -269,6 +265,10 @@ public sealed partial class MainWindow
         {
             await EnsureTimelineAsync();
             QueueFramePreview();
+            if (strip is null && frameTimeline is { } timeline)
+            {
+                _ = BuildStripAsync(expectedSource, timeline);
+            }
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
@@ -298,6 +298,49 @@ public sealed partial class MainWindow
     }
 
     /// <summary>Reads the frame box: a number, or a time such as <c>00:01:23.12</c>.</summary>
+    /// <summary>One pass over the clip, then dragging is a file swap instead of a decode.</summary>
+    private async Task BuildStripAsync(MediaInfo source, FrameTimeline timeline)
+    {
+        try
+        {
+            Control<TextBlock>("PreviewStatus").Text = L.T("正在生成预览缩略…");
+            var built = await FrameStrip.CreateAsync(ToolsObject(), source, timeline, 480,
+                Math.Clamp(timeline.Count / 8, 64, 240));
+            if (ReferenceEquals(sourceMedia, source))
+            {
+                strip?.Dispose();
+                strip = built;
+            }
+            else
+            {
+                built.Dispose();
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            // A missing strip only costs speed; the exact path still works.
+            strip = null;
+        }
+        finally
+        {
+            UpdateFrameSelection();
+        }
+    }
+
+    /// <summary>Shows the strip's still for a frame, if there is one.</summary>
+    private bool ShowStripFrame(int frame)
+    {
+        if (strip is not { Count: > 0 } ready)
+        {
+            return false;
+        }
+        Control<Image>("FramePreview").Source = new BitmapImage(new Uri(ready.Files[ready.IndexOf(frame)]));
+        displayedFrame = frame;
+        lastPreviewMs = 0;
+        return true;
+    }
+
     private void CommitFrameInput()
     {
         if (frameTimeline is null || frameUiUpdating)
@@ -344,21 +387,24 @@ public sealed partial class MainWindow
             frameUiUpdating = false;
         }
         UpdateFrameSelection();
-        if (scrubbing)
+        var dragging = Environment.TickCount64 - lastPreviewTick < 150;
+        if (dragging)
         {
-            // A 4K frame costs most of a second to decode; asking for every pointer move
-            // only queues work nobody sees. The label always follows the pointer, the picture
-            // follows at a rate the decoder can keep.
-            if (Environment.TickCount64 - lastPreviewTick >= 120)
+            // A still from the strip costs nothing; the exact frame is asked for on release.
+            if (ShowStripFrame(frame))
             {
-                lastPreviewTick = Environment.TickCount64;
-                QueueFramePreview();
+                UpdateFrameSelection();
             }
-            return;
+            if (Environment.TickCount64 - lastPreviewRendered < 120)
+            {
+                return;
+            }
         }
-        UpdateFrameOutput();
-        UpdateTransferStats();
-        lastPreviewTick = Environment.TickCount64;
+        else
+        {
+            UpdateFrameOutput();
+            UpdateTransferStats();
+        }
         QueueFramePreview();
     }
 
@@ -406,6 +452,7 @@ public sealed partial class MainWindow
                     finally
                     {
                         lastPreviewMs = clock.ElapsedMilliseconds;
+                        lastPreviewRendered = Environment.TickCount64;
                     }
                 },
                 (request, bytes, cancellation) => OnPreviewUiAsync(async () =>
@@ -444,7 +491,10 @@ public sealed partial class MainWindow
             previewIdentity = identity;
         }
         Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
-        previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile, scrubbing));
+        // Requests arriving back to back are a drag: the nearest keyframe is enough.
+        var dragging = Environment.TickCount64 - lastPreviewTick < 150;
+        lastPreviewTick = Environment.TickCount64;
+        previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile, dragging));
     }
 
     /// <summary>Posts WinRT bitmap work explicitly; cancellation also releases a dispatcher callback during shutdown.</summary>
