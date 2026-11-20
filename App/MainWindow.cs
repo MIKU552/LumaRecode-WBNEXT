@@ -160,7 +160,10 @@ public sealed partial class MainWindow : Window
             controls[name] = control = root.FindName(name);
         }
 
-        return (T)control;
+        // A wrong type here is a programming mistake; say which one instead of throwing
+        // an InvalidCastException that names neither the control nor the expectation.
+        return control as T ?? throw new InvalidOperationException(
+            $"{name} is {(control is null ? "missing" : control.GetType().Name)}, not {typeof(T).Name}");
     }
     private static string Value(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
     private static void Select(ComboBox combo, string? key)

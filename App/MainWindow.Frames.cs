@@ -227,15 +227,22 @@ public sealed partial class MainWindow
             cancellation.Token.ThrowIfCancellationRequested();
             frameTimeline = timeline;
             frameUiUpdating = true;
-            Control<Slider>("FrameSeek").Maximum = Math.Max(2, timeline.Count);
-            Control<Slider>("FrameSeek").Value = 1;
-            foreach (var name in new[] { "FrameNumber", "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
+            try
             {
-                Control<NumberBox>(name).Maximum = timeline.Count;
+                Control<Slider>("FrameSeek").Maximum = Math.Max(2, timeline.Count);
+                Control<Slider>("FrameSeek").Value = 1;
+                // The frame box is a text field; only the range boxes carry a maximum.
+                foreach (var name in new[] { "TrimStart", "TrimEnd", "MotionStart", "MotionEnd" })
+                {
+                    Control<NumberBox>(name).Maximum = timeline.Count;
+                }
+                Control<NumberBox>("TrimEnd").Value = timeline.Count;
+                SetDefaultMotionRange();
             }
-            Control<NumberBox>("TrimEnd").Value = timeline.Count;
-            SetDefaultMotionRange();
-            frameUiUpdating = false;
+            finally
+            {
+                frameUiUpdating = false;
+            }
             return timeline;
         }
         finally
