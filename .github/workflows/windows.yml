@@ -50,6 +50,13 @@ jobs:
           rustc -Vv | Out-File build-info/rust.txt
           dotnet --version | Out-File build-info/dotnet.txt
 
+      # A stale table is how a renamed control turned into a window that never opened.
+      - name: View text is up to date
+        shell: pwsh
+        run: |
+          python tools/Update-ViewText.py
+          git diff --exit-code App/ViewText.g.cs
+
       - name: Build core and stage the native library
         shell: pwsh
         run: ./tools/Build-Native.ps1 -Configuration Release -Target X64 -Test

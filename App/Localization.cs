@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -101,11 +102,21 @@ public sealed class ViewLocalization
                     case ("Header", Expander expander):
                         expander.Header = translated;
                         break;
+                    // A text field carries a header too, and the frame box became one.
+                    case ("Header", TextBox box):
+                        box.Header = translated;
+                        break;
+                    case ("Header", PasswordBox secret):
+                        secret.Header = translated;
+                        break;
                     case ("PlaceholderText", TextBox input):
                         input.PlaceholderText = translated;
                         break;
                     default:
-                        throw new InvalidOperationException($"Unsupported localization target: {name}.{property}");
+                        // Skipping keeps a renamed or retyped control from bricking the app;
+                        // the pair simply keeps its markup text until someone updates the table.
+                        Debug.WriteLine($"Unsupported localization target: {name}.{property}");
+                        break;
                 }
                 if (property == "Header" && control is Expander)
                 {
