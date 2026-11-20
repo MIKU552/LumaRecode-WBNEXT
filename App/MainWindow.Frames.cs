@@ -27,6 +27,7 @@ public sealed partial class MainWindow
     private bool MotionImage => Control<CheckBox>("IncludeMotion").IsChecked == true;
     private int selectedFrame;
     private FrameStrip? strip;
+    private Task? stripBuild;
     private long lastPreviewMs;
     private long lastPreviewTick;
     private long lastPreviewRendered;
@@ -184,6 +185,7 @@ public sealed partial class MainWindow
         displayedFrame = -1;
         previewError = "";
         motionRangeEdited = false;
+        stripBuild = null;
         strip?.Dispose();
         strip = null;
         frameUiUpdating = true;
@@ -264,10 +266,6 @@ public sealed partial class MainWindow
         {
             await EnsureTimelineAsync();
             QueueFramePreview();
-            if (strip is null && frameTimeline is { } timeline)
-            {
-                _ = BuildStripAsync(expectedSource, timeline);
-            }
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
@@ -303,8 +301,8 @@ public sealed partial class MainWindow
         try
         {
             Control<TextBlock>("PreviewStatus").Text = L.T("正在生成预览缩略…");
-            var built = await FrameStrip.CreateAsync(ToolsObject(), source, timeline, 480,
-                Math.Clamp(timeline.Count / 8, 64, 240));
+            var built = await FrameStrip.CreateAsync(ToolsObject(), source, timeline, 360,
+                Math.Clamp(timeline.Count / 12, 48, 120));
             if (ReferenceEquals(sourceMedia, source))
             {
                 strip?.Dispose();
@@ -323,6 +321,7 @@ public sealed partial class MainWindow
         }
         finally
         {
+            stripBuild = null;
             UpdateFrameSelection();
         }
     }
@@ -386,7 +385,7 @@ public sealed partial class MainWindow
             frameUiUpdating = false;
         }
         UpdateFrameSelection();
-        var dragging = Environment.TickCount64 - lastPreviewTick < 150;
+        var dragging = Environment.TickCount64 - lastPreviewTick < 800;
         if (dragging)
         {
             // A still from the strip costs nothing; the exact frame is asked for on release.
@@ -475,6 +474,12 @@ public sealed partial class MainWindow
                     previewError = "";
                     Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
                     UpdateFrameSelection();
+                    // Only once a real frame is on screen: the strip must never be the reason
+                    // the first picture is late.
+                    if (strip is null && stripBuild is null && frameTimeline is { } stripTimeline)
+                    {
+                        stripBuild = BuildStripAsync(source, stripTimeline);
+                    }
                 }, cancellation),
                 (error, cancellation) => OnPreviewUiAsync(() =>
                 {
@@ -491,7 +496,7 @@ public sealed partial class MainWindow
         }
         Control<ProgressRing>("PreviewBusy").IsActive = displayedFrame != SelectedFrame;
         // Requests arriving back to back are a drag: the nearest keyframe is enough.
-        var dragging = Environment.TickCount64 - lastPreviewTick < 150;
+        var dragging = Environment.TickCount64 - lastPreviewTick < 800;
         lastPreviewTick = Environment.TickCount64;
         previewSession.Request(new(SelectedFrame, options.SourceKind, options.Profile, dragging));
     }

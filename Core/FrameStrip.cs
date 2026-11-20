@@ -35,13 +35,14 @@ public sealed class FrameStrip : IDisposable
             "-hide_banner", "-nostdin", "-n", "-loglevel", "error",
             "-i", source.Path,
             "-map", "0:" + source.Video.Text("index"),
-            "-vf", $"fps={target / timeline.Duration:0.####},scale={width}:-2:flags=lanczos",
+            "-vf", $"fps={target / timeline.Duration:0.####},scale={width}:-2:flags=bilinear",
             "-frames:v", target.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "-q:v", "4", "-f", "image2", "-start_number", "0",
             Path.Combine(folder.FullName, "s-%04d.jpg"),
         };
-        // The whole point is one pass: let it use the machine.
-        arguments.InsertRange(0, ["-threads:v", "0"]);
+        // It runs while somebody may be scrubbing, so it takes a small share of the machine
+        // rather than all of it: a strip that starves the interactive frame is a worse trade.
+        arguments.InsertRange(0, ["-threads:v", "2", "-filter_threads", "2"]);
         try
         {
             // A whole 4K clip takes far longer than the default text-capture timeout.

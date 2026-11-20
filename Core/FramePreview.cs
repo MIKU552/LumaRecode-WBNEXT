@@ -25,7 +25,7 @@ public sealed class FramePreview(Transcoder engine)
         var arguments = plan.Arguments.Take(input + 2).Skip(1).ToList();
         // Frame-threaded decoders otherwise decode many 4K frames ahead before
         // delivering the single requested frame. Limit that latency and memory.
-        arguments.InsertRange(0, ["-threads:v", "2", "-filter_threads", "2"]);
+        arguments.InsertRange(0, ["-threads:v", "4", "-filter_threads", "2"]);
         if (approximate)
         {
             // Long-GOP 4K spends seconds decoding from the keyframe to the exact frame; while

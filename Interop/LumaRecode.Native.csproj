@@ -3,7 +3,7 @@
     <TargetFramework>net11.0</TargetFramework>
     <RootNamespace>VideoConverter.Native</RootNamespace>
     <AssemblyName>LumaRecode.Native</AssemblyName>
-    <Version>5.0.7</Version>
+    <Version>5.0.8</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsAotCompatible>true</IsAotCompatible>
