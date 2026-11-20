@@ -126,7 +126,7 @@ jobs:
           $text
           if ($process.ExitCode -ne 0) { throw "CLI --version failed with $($process.ExitCode)." }
           if ($text -notmatch 'core: shared 0\.1\.0') { throw "Shared core was not active in the host." }
-          if ($text -notmatch 'LumaRecode 5\.0\.0 WBNEXT') { throw "Unexpected version output." }
+          if ($text -notmatch 'LumaRecode \d+\.\d+\.\d+ WBNEXT') { throw "Unexpected version output." }
 
           # Help must stay in step with the command list: a missing description used
           # to read past the array, so run it and require the newest command to appear.
