@@ -91,7 +91,7 @@ internal static class ViewText
         ("NextFrame", "Content", "下一帧"),
         ("SetTrimStart", "Content", "设为起始帧"),
         ("SetTrimEnd", "Content", "设为末尾帧"),
-        ("FrameNumber", "Header", "帧（可输入 00:01:23.12）"),
+        ("FrameNumber", "Header", "跳到（帧号，或 00:01:23.12）"),
         ("TrimEnabled", "Content", "裁剪视频"),
         ("TrimStart", "Header", "开始帧"),
         ("TrimStartText", "Header", "或输入时间"),
